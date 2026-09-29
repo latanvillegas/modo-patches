@@ -1,3 +1,9 @@
+## [1.47.5](https://github.com/latanvillegas/modo-patches/compare/v1.47.4...v1.47.5) (2026-09-29)
+
+### 🐛 Bug Fixes
+
+* **cromite:** force GM3 dark surface palette to AMOLED black ([9c15c21](https://github.com/latanvillegas/modo-patches/commit/9c15c2173416ee3a7f1cad773ea3e493fff30b9f))
+
 ## [1.47.4](https://github.com/latanvillegas/modo-patches/compare/v1.47.3...v1.47.4) (2026-09-29)
 
 ### 🐛 Bug Fixes
