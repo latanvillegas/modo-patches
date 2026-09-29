@@ -1,3 +1,10 @@
+## [1.45.0](https://github.com/latanvillegas/modo-patches/compare/v1.44.0...v1.45.0) (2026-09-29)
+
+### ✨ New Features
+
+* **cromite:** add hide status bar patch ([5f04648](https://github.com/latanvillegas/modo-patches/commit/5f046483760f7aba048cbf6266ac42d7d0b81fcb))
+* **cromite:** add pure AMOLED theme patch ([3c65220](https://github.com/latanvillegas/modo-patches/commit/3c6522011cd798d7bf0a869097f5edf95c0930c5))
+
 ## [1.44.0](https://github.com/MorpheApp/morphe-patches/compare/v1.43.0...v1.44.0) (2026-09-21)
 
 ### 🐛 Bug Fixes
