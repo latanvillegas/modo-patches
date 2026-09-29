@@ -1,3 +1,10 @@
+## [1.45.1](https://github.com/latanvillegas/modo-patches/compare/v1.45.0...v1.45.1) (2026-09-29)
+
+### 🐛 Bug Fixes
+
+* **cromite:** avoid nested comment token in AMOLED patch ([60dfe6f](https://github.com/latanvillegas/modo-patches/commit/60dfe6f6d1edeb1b2b16b4045206c20a6fdcdb5c))
+* **cromite:** patch compiled night color resources for AMOLED ([60d6b69](https://github.com/latanvillegas/modo-patches/commit/60d6b691a3b4087099052be62106fbceb969e182))
+
 ## [1.45.0](https://github.com/latanvillegas/modo-patches/compare/v1.44.0...v1.45.0) (2026-09-29)
 
 ### ✨ New Features
