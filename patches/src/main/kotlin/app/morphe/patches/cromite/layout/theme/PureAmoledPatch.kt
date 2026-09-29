@@ -11,6 +11,7 @@ private const val CROMITE_VERSION = "153.0.8010.37"
 private const val SEMANTIC_COLOR_UTILS = "Lpac;"
 private const val CHROME_COLORS = "Lq72;"
 private const val CONTEXT = "Landroid/content/Context;"
+private const val AMOLED_BLACK = "#FF000000"
 
 private fun semanticSurfaceFingerprint(name: String) = Fingerprint(
     definingClass = SEMANTIC_COLOR_UTILS,
@@ -41,7 +42,7 @@ private val pureAmoledResourcesPatch = resourcePatch(
 
     execute {
         // Verified directly against Cromite 153.0.8010.37 arm64 APK.
-        // These are background/surface resources only; foreground/text/icon colors are excluded.
+        // Foreground/text/icon/accent colors are deliberately excluded.
         val candidateFiles = listOf(
             "bottom_sheet_bg_color.xml",
             "context_menu_header_circle_bg_color.xml",
@@ -77,7 +78,7 @@ private val pureAmoledResourcesPatch = resourcePatch(
             for (i in 0 until attributes.length) {
                 val attribute = attributes.item(i)
                 if (attribute.nodeName.endsWith(":color") || attribute.nodeName == "color") {
-                    attribute.nodeValue = "#FF000000"
+                    attribute.nodeValue = AMOLED_BLACK
                     valuesPatched++
                 }
             }
@@ -92,7 +93,7 @@ private val pureAmoledResourcesPatch = resourcePatch(
                 }
             }
             if (!hasElementChildren && element.textContent.trim().startsWith("#")) {
-                element.textContent = "#FF000000"
+                element.textContent = AMOLED_BLACK
                 valuesPatched++
             }
         }
@@ -103,6 +104,61 @@ private val pureAmoledResourcesPatch = resourcePatch(
                     val before = valuesPatched
                     blacken(document.documentElement)
                     if (valuesPatched > before) filesPatched++
+                }
+            }
+        }
+
+        // Cromite/Chromium also obtains Material 3 backgrounds directly from the
+        // night resource table. This is why Settings and the three-dot menu can
+        // remain gray even after SemanticColorUtils is hooked.
+        runCatching {
+            document("res/values-night/colors.xml").use { document ->
+                val colors = document.getElementsByTagName("color")
+                for (index in 0 until colors.length) {
+                    val color = colors.item(index) as? Element ?: continue
+                    val name = color.getAttribute("name").lowercase()
+                    val isBackground = name.contains("background") || name.contains("_bg") ||
+                        name.contains("surface") || name.startsWith("gm3_baseline_surface") ||
+                        name.startsWith("default_bg_color_dark_elev_")
+                    if (isBackground) {
+                        color.textContent = AMOLED_BLACK
+                        valuesPatched++
+                    }
+                }
+            }
+        }
+
+        // Material3 menus/dialogs/settings may resolve ?attr/colorSurface* directly
+        // from a dark BrowserUI/Chromium theme instead of calling SemanticColorUtils.
+        // Force only background/surface attributes on explicitly dark/night styles.
+        runCatching {
+            document("res/values/styles.xml").use { document ->
+                val styles = document.getElementsByTagName("style")
+                val surfaceAttrs = setOf(
+                    "android:colorBackground",
+                    "colorBackground",
+                    "colorSurface",
+                    "colorSurfaceBright",
+                    "colorSurfaceDim",
+                    "colorSurfaceContainerLow",
+                    "colorSurfaceContainer",
+                    "colorSurfaceContainerHigh",
+                    "colorSurfaceContainerHighest",
+                )
+                for (index in 0 until styles.length) {
+                    val style = styles.item(index) as? Element ?: continue
+                    val styleName = style.getAttribute("name")
+                    if (!styleName.contains("dark", ignoreCase = true) &&
+                        !styleName.contains("night", ignoreCase = true)) continue
+
+                    val items = style.getElementsByTagName("item")
+                    for (itemIndex in 0 until items.length) {
+                        val item = items.item(itemIndex) as? Element ?: continue
+                        if (item.getAttribute("name") in surfaceAttrs) {
+                            item.textContent = AMOLED_BLACK
+                            valuesPatched++
+                        }
+                    }
                 }
             }
         }
@@ -122,7 +178,7 @@ val pureAmoledPatch = bytecodePatch(
     dependsOn(pureAmoledResourcesPatch)
 
     execute {
-        // Mapping verified from the matching Cromite arm64 R8 mapping file:
+        // Exact R8 mapping from Cromite 153.0.8010.37 arm64:
         // pac.c = getColorSurface
         // pac.d = getColorSurfaceBright
         // pac.e = getColorSurfaceContainer
