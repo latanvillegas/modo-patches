@@ -1,3 +1,9 @@
+## [1.45.4](https://github.com/latanvillegas/modo-patches/compare/v1.45.3...v1.45.4) (2026-09-29)
+
+### 🐛 Bug Fixes
+
+* **cromite:** avoid null directory listing in AMOLED patch ([4f3106f](https://github.com/latanvillegas/modo-patches/commit/4f3106ff408bcabee14bd28c165d1f7419d6f48f))
+
 ## [1.45.3](https://github.com/latanvillegas/modo-patches/compare/v1.45.2...v1.45.3) (2026-09-29)
 
 ### 🐛 Bug Fixes
