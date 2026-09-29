@@ -5,37 +5,45 @@ import org.w3c.dom.Element
 import org.w3c.dom.Node
 
 /**
- * Forces Cromite's compiled Android night-mode surface resources to true OLED black.
+ * Forces Cromite's compiled Android night-mode surfaces to true OLED black.
  *
- * Cromite's release APK does not expose res/values-night/colors.xml. aapt2 compiles the
- * relevant colors into individual XML resources under res/color-night-v8, so patch those
- * files directly instead of looking for source-only values XML files.
+ * The release APK stores many Chromium colors as individual compiled XML resources rather than
+ * source values XML. Patch a wider set of known UI surfaces, including settings, home, dialogs,
+ * menus, tab/hub surfaces and omnibox/search surfaces. Foreground/accent resources are excluded.
  */
 @Suppress("unused")
 val pureAmoledPatch = resourcePatch(
     name = "Pure AMOLED theme",
     description = "Use true black (#000000) for Cromite dark interface surfaces.",
 ) {
-    compatibleWith("org.cromite.cromite")
+    compatibleWith("org.cromite.cromite"("153.0.8010.37"))
 
     execute {
-        val nightSurfaceFiles = listOf(
-            "res/color-night-v8/bottom_sheet_bg_color.xml",
-            "res/color-night-v8/context_menu_header_circle_bg_color.xml",
-            "res/color-night-v8/dialog_bg_color.xml",
-            "res/color-night-v8/distilled_page_pref_background_color.xml",
-            "res/color-night-v8/fake_search_box_base_color.xml",
-            "res/color-night-v8/home_surface_background_color.xml",
-            "res/color-night-v8/home_surface_ui_background_color.xml",
-            "res/color-night-v8/hub_search_box_bg_color.xml",
-            "res/color-night-v8/interactable_chip_bg_color.xml",
+        val exactFiles = setOf(
+            "bottom_sheet_bg_color.xml",
+            "context_menu_header_circle_bg_color.xml",
+            "dialog_bg_color.xml",
+            "distilled_page_pref_background_color.xml",
+            "fake_search_box_base_color.xml",
+            "home_surface_background_color.xml",
+            "home_surface_ui_background_color.xml",
+            "hub_search_box_bg_color.xml",
+            "interactable_chip_bg_color.xml",
+        )
+        val surfaceTokens = listOf(
+            "background", "surface", "toolbar", "omnibox", "search_box", "searchbox",
+            "tab", "hub", "menu", "dialog", "sheet", "popup", "card", "settings",
+            "incognito", "ntp", "new_tab", "dropdown"
+        )
+        val excludedTokens = listOf(
+            "text", "icon", "foreground", "accent", "link", "tint", "stroke", "divider",
+            "outline", "disabled", "selected", "checked", "error", "warning"
         )
 
         var filesPatched = 0
         var valuesPatched = 0
 
         fun blacken(element: Element) {
-            // Compiled color XML commonly stores the color in android:color on <item>.
             val attributes = element.attributes
             for (i in 0 until attributes.length) {
                 val attribute = attributes.item(i)
@@ -45,7 +53,6 @@ val pureAmoledPatch = resourcePatch(
                 }
             }
 
-            // Also support decoded simple color nodes if the patcher exposes them as text.
             val children = element.childNodes
             var hasElementChildren = false
             for (i in 0 until children.length) {
@@ -64,23 +71,27 @@ val pureAmoledPatch = resourcePatch(
             }
         }
 
-        nightSurfaceFiles.forEach { path ->
+        // Cromite 153 packages night resources in this compiled resource directory. Enumerating the
+        // resource directory lets us cover Chromium surfaces that were missed by the first version.
+        val directory = get("res/color-night-v8")
+        directory.list().forEach { fileName ->
+            val lower = fileName.lowercase()
+            val isSurface = fileName in exactFiles || surfaceTokens.any(lower::contains)
+            val isExcluded = excludedTokens.any(lower::contains)
+            if (!lower.endsWith(".xml") || !isSurface || isExcluded) return@forEach
+
             runCatching {
-                document(path).use { document ->
+                document("res/color-night-v8/$fileName").use { document ->
+                    val before = valuesPatched
                     blacken(document.documentElement)
-                    filesPatched++
+                    if (valuesPatched > before) filesPatched++
                 }
             }
         }
 
-        if (filesPatched == 0) {
+        if (filesPatched == 0 || valuesPatched == 0) {
             throw IllegalStateException(
-                "Cromite night-mode color resources were not found; this APK version is unsupported."
-            )
-        }
-        if (valuesPatched == 0) {
-            throw IllegalStateException(
-                "Cromite night-mode resources were found but contained no patchable color values."
+                "Cromite night-mode surfaces were not patchable in this APK version."
             )
         }
     }
