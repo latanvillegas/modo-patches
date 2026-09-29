@@ -23,6 +23,7 @@ private fun semanticSurfaceFingerprint(name: String) = Fingerprint(
     parameters = listOf(CONTEXT),
 )
 
+// Exact surviving methods from the Cromite 153 R8 mapping (pac).
 private val colorSurfaceFingerprint = semanticSurfaceFingerprint("c")
 private val colorSurfaceBrightFingerprint = semanticSurfaceFingerprint("d")
 private val colorSurfaceContainerFingerprint = semanticSurfaceFingerprint("e")
@@ -102,9 +103,6 @@ private val pureAmoledResourcesPatch = resourcePatch(
             "toolbar_text_box_bg_color.xml",
         )
 
-        // Chromium's dark BrowserUI theme resolves Settings, menus, cards and
-        // other elevated surfaces through these GM3 palette entries. Patch the
-        // palette itself so direct ?attr/colorSurface* lookups also become black.
         val gm3DarkSurfaces = setOf(
             "gm3_baseline_surface_dark",
             "gm3_baseline_surface_bright_dark",
@@ -116,9 +114,27 @@ private val pureAmoledResourcesPatch = resourcePatch(
             "gm3_baseline_surface_container_highest_dark",
         )
 
+        // These are the actual Material roles used by Chromium Settings, cards,
+        // menus and elevated surfaces. R8 inlines some SemanticColorUtils calls in
+        // Cromite 153, so patching only pac methods is insufficient. Patch every
+        // compiled dark theme table that contains these items as well.
+        val surfaceThemeAttrs = setOf(
+            "android:colorBackground",
+            "colorBackground",
+            "colorSurface",
+            "colorSurfaceBright",
+            "colorSurfaceDim",
+            "colorSurfaceContainerLowest",
+            "colorSurfaceContainerLow",
+            "colorSurfaceContainer",
+            "colorSurfaceContainerHigh",
+            "colorSurfaceContainerHighest",
+        )
+
         var filesPatched = 0
         var valuesPatched = 0
         var gm3ValuesPatched = 0
+        var themeAttrsPatched = 0
 
         fun blacken(element: Element, forceLeaf: Boolean) {
             val attributes = element.attributes
@@ -169,16 +185,13 @@ private val pureAmoledResourcesPatch = resourcePatch(
             }
         }
 
-        // AAPT normally merges Chromium's color_palette.xml into values/colors.xml.
-        // Check the common compiled value tables and patch only the named dark
-        // surface entries. Light palette, text, icons and accent colors are left alone.
-        val valueTables = listOf(
+        val colorTables = listOf(
             "res/values/colors.xml",
             "res/values-night/colors.xml",
             "res/values-v31/colors.xml",
             "res/values-night-v31/colors.xml",
         )
-        valueTables.forEach { path ->
+        colorTables.forEach { path ->
             runCatching {
                 document(path).use { document ->
                     val colors = document.getElementsByTagName("color")
@@ -194,7 +207,41 @@ private val pureAmoledResourcesPatch = resourcePatch(
             }
         }
 
-        if (filesPatched == 0 && gm3ValuesPatched == 0) {
+        // AAPT can place theme definitions in styles.xml or themes.xml depending
+        // on the source module/qualifier. Cover the actual compiled tables instead
+        // of assuming one filename. Only surface roles are changed; primary,
+        // secondary, onSurface/text, outline and selection colors remain intact.
+        val themeTables = listOf(
+            "res/values/styles.xml",
+            "res/values/themes.xml",
+            "res/values-night/styles.xml",
+            "res/values-night/themes.xml",
+            "res/values-v31/styles.xml",
+            "res/values-v31/themes.xml",
+            "res/values-night-v31/styles.xml",
+            "res/values-night-v31/themes.xml",
+            "res/values-v35/styles.xml",
+            "res/values-v35/themes.xml",
+            "res/values-night-v35/styles.xml",
+            "res/values-night-v35/themes.xml",
+        )
+        themeTables.forEach { path ->
+            runCatching {
+                document(path).use { document ->
+                    val items = document.getElementsByTagName("item")
+                    for (index in 0 until items.length) {
+                        val item = items.item(index) as? Element ?: continue
+                        if (item.getAttribute("name") in surfaceThemeAttrs) {
+                            item.textContent = AMOLED_BLACK
+                            themeAttrsPatched++
+                            valuesPatched++
+                        }
+                    }
+                }
+            }
+        }
+
+        if (filesPatched == 0 && gm3ValuesPatched == 0 && themeAttrsPatched == 0) {
             throw IllegalStateException("No verified Cromite 153 AMOLED resources could be patched.")
         }
     }
