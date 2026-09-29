@@ -1,22 +1,63 @@
 package app.morphe.patches.cromite.layout.theme
 
+import app.morphe.patcher.Fingerprint
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.resourcePatch
 import org.w3c.dom.Element
 import org.w3c.dom.Node
 
-/**
- * Forces Cromite's Android dark UI surfaces to true OLED black.
+private const val CROMITE_VERSION = "153.0.8010.37"
+private const val SEMANTIC_COLOR_UTILS = "Lpac;"
+private const val CHROME_COLORS = "Lq72;"
+private const val CONTEXT = "Landroid/content/Context;"
+
+/*
+ * Verified against arm64_ChromePublic.apk.mapping shipped with Cromite 153.0.8010.37:
  *
- * Chromium/Material uses semantic surface attributes for Settings, cards, menus, tabs, search,
- * toolbars and other containers. Patch those attributes in night themes in addition to the
- * compiled color resources already verified in Cromite 153.
+ * SemanticColorUtils -> pac
+ *   c = getColorSurface(Context)
+ *   d = getColorSurfaceBright(Context)
+ *   e = getColorSurfaceContainer(Context)
+ *   f = getColorSurfaceContainerHighest(Context)
+ *   g = getColorSurfaceContainerLow(Context)
+ *   h = getDefaultBgColor(Context)
+ *   l = getSettingsBackgroundColor(Context)
+ *
+ * ChromeColors -> q72
+ *   b = getPrimaryBackgroundColor(Context, boolean)
+ *
+ * Do NOT patch pac.i/pac.j/pac.k: those are icon/text/link colors.
  */
-@Suppress("unused")
-val pureAmoledPatch = resourcePatch(
-    name = "Pure AMOLED theme",
-    description = "Use true black (#000000) for Cromite dark interface surfaces.",
+private fun semanticSurfaceFingerprint(name: String) = Fingerprint(
+    definingClass = SEMANTIC_COLOR_UTILS,
+    name = name,
+    returnType = "I",
+    parameters = listOf(CONTEXT),
+)
+
+private val colorSurfaceFingerprint = semanticSurfaceFingerprint("c")
+private val colorSurfaceBrightFingerprint = semanticSurfaceFingerprint("d")
+private val colorSurfaceContainerFingerprint = semanticSurfaceFingerprint("e")
+private val colorSurfaceContainerHighestFingerprint = semanticSurfaceFingerprint("f")
+private val colorSurfaceContainerLowFingerprint = semanticSurfaceFingerprint("g")
+private val defaultBgColorFingerprint = semanticSurfaceFingerprint("h")
+private val settingsBackgroundColorFingerprint = semanticSurfaceFingerprint("l")
+
+private val primaryBackgroundColorFingerprint = Fingerprint(
+    definingClass = CHROME_COLORS,
+    name = "b",
+    returnType = "I",
+    parameters = listOf(CONTEXT, "Z"),
+)
+
+/** Resource-side fallback for compiled night resources that do not pass through SemanticColorUtils. */
+private val pureAmoledResourcesPatch = resourcePatch(
+    name = "Pure AMOLED resources",
+    description = "Internal resource component for Cromite Pure AMOLED.",
+    use = false,
 ) {
-    compatibleWith("org.cromite.cromite"("153.0.8010.37"))
+    compatibleWith("org.cromite.cromite"(CROMITE_VERSION))
 
     execute {
         val candidateFiles = listOf(
@@ -33,7 +74,6 @@ val pureAmoledPatch = resourcePatch(
 
         var filesPatched = 0
         var valuesPatched = 0
-        var themeItemsPatched = 0
 
         fun blacken(element: Element) {
             val attributes = element.attributes
@@ -54,12 +94,9 @@ val pureAmoledPatch = resourcePatch(
                     blacken(child as Element)
                 }
             }
-            if (!hasElementChildren) {
-                val text = element.textContent.trim()
-                if (text.startsWith("#")) {
-                    element.textContent = "#FF000000"
-                    valuesPatched++
-                }
+            if (!hasElementChildren && element.textContent.trim().startsWith("#")) {
+                element.textContent = "#FF000000"
+                valuesPatched++
             }
         }
 
@@ -73,49 +110,52 @@ val pureAmoledPatch = resourcePatch(
             }
         }
 
-        // Material 3 tonal surface roles are used by cards, dialogs, menus, search, tabs and app
-        // bars. Chromium also relies on colorSurface for Settings/toolbar backgrounds.
-        val surfaceAttributes = setOf(
-            "colorBackground",
-            "android:colorBackground",
-            "windowBackground",
-            "android:windowBackground",
-            "colorSurface",
-            "colorSurfaceDim",
-            "colorSurfaceBright",
-            "colorSurfaceVariant",
-            "colorSurfaceContainer",
-            "colorSurfaceContainerLow",
-            "colorSurfaceContainerLowest",
-            "colorSurfaceContainerHigh",
-            "colorSurfaceContainerHighest",
+        if (filesPatched == 0) {
+            throw IllegalStateException("No verified Cromite 153 night resources could be patched.")
+        }
+    }
+}
+
+/**
+ * Forces the runtime Chromium/Material surface roles used by Cromite 153 to true OLED black.
+ *
+ * This is intentionally version-specific. The obfuscated class/method mapping above was taken from
+ * the mapping file belonging to the exact supported ARM64 build, rather than guessed from upstream
+ * Java names. Foreground roles (text, icons, links and accents) are deliberately untouched.
+ *
+ * The runtime overrides are intended for Cromite's dark theme. If the browser is switched to a
+ * light theme, these background methods remain black while light-theme foreground colors may be
+ * unsuitable; use this patch with Cromite dark mode enabled.
+ */
+@Suppress("unused")
+val pureAmoledPatch = bytecodePatch(
+    name = "Pure AMOLED theme",
+    description = "Forces Cromite 153 runtime UI surfaces to true black (#000000). Use with dark mode.",
+) {
+    compatibleWith("org.cromite.cromite"(CROMITE_VERSION))
+    dependsOn(pureAmoledResourcesPatch)
+
+    execute {
+        val targets = listOf(
+            colorSurfaceFingerprint,
+            colorSurfaceBrightFingerprint,
+            colorSurfaceContainerFingerprint,
+            colorSurfaceContainerHighestFingerprint,
+            colorSurfaceContainerLowFingerprint,
+            defaultBgColorFingerprint,
+            settingsBackgroundColorFingerprint,
+            primaryBackgroundColorFingerprint,
         )
 
-        // Patch only night-qualified styles. If Cromite stores the resolved dark styles in a
-        // different qualifier this block safely does nothing and the verified color resources above
-        // still apply.
-        listOf("res/values-night/styles.xml", "res/values-night-v8/styles.xml").forEach { path ->
-            runCatching {
-                document(path).use { document ->
-                    val styles = document.getElementsByTagName("style")
-                    for (styleIndex in 0 until styles.length) {
-                        val style = styles.item(styleIndex) as? Element ?: continue
-                        val items = style.getElementsByTagName("item")
-                        for (itemIndex in 0 until items.length) {
-                            val item = items.item(itemIndex) as? Element ?: continue
-                            if (item.getAttribute("name") in surfaceAttributes) {
-                                item.textContent = "#FF000000"
-                                themeItemsPatched++
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        if (filesPatched == 0 && themeItemsPatched == 0) {
-            throw IllegalStateException(
-                "No verified Cromite 153 AMOLED surfaces or Material surface tokens could be patched."
+        targets.forEach { fingerprint ->
+            // ARGB #FF000000. Every verified target already has at least one local register in the
+            // original tiny resolver body, so v0 can safely be reused for the immediate return.
+            fingerprint.method.addInstructions(
+                0,
+                """
+                    const v0, -0x1000000
+                    return v0
+                """
             )
         }
     }
