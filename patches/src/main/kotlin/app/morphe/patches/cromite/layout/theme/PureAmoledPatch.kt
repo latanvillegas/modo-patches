@@ -40,6 +40,8 @@ private val pureAmoledResourcesPatch = resourcePatch(
     compatibleWith("org.cromite.cromite"(CROMITE_VERSION))
 
     execute {
+        // Verified directly against Cromite 153.0.8010.37 arm64 APK.
+        // These are background/surface resources only; foreground/text/icon colors are excluded.
         val candidateFiles = listOf(
             "bottom_sheet_bg_color.xml",
             "context_menu_header_circle_bg_color.xml",
@@ -50,6 +52,21 @@ private val pureAmoledResourcesPatch = resourcePatch(
             "home_surface_ui_background_color.xml",
             "hub_search_box_bg_color.xml",
             "interactable_chip_bg_color.xml",
+            "message_bg_color.xml",
+            "omnibox_popover_suggestion_bg_color.xml",
+            "omnibox_suggestion_dropdown_bg.xml",
+            "search_suggestion_bg_color.xml",
+            "single_tab_favicon_bg_color.xml",
+            "tab_group_dialog_bg_color.xml",
+            "tab_hover_card_bg_color.xml",
+            "tab_strip_ntb_bg_tint_list.xml",
+            "tile_view_icon_background_color.xml",
+            "toast_color.xml",
+            "toolbar_text_box_bg_color.xml",
+            "widget_bg.xml",
+            "widget_button_bg.xml",
+            "widget_searchbox_bg.xml",
+            "xr_toolbar_bg.xml",
         )
 
         var filesPatched = 0
@@ -99,12 +116,21 @@ private val pureAmoledResourcesPatch = resourcePatch(
 @Suppress("unused")
 val pureAmoledPatch = bytecodePatch(
     name = "Pure AMOLED theme",
-    description = "Forces Cromite 153 runtime UI surfaces to true black (#000000). Use with dark mode.",
+    description = "Forces Cromite 153 dark UI surfaces to true black (#000000). Use with dark mode.",
 ) {
     compatibleWith("org.cromite.cromite"(CROMITE_VERSION))
     dependsOn(pureAmoledResourcesPatch)
 
     execute {
+        // Mapping verified from the matching Cromite arm64 R8 mapping file:
+        // pac.c = getColorSurface
+        // pac.d = getColorSurfaceBright
+        // pac.e = getColorSurfaceContainer
+        // pac.f = getColorSurfaceContainerHighest
+        // pac.g = getColorSurfaceContainerLow
+        // pac.h = getDefaultBgColor
+        // pac.l = getSettingsBackgroundColor
+        // q72.b = ChromeColors.getPrimaryBackgroundColor(Context, boolean)
         val targets = listOf(
             colorSurfaceFingerprint,
             colorSurfaceBrightFingerprint,
