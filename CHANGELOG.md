@@ -1,3 +1,13 @@
+## [1.47.0](https://github.com/latanvillegas/modo-patches/compare/v1.46.0...v1.47.0) (2026-09-29)
+
+### 🐛 Bug Fixes
+
+* **cromite:** fix Pure AMOLED resource patch declaration ([f7b4369](https://github.com/latanvillegas/modo-patches/commit/f7b436977045c0787a68aaa2cc86c38650a99531))
+
+### ✨ New Features
+
+* **cromite:** patch verified runtime surface color methods for AMOLED ([2b85d53](https://github.com/latanvillegas/modo-patches/commit/2b85d534790e83f0530ddee9ca9a43dedf0d4a9e))
+
 ## [1.46.0](https://github.com/latanvillegas/modo-patches/compare/v1.45.4...v1.46.0) (2026-09-29)
 
 ### ✨ New Features

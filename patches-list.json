@@ -1,6 +1,6 @@
 {
   "NOTE": "Do NOT manually edit this file. This file is automatically updated when semantic release (release.yml) runs. Manually editing this file can break your releases and break third party tools that use this file.",
-  "version": "1.46.0",
+  "version": "1.47.0",
   "patches": [
     {
       "name": "Add to queue",
@@ -7691,10 +7691,12 @@
     },
     {
       "name": "Pure AMOLED theme",
-      "description": "Use true black (#000000) for Cromite dark interface surfaces.",
+      "description": "Forces Cromite 153 runtime UI surfaces to true black (#000000). Use with dark mode.",
       "default": true,
       "category": null,
-      "dependencies": [],
+      "dependencies": [
+        "ResourcePatch"
+      ],
       "compatiblePackages": [
         {
           "packageName": "org.cromite.cromite",
