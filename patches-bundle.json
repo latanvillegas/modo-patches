@@ -1,7 +1,7 @@
 {
-  "created_at": "2026-09-29T21:50:49",
-  "description": "## [1.47.3](https://github.com/latanvillegas/modo-patches/compare/v1.47.2...v1.47.3) (2026-09-29)\n\n### 🐛 Bug Fixes\n\n* **cromite:** force AMOLED surfaces after dynamic color analysis ([b0356e9](https://github.com/latanvillegas/modo-patches/commit/b0356e93656732cc379ee77e0bc1bda2d6a9f6ae))",
-  "download_url": "https://github.com/latanvillegas/modo-patches/releases/download/v1.47.3/patches-1.47.3.mpp",
+  "created_at": "2026-09-29T22:12:01",
+  "description": "## [1.47.4](https://github.com/latanvillegas/modo-patches/compare/v1.47.3...v1.47.4) (2026-09-29)\n\n### 🐛 Bug Fixes\n\n* **cromite:** target compiled Material background selectors for AMOLED ([c7e5555](https://github.com/latanvillegas/modo-patches/commit/c7e55550cf5b866b20d062d0a083b109a9533f7d))",
+  "download_url": "https://github.com/latanvillegas/modo-patches/releases/download/v1.47.4/patches-1.47.4.mpp",
   "signature_download_url": "",
-  "version": "1.47.3"
+  "version": "1.47.4"
 }

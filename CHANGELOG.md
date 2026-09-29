@@ -1,3 +1,9 @@
+## [1.47.4](https://github.com/latanvillegas/modo-patches/compare/v1.47.3...v1.47.4) (2026-09-29)
+
+### 🐛 Bug Fixes
+
+* **cromite:** target compiled Material background selectors for AMOLED ([c7e5555](https://github.com/latanvillegas/modo-patches/commit/c7e55550cf5b866b20d062d0a083b109a9533f7d))
+
 ## [1.47.3](https://github.com/latanvillegas/modo-patches/compare/v1.47.2...v1.47.3) (2026-09-29)
 
 ### 🐛 Bug Fixes
