@@ -1,3 +1,9 @@
+## [1.47.3](https://github.com/latanvillegas/modo-patches/compare/v1.47.2...v1.47.3) (2026-09-29)
+
+### 🐛 Bug Fixes
+
+* **cromite:** force AMOLED surfaces after dynamic color analysis ([b0356e9](https://github.com/latanvillegas/modo-patches/commit/b0356e93656732cc379ee77e0bc1bda2d6a9f6ae))
+
 ## [1.47.2](https://github.com/latanvillegas/modo-patches/compare/v1.47.1...v1.47.2) (2026-09-29)
 
 ### 🐛 Bug Fixes
