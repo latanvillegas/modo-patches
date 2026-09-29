@@ -5,7 +5,11 @@ import org.w3c.dom.Element
 import org.w3c.dom.Node
 
 /**
- * Forces Cromite's compiled Android night-mode surfaces to true OLED black.
+ * Forces Cromite's Android dark UI surfaces to true OLED black.
+ *
+ * Chromium/Material uses semantic surface attributes for Settings, cards, menus, tabs, search,
+ * toolbars and other containers. Patch those attributes in night themes in addition to the
+ * compiled color resources already verified in Cromite 153.
  */
 @Suppress("unused")
 val pureAmoledPatch = resourcePatch(
@@ -15,8 +19,6 @@ val pureAmoledPatch = resourcePatch(
     compatibleWith("org.cromite.cromite"("153.0.8010.37"))
 
     execute {
-        // Morphe's resource filesystem does not guarantee that File.list() is available for APK
-        // virtual directories. Use the concrete compiled resources verified in Cromite 153 instead.
         val candidateFiles = listOf(
             "bottom_sheet_bg_color.xml",
             "context_menu_header_circle_bg_color.xml",
@@ -31,6 +33,7 @@ val pureAmoledPatch = resourcePatch(
 
         var filesPatched = 0
         var valuesPatched = 0
+        var themeItemsPatched = 0
 
         fun blacken(element: Element) {
             val attributes = element.attributes
@@ -70,9 +73,49 @@ val pureAmoledPatch = resourcePatch(
             }
         }
 
-        if (filesPatched == 0 || valuesPatched == 0) {
+        // Material 3 tonal surface roles are used by cards, dialogs, menus, search, tabs and app
+        // bars. Chromium also relies on colorSurface for Settings/toolbar backgrounds.
+        val surfaceAttributes = setOf(
+            "colorBackground",
+            "android:colorBackground",
+            "windowBackground",
+            "android:windowBackground",
+            "colorSurface",
+            "colorSurfaceDim",
+            "colorSurfaceBright",
+            "colorSurfaceVariant",
+            "colorSurfaceContainer",
+            "colorSurfaceContainerLow",
+            "colorSurfaceContainerLowest",
+            "colorSurfaceContainerHigh",
+            "colorSurfaceContainerHighest",
+        )
+
+        // Patch only night-qualified styles. If Cromite stores the resolved dark styles in a
+        // different qualifier this block safely does nothing and the verified color resources above
+        // still apply.
+        listOf("res/values-night/styles.xml", "res/values-night-v8/styles.xml").forEach { path ->
+            runCatching {
+                document(path).use { document ->
+                    val styles = document.getElementsByTagName("style")
+                    for (styleIndex in 0 until styles.length) {
+                        val style = styles.item(styleIndex) as? Element ?: continue
+                        val items = style.getElementsByTagName("item")
+                        for (itemIndex in 0 until items.length) {
+                            val item = items.item(itemIndex) as? Element ?: continue
+                            if (item.getAttribute("name") in surfaceAttributes) {
+                                item.textContent = "#FF000000"
+                                themeItemsPatched++
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (filesPatched == 0 && themeItemsPatched == 0) {
             throw IllegalStateException(
-                "No verified Cromite 153 night-mode color resources could be patched."
+                "No verified Cromite 153 AMOLED surfaces or Material surface tokens could be patched."
             )
         }
     }
