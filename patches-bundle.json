@@ -1,7 +1,7 @@
 {
-  "created_at": "2026-09-29T21:23:58",
-  "description": "## [1.47.1](https://github.com/latanvillegas/modo-patches/compare/v1.47.0...v1.47.1) (2026-09-29)\n\n### 🐛 Bug Fixes\n\n* **cromite:** cover verified dark UI surface resources ([61b4759](https://github.com/latanvillegas/modo-patches/commit/61b4759b58d75c351c9ac32d6f4ac1a4ee2c8866))",
-  "download_url": "https://github.com/latanvillegas/modo-patches/releases/download/v1.47.1/patches-1.47.1.mpp",
+  "created_at": "2026-09-29T21:38:31",
+  "description": "## [1.47.2](https://github.com/latanvillegas/modo-patches/compare/v1.47.1...v1.47.2) (2026-09-29)\n\n### 🐛 Bug Fixes\n\n* **cromite:** force dark theme surfaces and night backgrounds AMOLED ([d50612f](https://github.com/latanvillegas/modo-patches/commit/d50612f6b9ffdabab96739950caeb46394bfbe18))",
+  "download_url": "https://github.com/latanvillegas/modo-patches/releases/download/v1.47.2/patches-1.47.2.mpp",
   "signature_download_url": "",
-  "version": "1.47.1"
+  "version": "1.47.2"
 }

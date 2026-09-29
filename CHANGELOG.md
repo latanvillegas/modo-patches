@@ -1,3 +1,9 @@
+## [1.47.2](https://github.com/latanvillegas/modo-patches/compare/v1.47.1...v1.47.2) (2026-09-29)
+
+### 🐛 Bug Fixes
+
+* **cromite:** force dark theme surfaces and night backgrounds AMOLED ([d50612f](https://github.com/latanvillegas/modo-patches/commit/d50612f6b9ffdabab96739950caeb46394bfbe18))
+
 ## [1.47.1](https://github.com/latanvillegas/modo-patches/compare/v1.47.0...v1.47.1) (2026-09-29)
 
 ### 🐛 Bug Fixes
