@@ -1,3 +1,9 @@
+## [1.47.1](https://github.com/latanvillegas/modo-patches/compare/v1.47.0...v1.47.1) (2026-09-29)
+
+### 🐛 Bug Fixes
+
+* **cromite:** cover verified dark UI surface resources ([61b4759](https://github.com/latanvillegas/modo-patches/commit/61b4759b58d75c351c9ac32d6f4ac1a4ee2c8866))
+
 ## [1.47.0](https://github.com/latanvillegas/modo-patches/compare/v1.46.0...v1.47.0) (2026-09-29)
 
 ### 🐛 Bug Fixes
