@@ -1,15 +1,15 @@
 package app.morphe.patches.cromite.layout.theme
 
 import app.morphe.patcher.patch.resourcePatch
-import app.morphe.util.forEachChildElement
 import org.w3c.dom.Element
+import org.w3c.dom.Node
 
 /**
- * Forces Android theme background/surface color resources used by Cromite to true OLED black.
+ * Forces Cromite's compiled Android night-mode surface resources to true OLED black.
  *
- * Targeted initially at Cromite 153.0.8010.37. This deliberately limits replacement to
- * dark/background/surface resources so foreground text, icons, link colors and accent colors
- * keep their original contrast.
+ * Cromite's release APK does not expose res/values-night/colors.xml. aapt2 compiles the
+ * relevant colors into individual res/color-night-v8/*.xml resources, so patch those files
+ * directly instead of looking for source-only values XML files.
  */
 @Suppress("unused")
 val pureAmoledPatch = resourcePatch(
@@ -19,53 +19,68 @@ val pureAmoledPatch = resourcePatch(
     compatibleWith("org.cromite.cromite")
 
     execute {
-        val candidateFiles = listOf(
-            "res/values/colors.xml",
-            "res/values-night/colors.xml",
+        val nightSurfaceFiles = listOf(
+            "res/color-night-v8/bottom_sheet_bg_color.xml",
+            "res/color-night-v8/context_menu_header_circle_bg_color.xml",
+            "res/color-night-v8/dialog_bg_color.xml",
+            "res/color-night-v8/distilled_page_pref_background_color.xml",
+            "res/color-night-v8/fake_search_box_base_color.xml",
+            "res/color-night-v8/home_surface_background_color.xml",
+            "res/color-night-v8/home_surface_ui_background_color.xml",
+            "res/color-night-v8/hub_search_box_bg_color.xml",
+            "res/color-night-v8/interactable_chip_bg_color.xml",
         )
 
-        var changed = 0
+        var filesPatched = 0
+        var valuesPatched = 0
 
-        candidateFiles.forEach { path ->
-            runCatching {
-                document(path).use { document ->
-                    val resources = document.documentElement
-                    resources.forEachChildElement { node ->
-                        if (node !is Element || node.tagName != "color") return@forEachChildElement
+        fun blacken(element: Element) {
+            // Compiled color XML commonly stores the color in android:color on <item>.
+            val attributes = element.attributes
+            for (i in 0 until attributes.length) {
+                val attribute = attributes.item(i)
+                if (attribute.nodeName.endsWith(":color") || attribute.nodeName == "color") {
+                    attribute.nodeValue = "#FF000000"
+                    valuesPatched++
+                }
+            }
 
-                        val name = node.getAttribute("name").lowercase()
-                        val value = node.textContent.trim().lowercase()
-
-                        val isDarkNamedResource = name.contains("dark") ||
-                            name.contains("night") ||
-                            name.contains("black")
-
-                        val isBackgroundSurface = name.contains("background") ||
-                            name.contains("surface") ||
-                            name.contains("toolbar") ||
-                            name.contains("omnibox") ||
-                            name.contains("tab") ||
-                            name.contains("menu") ||
-                            name.contains("dialog") ||
-                            name.contains("sheet")
-
-                        // Avoid replacing transparent colors and foreground/accent colors.
-                        val opaqueDarkLiteral = value.matches(
-                            Regex("#(?:ff)?(?:0[0-9a-f]|1[0-9a-f]|2[0-9a-f]){3}")
-                        )
-
-                        if ((isDarkNamedResource || isBackgroundSurface) && opaqueDarkLiteral) {
-                            node.textContent = "#FF000000"
-                            changed++
-                        }
-                    }
+            // Also support decoded simple color nodes if the patcher exposes them as text.
+            val children = element.childNodes
+            var hasElementChildren = false
+            for (i in 0 until children.length) {
+                val child = children.item(i)
+                if (child.nodeType == Node.ELEMENT_NODE) {
+                    hasElementChildren = true
+                    blacken(child as Element)
+                }
+            }
+            if (!hasElementChildren) {
+                val text = element.textContent.trim()
+                if (text.startsWith("#")) {
+                    element.textContent = "#FF000000"
+                    valuesPatched++
                 }
             }
         }
 
-        if (changed == 0) {
+        nightSurfaceFiles.forEach { path ->
+            runCatching {
+                document(path).use { document ->
+                    blacken(document.documentElement)
+                    filesPatched++
+                }
+            }
+        }
+
+        if (filesPatched == 0) {
             throw IllegalStateException(
-                "No Cromite dark surface colors were found; this APK layout is not supported yet."
+                "Cromite night-mode color resources were not found; this APK version is unsupported."
+            )
+        }
+        if (valuesPatched == 0) {
+            throw IllegalStateException(
+                "Cromite night-mode resources were found but contained no patchable color values."
             )
         }
     }
