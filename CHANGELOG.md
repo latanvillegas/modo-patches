@@ -1,3 +1,9 @@
+## [1.47.6](https://github.com/latanvillegas/modo-patches/compare/v1.47.5...v1.47.6) (2026-09-29)
+
+### 🐛 Bug Fixes
+
+* **cromite:** patch Material surface attrs across compiled theme tables ([8c192b6](https://github.com/latanvillegas/modo-patches/commit/8c192b66d16c81ea4bf6efd54d56c908b0ae8d36))
+
 ## [1.47.5](https://github.com/latanvillegas/modo-patches/compare/v1.47.4...v1.47.5) (2026-09-29)
 
 ### 🐛 Bug Fixes
