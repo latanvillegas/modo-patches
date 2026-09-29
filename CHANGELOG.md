@@ -1,3 +1,9 @@
+## [1.46.0](https://github.com/latanvillegas/modo-patches/compare/v1.45.4...v1.46.0) (2026-09-29)
+
+### ✨ New Features
+
+* **cromite:** force Material surface tokens to AMOLED black ([3f5e5ca](https://github.com/latanvillegas/modo-patches/commit/3f5e5ca0906c80263a535357a131fc331630fb86))
+
 ## [1.45.4](https://github.com/latanvillegas/modo-patches/compare/v1.45.3...v1.45.4) (2026-09-29)
 
 ### 🐛 Bug Fixes
