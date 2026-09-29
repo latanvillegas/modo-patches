@@ -51,7 +51,6 @@ private val pureAmoledResourcesPatch = resourcePatch(
     compatibleWith("org.cromite.cromite"(CROMITE_VERSION))
 
     execute {
-        // These files were verified directly in the Cromite 153 arm64 APK.
         val nightFiles = listOf(
             "bottom_sheet_bg_color.xml",
             "context_menu_header_circle_bg_color.xml",
@@ -79,9 +78,6 @@ private val pureAmoledResourcesPatch = resourcePatch(
             "xr_toolbar_bg.xml",
         )
 
-        // Settings/menu Material components are compiled as color selectors in
-        // res/color (not values-night XML). Their leaves commonly reference
-        // ?attr/colorSurface*; force those selector outputs to AMOLED black.
         val materialBackgroundFiles = listOf(
             "bottom_sheet_bg_color.xml",
             "context_menu_header_circle_bg_color.xml",
@@ -106,8 +102,23 @@ private val pureAmoledResourcesPatch = resourcePatch(
             "toolbar_text_box_bg_color.xml",
         )
 
+        // Chromium's dark BrowserUI theme resolves Settings, menus, cards and
+        // other elevated surfaces through these GM3 palette entries. Patch the
+        // palette itself so direct ?attr/colorSurface* lookups also become black.
+        val gm3DarkSurfaces = setOf(
+            "gm3_baseline_surface_dark",
+            "gm3_baseline_surface_bright_dark",
+            "gm3_baseline_surface_dim_dark",
+            "gm3_baseline_surface_container_lowest_dark",
+            "gm3_baseline_surface_container_low_dark",
+            "gm3_baseline_surface_container_dark",
+            "gm3_baseline_surface_container_high_dark",
+            "gm3_baseline_surface_container_highest_dark",
+        )
+
         var filesPatched = 0
         var valuesPatched = 0
+        var gm3ValuesPatched = 0
 
         fun blacken(element: Element, forceLeaf: Boolean) {
             val attributes = element.attributes
@@ -158,7 +169,32 @@ private val pureAmoledResourcesPatch = resourcePatch(
             }
         }
 
-        if (filesPatched == 0) {
+        // AAPT normally merges Chromium's color_palette.xml into values/colors.xml.
+        // Check the common compiled value tables and patch only the named dark
+        // surface entries. Light palette, text, icons and accent colors are left alone.
+        val valueTables = listOf(
+            "res/values/colors.xml",
+            "res/values-night/colors.xml",
+            "res/values-v31/colors.xml",
+            "res/values-night-v31/colors.xml",
+        )
+        valueTables.forEach { path ->
+            runCatching {
+                document(path).use { document ->
+                    val colors = document.getElementsByTagName("color")
+                    for (index in 0 until colors.length) {
+                        val color = colors.item(index) as? Element ?: continue
+                        if (color.getAttribute("name") in gm3DarkSurfaces) {
+                            color.textContent = AMOLED_BLACK
+                            gm3ValuesPatched++
+                            valuesPatched++
+                        }
+                    }
+                }
+            }
+        }
+
+        if (filesPatched == 0 && gm3ValuesPatched == 0) {
             throw IllegalStateException("No verified Cromite 153 AMOLED resources could be patched.")
         }
     }
@@ -173,10 +209,6 @@ val pureAmoledPatch = bytecodePatch(
     dependsOn(pureAmoledResourcesPatch)
 
     execute {
-        // Exact methods present in the Cromite 153 R8 mapping. ChromeColors in
-        // this build contains only getDefaultThemeColor/getPrimaryBackgroundColor;
-        // getSurfaceColor(Context,int) is not present in the mapping, so do not
-        // invent a q72 fingerprint for a method that does not exist.
         val targets = listOf(
             colorSurfaceFingerprint,
             colorSurfaceBrightFingerprint,
