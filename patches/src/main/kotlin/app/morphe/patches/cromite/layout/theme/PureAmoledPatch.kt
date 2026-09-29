@@ -10,7 +10,10 @@ import org.w3c.dom.Node
 private const val CROMITE_VERSION = "153.0.8010.37"
 private const val SEMANTIC_COLOR_UTILS = "Lpac;"
 private const val CHROME_COLORS = "Lq72;"
+private const val DYNAMIC_COLORS = "Lqb4;"
+private const val DYNAMIC_COLORS_OPTIONS = "Ltb4;"
 private const val CONTEXT = "Landroid/content/Context;"
+private const val ACTIVITY = "Landroid/app/Activity;"
 private const val AMOLED_BLACK = "#FF000000"
 
 private fun semanticSurfaceFingerprint(name: String) = Fingerprint(
@@ -35,14 +38,26 @@ private val primaryBackgroundColorFingerprint = Fingerprint(
     parameters = listOf(CONTEXT, "Z"),
 )
 
+// Cromite 153 mapping:
+// com.google.android.material.color.DynamicColors -> qb4
+// applyToActivityIfAvailable(Activity, DynamicColorsOptions) -> a
+// Android 12+ can replace Material surface attributes at runtime. That happens
+// after XML resources are loaded, so it can restore gray surfaces even when the
+// night resources were patched. Disable only this dynamic-palette application;
+// Chromium's normal dark theme and accent resources remain intact.
+private val dynamicColorsApplyFingerprint = Fingerprint(
+    definingClass = DYNAMIC_COLORS,
+    name = "a",
+    returnType = "V",
+    parameters = listOf(ACTIVITY, DYNAMIC_COLORS_OPTIONS),
+)
+
 private val pureAmoledResourcesPatch = resourcePatch(
     description = "Internal resource component for Cromite Pure AMOLED."
 ) {
     compatibleWith("org.cromite.cromite"(CROMITE_VERSION))
 
     execute {
-        // Verified directly against Cromite 153.0.8010.37 arm64 APK.
-        // Foreground/text/icon/accent colors are deliberately excluded.
         val candidateFiles = listOf(
             "bottom_sheet_bg_color.xml",
             "context_menu_header_circle_bg_color.xml",
@@ -108,9 +123,6 @@ private val pureAmoledResourcesPatch = resourcePatch(
             }
         }
 
-        // Cromite/Chromium also obtains Material 3 backgrounds directly from the
-        // night resource table. This is why Settings and the three-dot menu can
-        // remain gray even after SemanticColorUtils is hooked.
         runCatching {
             document("res/values-night/colors.xml").use { document ->
                 val colors = document.getElementsByTagName("color")
@@ -128,23 +140,41 @@ private val pureAmoledResourcesPatch = resourcePatch(
             }
         }
 
-        // Material3 menus/dialogs/settings may resolve ?attr/colorSurface* directly
-        // from a dark BrowserUI/Chromium theme instead of calling SemanticColorUtils.
-        // Force only background/surface attributes on explicitly dark/night styles.
+        val surfaceAttrs = setOf(
+            "android:colorBackground",
+            "colorBackground",
+            "colorSurface",
+            "colorSurfaceBright",
+            "colorSurfaceDim",
+            "colorSurfaceContainerLow",
+            "colorSurfaceContainer",
+            "colorSurfaceContainerHigh",
+            "colorSurfaceContainerHighest",
+        )
+
+        // In a values-night table every style is already dark-mode-specific, so
+        // patch the surface roles regardless of the style's name.
+        runCatching {
+            document("res/values-night/styles.xml").use { document ->
+                val styles = document.getElementsByTagName("style")
+                for (index in 0 until styles.length) {
+                    val style = styles.item(index) as? Element ?: continue
+                    val items = style.getElementsByTagName("item")
+                    for (itemIndex in 0 until items.length) {
+                        val item = items.item(itemIndex) as? Element ?: continue
+                        if (item.getAttribute("name") in surfaceAttrs) {
+                            item.textContent = AMOLED_BLACK
+                            valuesPatched++
+                        }
+                    }
+                }
+            }
+        }
+
+        // Some dark themes are declared in the default values table.
         runCatching {
             document("res/values/styles.xml").use { document ->
                 val styles = document.getElementsByTagName("style")
-                val surfaceAttrs = setOf(
-                    "android:colorBackground",
-                    "colorBackground",
-                    "colorSurface",
-                    "colorSurfaceBright",
-                    "colorSurfaceDim",
-                    "colorSurfaceContainerLow",
-                    "colorSurfaceContainer",
-                    "colorSurfaceContainerHigh",
-                    "colorSurfaceContainerHighest",
-                )
                 for (index in 0 until styles.length) {
                     val style = styles.item(index) as? Element ?: continue
                     val styleName = style.getAttribute("name")
@@ -178,15 +208,6 @@ val pureAmoledPatch = bytecodePatch(
     dependsOn(pureAmoledResourcesPatch)
 
     execute {
-        // Exact R8 mapping from Cromite 153.0.8010.37 arm64:
-        // pac.c = getColorSurface
-        // pac.d = getColorSurfaceBright
-        // pac.e = getColorSurfaceContainer
-        // pac.f = getColorSurfaceContainerHighest
-        // pac.g = getColorSurfaceContainerLow
-        // pac.h = getDefaultBgColor
-        // pac.l = getSettingsBackgroundColor
-        // q72.b = ChromeColors.getPrimaryBackgroundColor(Context, boolean)
         val targets = listOf(
             colorSurfaceFingerprint,
             colorSurfaceBrightFingerprint,
@@ -207,5 +228,12 @@ val pureAmoledPatch = bytecodePatch(
                 """
             )
         }
+
+        // Prevent Android 12+ Material DynamicColors from overwriting our AMOLED
+        // surface roles with wallpaper-derived gray tones at runtime.
+        dynamicColorsApplyFingerprint.method.addInstructions(
+            0,
+            "return-void"
+        )
     }
 }
