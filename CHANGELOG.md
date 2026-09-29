@@ -1,3 +1,9 @@
+## [1.45.3](https://github.com/latanvillegas/modo-patches/compare/v1.45.2...v1.45.3) (2026-09-29)
+
+### 🐛 Bug Fixes
+
+* **cromite:** patch actual activity themes for fullscreen ([e555457](https://github.com/latanvillegas/modo-patches/commit/e555457004afc648b3eb2f43bd419c34bb57b926))
+
 ## [1.45.2](https://github.com/latanvillegas/modo-patches/compare/v1.45.1...v1.45.2) (2026-09-29)
 
 ### 🐛 Bug Fixes
