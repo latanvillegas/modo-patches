@@ -8,8 +8,8 @@ import org.w3c.dom.Node
  * Forces Cromite's compiled Android night-mode surface resources to true OLED black.
  *
  * Cromite's release APK does not expose res/values-night/colors.xml. aapt2 compiles the
- * relevant colors into individual res/color-night-v8/*.xml resources, so patch those files
- * directly instead of looking for source-only values XML files.
+ * relevant colors into individual XML resources under res/color-night-v8, so patch those
+ * files directly instead of looking for source-only values XML files.
  */
 @Suppress("unused")
 val pureAmoledPatch = resourcePatch(
