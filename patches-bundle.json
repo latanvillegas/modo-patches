@@ -1,7 +1,7 @@
 {
-  "created_at": "2026-09-29T18:16:21",
-  "description": "## [1.45.1](https://github.com/latanvillegas/modo-patches/compare/v1.45.0...v1.45.1) (2026-09-29)\n\n### 🐛 Bug Fixes\n\n* **cromite:** avoid nested comment token in AMOLED patch ([60dfe6f](https://github.com/latanvillegas/modo-patches/commit/60dfe6f6d1edeb1b2b16b4045206c20a6fdcdb5c))\n* **cromite:** patch compiled night color resources for AMOLED ([60d6b69](https://github.com/latanvillegas/modo-patches/commit/60d6b691a3b4087099052be62106fbceb969e182))",
-  "download_url": "https://github.com/latanvillegas/modo-patches/releases/download/v1.45.1/patches-1.45.1.mpp",
+  "created_at": "2026-09-29T18:32:44",
+  "description": "## [1.45.2](https://github.com/latanvillegas/modo-patches/compare/v1.45.1...v1.45.2) (2026-09-29)\n\n### 🐛 Bug Fixes\n\n* **cromite:** expand pure AMOLED surfaces ([156140e](https://github.com/latanvillegas/modo-patches/commit/156140e0f7f6b746dd188668033446d61c91f913))\n* **cromite:** strengthen status bar fullscreen flags ([19af382](https://github.com/latanvillegas/modo-patches/commit/19af382a266802ab92404f2e0d40bae3936a0fb2))",
+  "download_url": "https://github.com/latanvillegas/modo-patches/releases/download/v1.45.2/patches-1.45.2.mpp",
   "signature_download_url": "",
-  "version": "1.45.1"
+  "version": "1.45.2"
 }

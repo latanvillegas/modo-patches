@@ -1,3 +1,10 @@
+## [1.45.2](https://github.com/latanvillegas/modo-patches/compare/v1.45.1...v1.45.2) (2026-09-29)
+
+### 🐛 Bug Fixes
+
+* **cromite:** expand pure AMOLED surfaces ([156140e](https://github.com/latanvillegas/modo-patches/commit/156140e0f7f6b746dd188668033446d61c91f913))
+* **cromite:** strengthen status bar fullscreen flags ([19af382](https://github.com/latanvillegas/modo-patches/commit/19af382a266802ab92404f2e0d40bae3936a0fb2))
+
 ## [1.45.1](https://github.com/latanvillegas/modo-patches/compare/v1.45.0...v1.45.1) (2026-09-29)
 
 ### 🐛 Bug Fixes
