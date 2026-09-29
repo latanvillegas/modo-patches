@@ -6,10 +6,6 @@ import org.w3c.dom.Node
 
 /**
  * Forces Cromite's compiled Android night-mode surfaces to true OLED black.
- *
- * The release APK stores many Chromium colors as individual compiled XML resources rather than
- * source values XML. Patch a wider set of known UI surfaces, including settings, home, dialogs,
- * menus, tab/hub surfaces and omnibox/search surfaces. Foreground/accent resources are excluded.
  */
 @Suppress("unused")
 val pureAmoledPatch = resourcePatch(
@@ -19,7 +15,9 @@ val pureAmoledPatch = resourcePatch(
     compatibleWith("org.cromite.cromite"("153.0.8010.37"))
 
     execute {
-        val exactFiles = setOf(
+        // Morphe's resource filesystem does not guarantee that File.list() is available for APK
+        // virtual directories. Use the concrete compiled resources verified in Cromite 153 instead.
+        val candidateFiles = listOf(
             "bottom_sheet_bg_color.xml",
             "context_menu_header_circle_bg_color.xml",
             "dialog_bg_color.xml",
@@ -29,15 +27,6 @@ val pureAmoledPatch = resourcePatch(
             "home_surface_ui_background_color.xml",
             "hub_search_box_bg_color.xml",
             "interactable_chip_bg_color.xml",
-        )
-        val surfaceTokens = listOf(
-            "background", "surface", "toolbar", "omnibox", "search_box", "searchbox",
-            "tab", "hub", "menu", "dialog", "sheet", "popup", "card", "settings",
-            "incognito", "ntp", "new_tab", "dropdown"
-        )
-        val excludedTokens = listOf(
-            "text", "icon", "foreground", "accent", "link", "tint", "stroke", "divider",
-            "outline", "disabled", "selected", "checked", "error", "warning"
         )
 
         var filesPatched = 0
@@ -71,15 +60,7 @@ val pureAmoledPatch = resourcePatch(
             }
         }
 
-        // Cromite 153 packages night resources in this compiled resource directory. Enumerating the
-        // resource directory lets us cover Chromium surfaces that were missed by the first version.
-        val directory = get("res/color-night-v8")
-        directory.list().forEach { fileName ->
-            val lower = fileName.lowercase()
-            val isSurface = fileName in exactFiles || surfaceTokens.any(lower::contains)
-            val isExcluded = excludedTokens.any(lower::contains)
-            if (!lower.endsWith(".xml") || !isSurface || isExcluded) return@forEach
-
+        candidateFiles.forEach { fileName ->
             runCatching {
                 document("res/color-night-v8/$fileName").use { document ->
                     val before = valuesPatched
@@ -91,7 +72,7 @@ val pureAmoledPatch = resourcePatch(
 
         if (filesPatched == 0 || valuesPatched == 0) {
             throw IllegalStateException(
-                "Cromite night-mode surfaces were not patchable in this APK version."
+                "No verified Cromite 153 night-mode color resources could be patched."
             )
         }
     }
