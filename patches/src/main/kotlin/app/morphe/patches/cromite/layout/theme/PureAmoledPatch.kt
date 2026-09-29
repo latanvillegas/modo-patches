@@ -38,13 +38,6 @@ private val primaryBackgroundColorFingerprint = Fingerprint(
     parameters = listOf(CONTEXT, "Z"),
 )
 
-// Cromite 153 mapping:
-// com.google.android.material.color.DynamicColors -> qb4
-// applyToActivityIfAvailable(Activity, DynamicColorsOptions) -> a
-// Android 12+ can replace Material surface attributes at runtime. That happens
-// after XML resources are loaded, so it can restore gray surfaces even when the
-// night resources were patched. Disable only this dynamic-palette application;
-// Chromium's normal dark theme and accent resources remain intact.
 private val dynamicColorsApplyFingerprint = Fingerprint(
     definingClass = DYNAMIC_COLORS,
     name = "a",
@@ -58,7 +51,8 @@ private val pureAmoledResourcesPatch = resourcePatch(
     compatibleWith("org.cromite.cromite"(CROMITE_VERSION))
 
     execute {
-        val candidateFiles = listOf(
+        // These files were verified directly in the Cromite 153 arm64 APK.
+        val nightFiles = listOf(
             "bottom_sheet_bg_color.xml",
             "context_menu_header_circle_bg_color.xml",
             "dialog_bg_color.xml",
@@ -85,10 +79,37 @@ private val pureAmoledResourcesPatch = resourcePatch(
             "xr_toolbar_bg.xml",
         )
 
+        // Settings/menu Material components are compiled as color selectors in
+        // res/color (not values-night XML). Their leaves commonly reference
+        // ?attr/colorSurface*; force those selector outputs to AMOLED black.
+        val materialBackgroundFiles = listOf(
+            "bottom_sheet_bg_color.xml",
+            "context_menu_header_circle_bg_color.xml",
+            "dialog_bg_color.xml",
+            "distilled_page_pref_background_color.xml",
+            "home_surface_background_color.xml",
+            "home_surface_ui_background_color.xml",
+            "hub_search_box_bg_color.xml",
+            "interactable_chip_bg_color.xml",
+            "item_chooser_row_background.xml",
+            "m3_list_item_background_color_selector.xml",
+            "m3_segmented_list_item_background_color_selector.xml",
+            "m3_textfield_filled_background_color.xml",
+            "mtrl_filled_background_color.xml",
+            "mtrl_popupmenu_overlay_color.xml",
+            "message_bg_color.xml",
+            "omnibox_popover_suggestion_bg_color.xml",
+            "omnibox_suggestion_dropdown_bg.xml",
+            "search_suggestion_bg_color.xml",
+            "tab_group_dialog_bg_color.xml",
+            "tab_hover_card_bg_color.xml",
+            "toolbar_text_box_bg_color.xml",
+        )
+
         var filesPatched = 0
         var valuesPatched = 0
 
-        fun blacken(element: Element) {
+        fun blacken(element: Element, forceLeaf: Boolean) {
             val attributes = element.attributes
             for (i in 0 until attributes.length) {
                 val attribute = attributes.item(i)
@@ -104,97 +125,41 @@ private val pureAmoledResourcesPatch = resourcePatch(
                 val child = children.item(i)
                 if (child.nodeType == Node.ELEMENT_NODE) {
                     hasElementChildren = true
-                    blacken(child as Element)
+                    blacken(child as Element, forceLeaf)
                 }
             }
-            if (!hasElementChildren && element.textContent.trim().startsWith("#")) {
-                element.textContent = AMOLED_BLACK
-                valuesPatched++
+
+            if (!hasElementChildren) {
+                val value = element.textContent.trim()
+                if (forceLeaf || value.startsWith("#")) {
+                    element.textContent = AMOLED_BLACK
+                    valuesPatched++
+                }
             }
         }
 
-        candidateFiles.forEach { fileName ->
+        nightFiles.forEach { fileName ->
             runCatching {
                 document("res/color-night-v8/$fileName").use { document ->
                     val before = valuesPatched
-                    blacken(document.documentElement)
+                    blacken(document.documentElement, false)
                     if (valuesPatched > before) filesPatched++
                 }
             }
         }
 
-        runCatching {
-            document("res/values-night/colors.xml").use { document ->
-                val colors = document.getElementsByTagName("color")
-                for (index in 0 until colors.length) {
-                    val color = colors.item(index) as? Element ?: continue
-                    val name = color.getAttribute("name").lowercase()
-                    val isBackground = name.contains("background") || name.contains("_bg") ||
-                        name.contains("surface") || name.startsWith("gm3_baseline_surface") ||
-                        name.startsWith("default_bg_color_dark_elev_")
-                    if (isBackground) {
-                        color.textContent = AMOLED_BLACK
-                        valuesPatched++
-                    }
-                }
-            }
-        }
-
-        val surfaceAttrs = setOf(
-            "android:colorBackground",
-            "colorBackground",
-            "colorSurface",
-            "colorSurfaceBright",
-            "colorSurfaceDim",
-            "colorSurfaceContainerLow",
-            "colorSurfaceContainer",
-            "colorSurfaceContainerHigh",
-            "colorSurfaceContainerHighest",
-        )
-
-        // In a values-night table every style is already dark-mode-specific, so
-        // patch the surface roles regardless of the style's name.
-        runCatching {
-            document("res/values-night/styles.xml").use { document ->
-                val styles = document.getElementsByTagName("style")
-                for (index in 0 until styles.length) {
-                    val style = styles.item(index) as? Element ?: continue
-                    val items = style.getElementsByTagName("item")
-                    for (itemIndex in 0 until items.length) {
-                        val item = items.item(itemIndex) as? Element ?: continue
-                        if (item.getAttribute("name") in surfaceAttrs) {
-                            item.textContent = AMOLED_BLACK
-                            valuesPatched++
-                        }
-                    }
-                }
-            }
-        }
-
-        // Some dark themes are declared in the default values table.
-        runCatching {
-            document("res/values/styles.xml").use { document ->
-                val styles = document.getElementsByTagName("style")
-                for (index in 0 until styles.length) {
-                    val style = styles.item(index) as? Element ?: continue
-                    val styleName = style.getAttribute("name")
-                    if (!styleName.contains("dark", ignoreCase = true) &&
-                        !styleName.contains("night", ignoreCase = true)) continue
-
-                    val items = style.getElementsByTagName("item")
-                    for (itemIndex in 0 until items.length) {
-                        val item = items.item(itemIndex) as? Element ?: continue
-                        if (item.getAttribute("name") in surfaceAttrs) {
-                            item.textContent = AMOLED_BLACK
-                            valuesPatched++
-                        }
-                    }
+        materialBackgroundFiles.forEach { fileName ->
+            runCatching {
+                document("res/color/$fileName").use { document ->
+                    val before = valuesPatched
+                    blacken(document.documentElement, true)
+                    if (valuesPatched > before) filesPatched++
                 }
             }
         }
 
         if (filesPatched == 0) {
-            throw IllegalStateException("No verified Cromite 153 night resources could be patched.")
+            throw IllegalStateException("No verified Cromite 153 AMOLED resources could be patched.")
         }
     }
 }
@@ -208,6 +173,10 @@ val pureAmoledPatch = bytecodePatch(
     dependsOn(pureAmoledResourcesPatch)
 
     execute {
+        // Exact methods present in the Cromite 153 R8 mapping. ChromeColors in
+        // this build contains only getDefaultThemeColor/getPrimaryBackgroundColor;
+        // getSurfaceColor(Context,int) is not present in the mapping, so do not
+        // invent a q72 fingerprint for a method that does not exist.
         val targets = listOf(
             colorSurfaceFingerprint,
             colorSurfaceBrightFingerprint,
@@ -229,11 +198,6 @@ val pureAmoledPatch = bytecodePatch(
             )
         }
 
-        // Prevent Android 12+ Material DynamicColors from overwriting our AMOLED
-        // surface roles with wallpaper-derived gray tones at runtime.
-        dynamicColorsApplyFingerprint.method.addInstructions(
-            0,
-            "return-void"
-        )
+        dynamicColorsApplyFingerprint.method.addInstructions(0, "return-void")
     }
 }
