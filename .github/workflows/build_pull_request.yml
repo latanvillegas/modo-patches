@@ -6,6 +6,7 @@ on:
     branches:
       - dev
       - fix/appmenu-runtime-black
+      - feat/amoled-web
   pull_request:
     branches:
       - dev
