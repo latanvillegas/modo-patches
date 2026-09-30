@@ -2,12 +2,8 @@ package app.morphe.patches.cromite.layout.theme
 
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
-import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
-import app.morphe.patcher.methodCall
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.resourcePatch
-import com.android.tools.smali.dexlib2.Opcode
-import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
 import org.w3c.dom.Element
 import org.w3c.dom.Node
 
@@ -18,7 +14,8 @@ private const val DYNAMIC_COLORS = "Lqb4;"
 private const val DYNAMIC_COLORS_OPTIONS = "Ltb4;"
 private const val CONTEXT = "Landroid/content/Context;"
 private const val ACTIVITY = "Landroid/app/Activity;"
-private const val AMOLED_BLACK = "#FF000000"
+private const val PURE_BLACK = "#FF000000"
+private const val PURE_WHITE = "#FFFFFFFF"
 
 private fun semanticSurfaceFingerprint(name: String) = Fingerprint(
     definingClass = SEMANTIC_COLOR_UTILS,
@@ -49,44 +46,8 @@ private val dynamicColorsApplyFingerprint = Fingerprint(
     parameters = listOf(ACTIVITY, DYNAMIC_COLORS_OPTIONS),
 )
 
-private val appMenuPopupContentFingerprint = Fingerprint(
-    returnType = "V",
-    filters = listOf(
-        methodCall(
-            opcode = Opcode.INVOKE_VIRTUAL,
-            smali = "Landroid/widget/PopupWindow;->setBackgroundDrawable(Landroid/graphics/drawable/Drawable;)V",
-        ),
-        methodCall(
-            opcode = Opcode.INVOKE_VIRTUAL,
-            smali = "Landroid/widget/PopupWindow;->setContentView(Landroid/view/View;)V",
-        ),
-    ),
-)
-
-private val basicListMenuRuntimeTintFingerprint = Fingerprint(
-    returnType = "V",
-    filters = listOf(
-        methodCall(
-            opcode = Opcode.INVOKE_VIRTUAL,
-            smali = "Landroid/widget/ListView;->setAdapter(Landroid/widget/ListAdapter;)V",
-        ),
-        methodCall(
-            opcode = Opcode.INVOKE_VIRTUAL,
-            smali = "Landroid/widget/ListView;->setDivider(Landroid/graphics/drawable/Drawable;)V",
-        ),
-        methodCall(
-            opcode = Opcode.INVOKE_VIRTUAL,
-            smali = "Landroid/view/View;->setBackgroundResource(I)V",
-        ),
-        methodCall(
-            opcode = Opcode.INVOKE_STATIC,
-            smali = "Landroid/content/res/ColorStateList;->valueOf(I)Landroid/content/res/ColorStateList;",
-        ),
-    ),
-)
-
 private val pureAmoledResourcesPatch = resourcePatch(
-    description = "Internal resource component for Cromite Pure AMOLED."
+    description = "Internal resources for system-following pure black / pure white Cromite UI."
 ) {
     compatibleWith("org.cromite.cromite"(CROMITE_VERSION))
 
@@ -108,10 +69,9 @@ private val pureAmoledResourcesPatch = resourcePatch(
             "list_menu_background_color.xml", "list_menu_background_tint.xml",
         )
 
-        val appMenuDrawableFiles = setOf(
+        val surfaceDrawableFiles = setOf(
             "popup_bg.xml", "popup_bg_8dp.xml", "popup_bg_24dp.xml",
-            "popup_bg_shape_16dp.xml", "popup_bg_shape_24dp.xml",
-            "popup_bg_shape_24dp_baseline.xml",
+            "popup_bg_shape_16dp.xml", "popup_bg_shape_24dp.xml", "popup_bg_shape_24dp_baseline.xml",
             "list_menu_background.xml", "menu_bg_tinted.xml",
         )
 
@@ -120,11 +80,17 @@ private val pureAmoledResourcesPatch = resourcePatch(
             "res/drawable-v23", "res/drawable-night-v23", "res/drawable-v31", "res/drawable-night-v31",
             "res/drawable-v35", "res/drawable-night-v35",
         )
-
         val colorDirectories = listOf(
             "res/color", "res/color-night", "res/color-night-v8", "res/color-v31",
             "res/color-night-v31", "res/color-v35", "res/color-night-v35",
         )
+        val valueDirectories = listOf(
+            "res/values", "res/values-night", "res/values-v31", "res/values-night-v31",
+            "res/values-v35", "res/values-night-v35",
+        )
+
+        fun isNight(directory: String) = directory.substringAfter("res/").contains("night")
+        fun pureSurface(directory: String) = if (isNight(directory)) PURE_BLACK else PURE_WHITE
 
         val gm3DarkSurfaces = setOf(
             "gm3_baseline_surface_dark", "gm3_baseline_surface_bright_dark", "gm3_baseline_surface_dim_dark",
@@ -132,7 +98,6 @@ private val pureAmoledResourcesPatch = resourcePatch(
             "gm3_baseline_surface_container_dark", "gm3_baseline_surface_container_high_dark",
             "gm3_baseline_surface_container_highest_dark",
         )
-
         val directSurfaceColorNames = setOf(
             "default_bg_color_dark", "settings_background_color_dark", "primary_background_color_dark",
             "color_surface_dark", "color_surface_bright_dark", "color_surface_dim_dark",
@@ -143,7 +108,6 @@ private val pureAmoledResourcesPatch = resourcePatch(
             "list_menu_background_color", "list_menu_background_tint",
             "mtrl_popupmenu_overlay_color", "mtrl_filled_background_color",
         )
-
         val surfaceThemeAttrs = setOf(
             "android:colorBackground", "colorBackground", "colorSurface", "colorSurfaceBright", "colorSurfaceDim",
             "colorSurfaceContainerLowest", "colorSurfaceContainerLow", "colorSurfaceContainer",
@@ -153,13 +117,13 @@ private val pureAmoledResourcesPatch = resourcePatch(
         var valuesPatched = 0
         val verifiedHits = mutableListOf<String>()
 
-        fun blacken(element: Element, forceLeaf: Boolean) {
+        fun recolor(element: Element, color: String, forceLeaf: Boolean) {
             val attributes = element.attributes
             for (i in 0 until attributes.length) {
                 val attribute = attributes.item(i)
                 if (attribute.nodeName.endsWith(":color") || attribute.nodeName == "color" ||
                     attribute.nodeName.endsWith(":tint") || attribute.nodeName == "tint") {
-                    attribute.nodeValue = AMOLED_BLACK
+                    attribute.nodeValue = color
                     valuesPatched++
                 }
             }
@@ -169,13 +133,13 @@ private val pureAmoledResourcesPatch = resourcePatch(
                 val child = children.item(i)
                 if (child.nodeType == Node.ELEMENT_NODE) {
                     hasElementChildren = true
-                    blacken(child as Element, forceLeaf)
+                    recolor(child as Element, color, forceLeaf)
                 }
             }
             if (!hasElementChildren) {
                 val value = element.textContent.trim()
                 if (forceLeaf || value.startsWith("#")) {
-                    element.textContent = AMOLED_BLACK
+                    element.textContent = color
                     valuesPatched++
                 }
             }
@@ -186,31 +150,26 @@ private val pureAmoledResourcesPatch = resourcePatch(
                 runCatching {
                     document("$directory/$fileName").use { document ->
                         val before = valuesPatched
-                        blacken(document.documentElement, true)
+                        recolor(document.documentElement, pureSurface(directory), true)
                         if (valuesPatched > before) verifiedHits += "$directory/$fileName"
                     }
                 }
             }
         }
 
-        appMenuDrawableFiles.forEach { fileName ->
+        surfaceDrawableFiles.forEach { fileName ->
             drawableDirectories.forEach { directory ->
                 runCatching {
                     document("$directory/$fileName").use { document ->
                         val before = valuesPatched
-                        blacken(document.documentElement, false)
+                        recolor(document.documentElement, pureSurface(directory), false)
                         if (valuesPatched > before) verifiedHits += "$directory/$fileName"
                     }
                 }
             }
         }
 
-        val valueQualifiers = listOf(
-            "res/values", "res/values-night", "res/values-v31", "res/values-night-v31",
-            "res/values-v35", "res/values-night-v35",
-        )
-
-        valueQualifiers.forEach { directory ->
+        valueDirectories.forEach { directory ->
             runCatching {
                 document("$directory/colors.xml").use { document ->
                     val colors = document.getElementsByTagName("color")
@@ -219,7 +178,8 @@ private val pureAmoledResourcesPatch = resourcePatch(
                         val color = colors.item(index) as? Element ?: continue
                         val name = color.getAttribute("name")
                         if (name in gm3DarkSurfaces || name in directSurfaceColorNames) {
-                            color.textContent = AMOLED_BLACK
+                            val semanticDark = name in gm3DarkSurfaces || name.endsWith("_dark") || name.contains("_dark_")
+                            color.textContent = if (semanticDark) PURE_BLACK else pureSurface(directory)
                             localHits++
                             valuesPatched++
                         }
@@ -236,7 +196,7 @@ private val pureAmoledResourcesPatch = resourcePatch(
                         for (index in 0 until items.length) {
                             val item = items.item(index) as? Element ?: continue
                             if (item.getAttribute("name") in surfaceThemeAttrs) {
-                                item.textContent = AMOLED_BLACK
+                                item.textContent = pureSurface(directory)
                                 localHits++
                                 valuesPatched++
                             }
@@ -249,58 +209,47 @@ private val pureAmoledResourcesPatch = resourcePatch(
 
         if (verifiedHits.isEmpty() || valuesPatched == 0) {
             throw IllegalStateException(
-                "Pure AMOLED resource verification failed for Cromite $CROMITE_VERSION: none of the expected Material/Chromium surface resources were found."
+                "Pure black/white resource verification failed for Cromite $CROMITE_VERSION: expected UI surface resources were not found."
             )
         }
     }
 }
 
+private const val SYSTEM_SURFACE_SMALI = """
+    invoke-virtual {p0}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
+    move-result-object v0
+    invoke-virtual {v0}, Landroid/content/res/Resources;->getConfiguration()Landroid/content/res/Configuration;
+    move-result-object v0
+    iget v0, v0, Landroid/content/res/Configuration;->uiMode:I
+    and-int/lit8 v0, v0, 0x30
+    xor-int/lit8 v0, v0, 0x20
+    if-nez v0, :pure_light
+    const v0, -0x1000000
+    return v0
+    :pure_light
+    const v0, -0x1
+    return v0
+"""
+
 @Suppress("unused")
 val pureAmoledPatch = bytecodePatch(
-    name = "Pure AMOLED theme",
-    description = "Forces Cromite 153 dark UI surfaces and ListMenu runtime tint to true black (#000000). Use with dark mode.",
+    name = "Pure AMOLED / Pure White system theme",
+    description = "Follows Android system theme: true black (#000000) in dark mode and true white (#FFFFFF) in light mode for Cromite 153 UI surfaces.",
 ) {
     compatibleWith("org.cromite.cromite"(CROMITE_VERSION))
     dependsOn(pureAmoledResourcesPatch)
 
     execute {
-        val targets = listOf(
+        val systemSurfaceTargets = listOf(
             colorSurfaceFingerprint, colorSurfaceBrightFingerprint, colorSurfaceContainerFingerprint,
             colorSurfaceContainerHighestFingerprint, colorSurfaceContainerLowFingerprint,
             defaultBgColorFingerprint, settingsBackgroundColorFingerprint, primaryBackgroundColorFingerprint,
         )
-
-        targets.forEach { fingerprint ->
-            fingerprint.method.addInstructions(0, """
-                const v0, -0x1000000
-                return v0
-            """)
+        systemSurfaceTargets.forEach { fingerprint ->
+            fingerprint.method.addInstructions(0, SYSTEM_SURFACE_SMALI)
         }
 
+        // Dynamic Material colors would re-introduce tinted gray/colored surfaces.
         dynamicColorsApplyFingerprint.method.addInstructions(0, "return-void")
-
-        appMenuPopupContentFingerprint.apply {
-            val backgroundIndex = instructionMatches[0].index
-            val contentIndex = instructionMatches[1].index
-            val backgroundCall = method.getInstruction<FiveRegisterInstruction>(backgroundIndex)
-            val contentCall = method.getInstruction<FiveRegisterInstruction>(contentIndex)
-            val scratchRegister = backgroundCall.registerD
-            val contentViewRegister = contentCall.registerD
-
-            method.addInstructions(contentIndex, """
-                const v$scratchRegister, -0x1000000
-                invoke-virtual { v$contentViewRegister, v$scratchRegister }, Landroid/view/View;->setBackgroundColor(I)V
-            """)
-        }
-
-        basicListMenuRuntimeTintFingerprint.apply {
-            val valueOfIndex = instructionMatches[3].index
-            val valueOfCall = method.getInstruction<FiveRegisterInstruction>(valueOfIndex)
-            val colorRegister = valueOfCall.registerC
-
-            method.addInstructions(valueOfIndex, """
-                const v$colorRegister, -0x1000000
-            """)
-        }
     }
 }
