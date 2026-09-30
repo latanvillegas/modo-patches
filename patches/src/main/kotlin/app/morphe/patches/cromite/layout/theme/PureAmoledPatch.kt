@@ -146,6 +146,17 @@ private val pureAmoledResourcesPatch = resourcePatch(
             "colorSurfaceContainerHigh", "colorSurfaceContainerHighest",
         )
 
+        val foregroundThemeAttrs = setOf(
+            "android:textColorPrimary", "android:textColorSecondary", "android:textColorPrimaryInverse",
+            "android:textColorSecondaryInverse", "colorOnSurface", "colorOnSurfaceVariant",
+        )
+
+        fun pureForeground(directory: String) = when (browserThemeOption.value) {
+            THEME_BLACK -> PURE_WHITE
+            THEME_WHITE -> PURE_BLACK
+            else -> if (isNight(directory)) PURE_WHITE else PURE_BLACK
+        }
+
         var valuesPatched = 0
         val verifiedHits = mutableListOf<String>()
 
@@ -228,10 +239,18 @@ private val pureAmoledResourcesPatch = resourcePatch(
                         var localHits = 0
                         for (index in 0 until items.length) {
                             val item = items.item(index) as? Element ?: continue
-                            if (item.getAttribute("name") in surfaceThemeAttrs) {
-                                item.textContent = target
-                                localHits++
-                                valuesPatched++
+                            val name = item.getAttribute("name")
+                            when {
+                                name in surfaceThemeAttrs -> {
+                                    item.textContent = target
+                                    localHits++
+                                    valuesPatched++
+                                }
+                                name in foregroundThemeAttrs -> {
+                                    item.textContent = pureForeground(directory)
+                                    localHits++
+                                    valuesPatched++
+                                }
                             }
                         }
                         if (localHits > 0) verifiedHits += "$directory/$fileName:$localHits"
