@@ -1,3 +1,9 @@
+## [1.47.7](https://github.com/latanvillegas/modo-patches/compare/v1.47.6...v1.47.7) (2026-09-30)
+
+### 🐛 Bug Fixes
+
+* **cromite:** verify and blacken Material surface resources across qualifiers ([5654802](https://github.com/latanvillegas/modo-patches/commit/565480204bcf84a0605ab0c022db5470f6375554))
+
 ## [1.47.6](https://github.com/latanvillegas/modo-patches/compare/v1.47.5...v1.47.6) (2026-09-29)
 
 ### 🐛 Bug Fixes
