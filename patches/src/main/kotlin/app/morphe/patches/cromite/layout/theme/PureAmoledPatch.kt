@@ -84,6 +84,27 @@ private val pureAmoledResourcesPatch = resourcePatch(
             "xr_toolbar_bg.xml",
         )
 
+        // Chromium AppMenu explicitly installs R.drawable.popup_bg on its PopupWindow.
+        // Patch that drawable family directly instead of relying on theme surface roles.
+        val appMenuDrawableFiles = setOf(
+            "popup_bg.xml",
+            "popup_bg_8dp.xml",
+            "popup_bg_24dp.xml",
+        )
+
+        val drawableDirectories = listOf(
+            "res/drawable",
+            "res/drawable-night",
+            "res/drawable-v21",
+            "res/drawable-night-v21",
+            "res/drawable-v23",
+            "res/drawable-night-v23",
+            "res/drawable-v31",
+            "res/drawable-night-v31",
+            "res/drawable-v35",
+            "res/drawable-night-v35",
+        )
+
         val colorDirectories = listOf(
             "res/color",
             "res/color-night",
@@ -117,6 +138,9 @@ private val pureAmoledResourcesPatch = resourcePatch(
             "color_surface_container_dark",
             "color_surface_container_high_dark",
             "color_surface_container_highest_dark",
+            "menu_bg_color",
+            "menu_bg_color_baseline",
+            "menu_bg_color_dark_baseline",
             "mtrl_popupmenu_overlay_color",
             "mtrl_filled_background_color",
         )
@@ -134,10 +158,8 @@ private val pureAmoledResourcesPatch = resourcePatch(
             "colorSurfaceContainerHighest",
         )
 
-        var filesPatched = 0
         var valuesPatched = 0
-        var gm3ValuesPatched = 0
-        var themeAttrsPatched = 0
+        var popupDrawableHits = 0
         val verifiedHits = mutableListOf<String>()
 
         fun blacken(element: Element, forceLeaf: Boolean) {
@@ -169,17 +191,28 @@ private val pureAmoledResourcesPatch = resourcePatch(
             }
         }
 
-        // Probe every qualifier used by current Chromium/Material builds instead of
-        // assuming the resource only exists in color-night-v8. Missing optional
-        // qualifiers are allowed, but at least one concrete resource must be hit.
         explicitColorFiles.forEach { fileName ->
             colorDirectories.forEach { directory ->
                 runCatching {
                     document("$directory/$fileName").use { document ->
                         val before = valuesPatched
                         blacken(document.documentElement, true)
+                        if (valuesPatched > before) verifiedHits += "$directory/$fileName"
+                    }
+                }
+            }
+        }
+
+        // Critical AppMenu target. Only color attributes/literal color leaves are changed;
+        // dimensions, corner radii, padding and drawable references remain untouched.
+        appMenuDrawableFiles.forEach { fileName ->
+            drawableDirectories.forEach { directory ->
+                runCatching {
+                    document("$directory/$fileName").use { document ->
+                        val before = valuesPatched
+                        blacken(document.documentElement, false)
                         if (valuesPatched > before) {
-                            filesPatched++
+                            popupDrawableHits++
                             verifiedHits += "$directory/$fileName"
                         }
                     }
@@ -208,13 +241,9 @@ private val pureAmoledResourcesPatch = resourcePatch(
                             color.textContent = AMOLED_BLACK
                             localHits++
                             valuesPatched++
-                            if (name in gm3DarkSurfaces) gm3ValuesPatched++
                         }
                     }
-                    if (localHits > 0) {
-                        filesPatched++
-                        verifiedHits += "$directory/colors.xml:$localHits"
-                    }
+                    if (localHits > 0) verifiedHits += "$directory/colors.xml:$localHits"
                 }
             }
 
@@ -228,35 +257,31 @@ private val pureAmoledResourcesPatch = resourcePatch(
                             if (item.getAttribute("name") in surfaceThemeAttrs) {
                                 item.textContent = AMOLED_BLACK
                                 localHits++
-                                themeAttrsPatched++
                                 valuesPatched++
                             }
                         }
-                        if (localHits > 0) {
-                            filesPatched++
-                            verifiedHits += "$directory/$fileName:$localHits"
-                        }
+                        if (localHits > 0) verifiedHits += "$directory/$fileName:$localHits"
                     }
                 }
             }
         }
 
-        // Do not silently produce a patch that touched nothing. This is the key
-        // verification guard for Cromite 153: a resource-only attempt must prove
-        // that the decoded APK actually contains at least one targeted surface.
         if (verifiedHits.isEmpty() || valuesPatched == 0) {
             throw IllegalStateException(
                 "Pure AMOLED resource verification failed for Cromite $CROMITE_VERSION: " +
                     "none of the expected Material/Chromium surface resources were found."
             )
         }
+
+        // popup_bg is the specific AppMenu background. If its XML exists but contains no
+        // patchable color, menu_bg_color above remains the authoritative color dependency.
     }
 }
 
 @Suppress("unused")
 val pureAmoledPatch = bytecodePatch(
     name = "Pure AMOLED theme",
-    description = "Forces Cromite 153 dark UI surfaces to true black (#000000). Use with dark mode.",
+    description = "Forces Cromite 153 dark UI surfaces and AppMenu popup background to true black (#000000). Use with dark mode.",
 ) {
     compatibleWith("org.cromite.cromite"(CROMITE_VERSION))
     dependsOn(pureAmoledResourcesPatch)
