@@ -1,7 +1,7 @@
 package app.morphe.patches.cromite.layout.theme
 
 import app.morphe.patcher.Fingerprint
-import app.morphe.patcher.extensions.InstructionExtensions.addInstruction
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.opcode
 import app.morphe.patcher.patch.bytecodePatch
@@ -49,7 +49,7 @@ internal val pureAmoledWebPatch = bytecodePatch(
                 "white" -> "const/4 v$register, 0x0\nreturn v$register"
                 else -> "return v$register"
             }
-            fingerprint.method.addInstruction(nightModeResult.index + 1, injected)
+            fingerprint.method.addInstructions(nightModeResult.index + 1, injected)
         }
     }
 }
