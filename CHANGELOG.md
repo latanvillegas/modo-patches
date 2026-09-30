@@ -1,3 +1,9 @@
+## [1.47.8](https://github.com/latanvillegas/modo-patches/compare/v1.47.7...v1.47.8) (2026-09-30)
+
+### 🐛 Bug Fixes
+
+* **cromite:** force AppMenu popup_bg drawables to AMOLED black ([fbac01d](https://github.com/latanvillegas/modo-patches/commit/fbac01d11cea26df38e10ffe8f83692852a0d6d2))
+
 ## [1.47.7](https://github.com/latanvillegas/modo-patches/compare/v1.47.6...v1.47.7) (2026-09-30)
 
 ### 🐛 Bug Fixes

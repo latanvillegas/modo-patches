@@ -35,7 +35,7 @@ All modifications made by Morphe, along with their dates, can be found in the Gi
 ## 🩹 Patches list
 
 <!-- PATCHES_START -->
-> **[v1.47.7](https://github.com/latanvillegas/modo-patches/releases/tag/v1.47.7)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;152 patches total
+> **[v1.47.8](https://github.com/latanvillegas/modo-patches/releases/tag/v1.47.8)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;152 patches total
 <details>
 <summary>📦 YouTube&nbsp;&nbsp;•&nbsp;&nbsp;84 patches</summary>
 <br>
@@ -236,7 +236,7 @@ All modifications made by Morphe, along with their dates, can be found in the Gi
 | 💊&nbsp;Patch | 📜&nbsp;Description | ⚙️&nbsp;Options |
 |----------|----------------|-----------|
 | [Hide Android status bar](#hide-android-status-bar) | Hides the Android status bar in Cromite (clock, battery, signal and notification icons). |  |
-| [Pure AMOLED theme](#pure-amoled-theme) | Forces Cromite 153 dark UI surfaces to true black (#000000). Use with dark mode. |  |
+| [Pure AMOLED theme](#pure-amoled-theme) | Forces Cromite 153 dark UI surfaces and AppMenu popup background to true black (#000000). Use with dark mode. |  |
 
 </details>
 

@@ -1,6 +1,6 @@
 {
   "NOTE": "Do NOT manually edit this file. This file is automatically updated when semantic release (release.yml) runs. Manually editing this file can break your releases and break third party tools that use this file.",
-  "version": "1.47.7",
+  "version": "1.47.8",
   "patches": [
     {
       "name": "Add to queue",
@@ -7691,7 +7691,7 @@
     },
     {
       "name": "Pure AMOLED theme",
-      "description": "Forces Cromite 153 dark UI surfaces to true black (#000000). Use with dark mode.",
+      "description": "Forces Cromite 153 dark UI surfaces and AppMenu popup background to true black (#000000). Use with dark mode.",
       "default": true,
       "category": null,
       "dependencies": [
