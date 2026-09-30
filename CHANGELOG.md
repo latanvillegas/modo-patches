@@ -1,3 +1,19 @@
+## [1.49.0](https://github.com/latanvillegas/modo-patches/compare/v1.48.0...v1.49.0) (2026-09-30)
+
+### 🐛 Bug Fixes
+
+* blacken list menu background drawable and tint resources ([708b100](https://github.com/latanvillegas/modo-patches/commit/708b10017bf40aa079e7205b1762e589ab7ad1b3))
+* **cromite:** force AppMenu content view to AMOLED black ([69b4110](https://github.com/latanvillegas/modo-patches/commit/69b4110677ce07aef230a490bd798652518e4c75))
+* **cromite:** force BasicListMenu runtime tint to AMOLED black ([a16e1e1](https://github.com/latanvillegas/modo-patches/commit/a16e1e1ac5a9365ab4c5d28d8e0b4833bb31240d))
+* **cromite:** polish pure black and white native surfaces ([92ae156](https://github.com/latanvillegas/modo-patches/commit/92ae15643c9de578bdbdf6cb52b4cf18b5ac21c4))
+* force AppMenu item backgrounds to AMOLED black ([1c4bdc1](https://github.com/latanvillegas/modo-patches/commit/1c4bdc15117e157333f7bbc5740cb779de25a698))
+* force BasicListMenu runtime background tint to AMOLED black ([3032f99](https://github.com/latanvillegas/modo-patches/commit/3032f991417be24f93318ae9c10b61fb66d325c1))
+* patch actual Chromium popupBgShape AMOLED surface ([7629542](https://github.com/latanvillegas/modo-patches/commit/7629542e5ec88623e1592ec96905f0a0e7509b4b))
+
+### ✨ New Features
+
+* **cromite:** follow system pure black and white UI ([0b1c510](https://github.com/latanvillegas/modo-patches/commit/0b1c510f9107e94ec879808dd7989f219da5c60f))
+
 ## [1.48.0](https://github.com/latanvillegas/modo-patches/compare/v1.47.8...v1.48.0) (2026-09-30)
 
 ### ✨ New Features

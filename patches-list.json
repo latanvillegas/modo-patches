@@ -1,6 +1,6 @@
 {
   "NOTE": "Do NOT manually edit this file. This file is automatically updated when semantic release (release.yml) runs. Manually editing this file can break your releases and break third party tools that use this file.",
-  "version": "1.48.0",
+  "version": "1.49.0",
   "patches": [
     {
       "name": "Add to queue",
@@ -7690,8 +7690,8 @@
       "options": []
     },
     {
-      "name": "Pure AMOLED theme",
-      "description": "Forces Cromite 153 dark UI surfaces and AppMenu popup background to true black (#000000). Use with dark mode.",
+      "name": "Pure AMOLED / Pure White system theme",
+      "description": "Follows Android system theme: true black (#000000) in dark mode and true white (#FFFFFF) in light mode for Cromite 153 native UI surfaces.",
       "default": true,
       "category": null,
       "dependencies": [
