@@ -70,45 +70,25 @@ private val pureAmoledResourcesPatch = resourcePatch(
 
     execute {
         val explicitColorFiles = setOf(
-            "bottom_sheet_bg_color.xml",
-            "context_menu_header_circle_bg_color.xml",
-            "dialog_bg_color.xml",
-            "distilled_page_pref_background_color.xml",
-            "fake_search_box_base_color.xml",
-            "home_surface_background_color.xml",
-            "home_surface_ui_background_color.xml",
-            "hub_search_box_bg_color.xml",
-            "interactable_chip_bg_color.xml",
-            "item_chooser_row_background.xml",
-            "m3_list_item_background_color_selector.xml",
-            "m3_segmented_list_item_background_color_selector.xml",
-            "m3_textfield_filled_background_color.xml",
-            "mtrl_filled_background_color.xml",
-            "mtrl_popupmenu_overlay_color.xml",
-            "message_bg_color.xml",
-            "omnibox_popover_suggestion_bg_color.xml",
-            "omnibox_suggestion_dropdown_bg.xml",
-            "search_suggestion_bg_color.xml",
-            "single_tab_favicon_bg_color.xml",
-            "tab_group_dialog_bg_color.xml",
-            "tab_hover_card_bg_color.xml",
-            "tab_strip_ntb_bg_tint_list.xml",
-            "tile_view_icon_background_color.xml",
-            "toast_color.xml",
-            "toolbar_text_box_bg_color.xml",
-            "widget_bg.xml",
-            "widget_button_bg.xml",
-            "widget_searchbox_bg.xml",
-            "xr_toolbar_bg.xml",
-            "menu_item_bg_color.xml",
-            "menu_item_bg_color_baseline.xml",
-            "menu_item_bg_color_dark_baseline.xml",
+            "bottom_sheet_bg_color.xml", "context_menu_header_circle_bg_color.xml", "dialog_bg_color.xml",
+            "distilled_page_pref_background_color.xml", "fake_search_box_base_color.xml",
+            "home_surface_background_color.xml", "home_surface_ui_background_color.xml",
+            "hub_search_box_bg_color.xml", "interactable_chip_bg_color.xml", "item_chooser_row_background.xml",
+            "m3_list_item_background_color_selector.xml", "m3_segmented_list_item_background_color_selector.xml",
+            "m3_textfield_filled_background_color.xml", "mtrl_filled_background_color.xml",
+            "mtrl_popupmenu_overlay_color.xml", "message_bg_color.xml", "omnibox_popover_suggestion_bg_color.xml",
+            "omnibox_suggestion_dropdown_bg.xml", "search_suggestion_bg_color.xml", "single_tab_favicon_bg_color.xml",
+            "tab_group_dialog_bg_color.xml", "tab_hover_card_bg_color.xml", "tab_strip_ntb_bg_tint_list.xml",
+            "tile_view_icon_background_color.xml", "toast_color.xml", "toolbar_text_box_bg_color.xml",
+            "widget_bg.xml", "widget_button_bg.xml", "widget_searchbox_bg.xml", "xr_toolbar_bg.xml",
+            "menu_item_bg_color.xml", "menu_item_bg_color_baseline.xml", "menu_item_bg_color_dark_baseline.xml",
+            "menu_bg_color.xml", "menu_bg_color_baseline.xml", "menu_bg_color_dark_baseline.xml",
+            "list_menu_background_color.xml", "list_menu_background_tint.xml",
         )
 
         val appMenuDrawableFiles = setOf(
-            "popup_bg.xml",
-            "popup_bg_8dp.xml",
-            "popup_bg_24dp.xml",
+            "popup_bg.xml", "popup_bg_8dp.xml", "popup_bg_24dp.xml",
+            "list_menu_background.xml",
         )
 
         val drawableDirectories = listOf(
@@ -136,6 +116,7 @@ private val pureAmoledResourcesPatch = resourcePatch(
             "color_surface_container_dark", "color_surface_container_high_dark", "color_surface_container_highest_dark",
             "menu_bg_color", "menu_bg_color_baseline", "menu_bg_color_dark_baseline",
             "menu_item_bg_color", "menu_item_bg_color_baseline", "menu_item_bg_color_dark_baseline",
+            "list_menu_background_color", "list_menu_background_tint",
             "mtrl_popupmenu_overlay_color", "mtrl_filled_background_color",
         )
 
@@ -152,7 +133,8 @@ private val pureAmoledResourcesPatch = resourcePatch(
             val attributes = element.attributes
             for (i in 0 until attributes.length) {
                 val attribute = attributes.item(i)
-                if (attribute.nodeName.endsWith(":color") || attribute.nodeName == "color") {
+                if (attribute.nodeName.endsWith(":color") || attribute.nodeName == "color" ||
+                    attribute.nodeName.endsWith(":tint") || attribute.nodeName == "tint") {
                     attribute.nodeValue = AMOLED_BLACK
                     valuesPatched++
                 }
@@ -192,7 +174,7 @@ private val pureAmoledResourcesPatch = resourcePatch(
                 runCatching {
                     document("$directory/$fileName").use { document ->
                         val before = valuesPatched
-                        blacken(document.documentElement, false)
+                        blacken(document.documentElement, true)
                         if (valuesPatched > before) verifiedHits += "$directory/$fileName"
                     }
                 }
@@ -252,7 +234,7 @@ private val pureAmoledResourcesPatch = resourcePatch(
 @Suppress("unused")
 val pureAmoledPatch = bytecodePatch(
     name = "Pure AMOLED theme",
-    description = "Forces Cromite 153 dark UI surfaces and AppMenu popup background to true black (#000000). Use with dark mode.",
+    description = "Forces Cromite 153 dark UI surfaces and list/AppMenu backgrounds to true black (#000000). Use with dark mode.",
 ) {
     compatibleWith("org.cromite.cromite"(CROMITE_VERSION))
     dependsOn(pureAmoledResourcesPatch)
