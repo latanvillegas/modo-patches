@@ -67,9 +67,10 @@ private val pureAmoledResourcesPatch = resourcePatch(
             "menu_item_bg_color.xml", "menu_item_bg_color_baseline.xml", "menu_item_bg_color_dark_baseline.xml",
             "menu_bg_color.xml", "menu_bg_color_baseline.xml", "menu_bg_color_dark_baseline.xml",
             "list_menu_background_color.xml", "list_menu_background_tint.xml",
-            // Desktop-Android/Cromite toolbar and tab-strip surfaces. Missing files are intentionally ignored.
             "toolbar_background_primary.xml", "toolbar_background_primary_incognito.xml",
             "toolbar_background_color.xml", "top_toolbar_background_color.xml",
+            "default_primary_color.xml", "default_primary_color_dark.xml", "incognito_primary_color.xml",
+            "modern_primary_color.xml", "toolbar_surface_color.xml", "toolbar_surface_color_dark.xml",
             "tab_strip_background_color.xml", "tab_strip_bg_color.xml", "tab_strip_background.xml",
             "primary_background_color.xml", "default_bg_color.xml",
         )
@@ -102,8 +103,11 @@ private val pureAmoledResourcesPatch = resourcePatch(
             "default_bg_color", "default_bg_color_dark",
             "settings_background_color", "settings_background_color_dark",
             "primary_background_color", "primary_background_color_dark",
+            "default_primary_color", "default_primary_color_dark", "incognito_primary_color",
+            "modern_primary_color", "modern_primary_color_dark",
             "toolbar_background_primary", "toolbar_background_primary_incognito", "toolbar_background_color",
-            "top_toolbar_background_color", "tab_strip_background_color", "tab_strip_bg_color",
+            "top_toolbar_background_color", "toolbar_surface_color", "toolbar_surface_color_dark",
+            "tab_strip_background_color", "tab_strip_bg_color",
             "color_surface", "color_surface_dark", "color_surface_bright", "color_surface_bright_dark",
             "color_surface_dim", "color_surface_dim_dark", "color_surface_container_lowest",
             "color_surface_container_lowest_dark", "color_surface_container_low", "color_surface_container_low_dark",
@@ -190,8 +194,6 @@ private val pureAmoledResourcesPatch = resourcePatch(
                     for (index in 0 until colors.length) {
                         val color = colors.item(index) as? Element ?: continue
                         if (color.getAttribute("name") in surfaceColorNames) {
-                            // The qualifier, not a *_dark suffix in the resource name, decides the final color.
-                            // This is required because Cromite can reference *_dark aliases from the light resource set.
                             color.textContent = target
                             localHits++
                             valuesPatched++
@@ -262,7 +264,6 @@ val pureAmoledPatch = bytecodePatch(
             fingerprint.method.addInstructions(0, SYSTEM_SURFACE_SMALI)
         }
 
-        // Dynamic Material colors would re-introduce tinted gray/colored surfaces.
         dynamicColorsApplyFingerprint.method.addInstructions(0, "return-void")
     }
 }
