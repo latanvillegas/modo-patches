@@ -4,6 +4,7 @@ import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.resourcePatch
+import app.morphe.patcher.patch.stringOption
 import org.w3c.dom.Element
 import org.w3c.dom.Node
 
@@ -16,6 +17,20 @@ private const val CONTEXT = "Landroid/content/Context;"
 private const val ACTIVITY = "Landroid/app/Activity;"
 private const val PURE_BLACK = "#FF000000"
 private const val PURE_WHITE = "#FFFFFFFF"
+private const val THEME_DEVICE = "device"
+private const val THEME_BLACK = "black"
+private const val THEME_WHITE = "white"
+
+internal val browserThemeOption = stringOption(
+    key = "browserTheme",
+    default = THEME_DEVICE,
+    values = mapOf(
+        "Device default" to THEME_DEVICE,
+        "Pure Black" to THEME_BLACK,
+        "Pure White" to THEME_WHITE,
+    ),
+    title = "Browser theme",
+)
 
 private fun semanticSurfaceFingerprint(name: String) = Fingerprint(
     definingClass = SEMANTIC_COLOR_UTILS,
@@ -96,7 +111,11 @@ private val pureAmoledResourcesPatch = resourcePatch(
         )
 
         fun isNight(directory: String) = directory.substringAfter("res/").contains("night")
-        fun pureSurface(directory: String) = if (isNight(directory)) PURE_BLACK else PURE_WHITE
+        fun pureSurface(directory: String) = when (browserThemeOption.value) {
+            THEME_BLACK -> PURE_BLACK
+            THEME_WHITE -> PURE_WHITE
+            else -> if (isNight(directory)) PURE_BLACK else PURE_WHITE
+        }
 
         val surfaceColorNames = setOf(
             "default_bg_color", "default_bg_color_dark",
@@ -228,29 +247,40 @@ private val pureAmoledResourcesPatch = resourcePatch(
     }
 }
 
-private const val SYSTEM_SURFACE_SMALI = """
-    invoke-virtual {p0}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
-    move-result-object v0
-    invoke-virtual {v0}, Landroid/content/res/Resources;->getConfiguration()Landroid/content/res/Configuration;
-    move-result-object v0
-    iget v0, v0, Landroid/content/res/Configuration;->uiMode:I
-    and-int/lit8 v0, v0, 0x30
-    xor-int/lit8 v0, v0, 0x20
-    if-nez v0, :pure_light
-    const v0, -0x1000000
-    return v0
-    :pure_light
-    const v0, -0x1
-    return v0
-"""
+private fun surfaceSmali(theme: String): String = when (theme) {
+    THEME_BLACK -> """
+        const v0, -0x1000000
+        return v0
+    """
+    THEME_WHITE -> """
+        const v0, -0x1
+        return v0
+    """
+    else -> """
+        invoke-virtual {p0}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
+        move-result-object v0
+        invoke-virtual {v0}, Landroid/content/res/Resources;->getConfiguration()Landroid/content/res/Configuration;
+        move-result-object v0
+        iget v0, v0, Landroid/content/res/Configuration;->uiMode:I
+        and-int/lit8 v0, v0, 0x30
+        xor-int/lit8 v0, v0, 0x20
+        if-nez v0, :pure_light
+        const v0, -0x1000000
+        return v0
+        :pure_light
+        const v0, -0x1
+        return v0
+    """
+}
 
 @Suppress("unused")
 val pureAmoledPatch = bytecodePatch(
     name = "Pure AMOLED / Pure White system theme",
-    description = "Follows Android system theme: true black (#000000) in dark mode and true white (#FFFFFF) in light mode for Cromite 153 native UI surfaces.",
+    description = "Adds Device default, Pure Black (#000000), and Pure White (#FFFFFF) themes for Cromite 153 native UI and web-content darkening.",
 ) {
     compatibleWith("org.cromite.cromite"(CROMITE_VERSION))
-    dependsOn(pureAmoledResourcesPatch)
+    val browserTheme by browserThemeOption()
+    dependsOn(pureAmoledResourcesPatch, pureAmoledWebPatch)
 
     execute {
         val systemSurfaceTargets = listOf(
@@ -259,7 +289,7 @@ val pureAmoledPatch = bytecodePatch(
             defaultBgColorFingerprint, settingsBackgroundColorFingerprint, primaryBackgroundColorFingerprint,
         )
         systemSurfaceTargets.forEach { fingerprint ->
-            fingerprint.method.addInstructions(0, SYSTEM_SURFACE_SMALI)
+            fingerprint.method.addInstructions(0, surfaceSmali(browserTheme))
         }
 
         // Dynamic Material colors would re-introduce tinted gray/colored surfaces.
