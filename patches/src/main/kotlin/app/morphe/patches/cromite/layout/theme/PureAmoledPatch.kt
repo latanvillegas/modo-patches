@@ -63,6 +63,25 @@ private val appMenuPopupContentFingerprint = Fingerprint(
     ),
 )
 
+// Structural fingerprint for BasicListMenu's runtime background tint. This intentionally
+// does not depend on Chromium/R8 class names: those are obfuscated in Cromite releases.
+private val listMenuRuntimeTintFingerprint = Fingerprint(
+    filters = listOf(
+        methodCall(
+            opcode = Opcode.INVOKE_STATIC,
+            smali = "Landroidx/core/content/ContextCompat;->getColor(Landroid/content/Context;I)I",
+        ),
+        methodCall(
+            opcode = Opcode.INVOKE_STATIC,
+            smali = "Landroid/content/res/ColorStateList;->valueOf(I)Landroid/content/res/ColorStateList;",
+        ),
+        methodCall(
+            opcode = Opcode.INVOKE_STATIC,
+            smali = "Landroidx/core/view/ViewCompat;->setBackgroundTintList(Landroid/view/View;Landroid/content/res/ColorStateList;)V",
+        ),
+    ),
+)
+
 private val pureAmoledResourcesPatch = resourcePatch(
     description = "Internal resource component for Cromite Pure AMOLED."
 ) {
@@ -234,7 +253,7 @@ private val pureAmoledResourcesPatch = resourcePatch(
 @Suppress("unused")
 val pureAmoledPatch = bytecodePatch(
     name = "Pure AMOLED theme",
-    description = "Forces Cromite 153 dark UI surfaces and list/AppMenu backgrounds to true black (#000000). Use with dark mode.",
+    description = "Forces Cromite 153 dark UI surfaces and AppMenu runtime tint to true black (#000000). Use with dark mode.",
 ) {
     compatibleWith("org.cromite.cromite"(CROMITE_VERSION))
     dependsOn(pureAmoledResourcesPatch)
@@ -266,6 +285,19 @@ val pureAmoledPatch = bytecodePatch(
             method.addInstructions(contentIndex, """
                 const v$scratchRegister, -0x1000000
                 invoke-virtual { v$contentViewRegister, v$scratchRegister }, Landroid/view/View;->setBackgroundColor(I)V
+            """)
+        }
+
+        listMenuRuntimeTintFingerprint.apply {
+            val valueOfIndex = instructionMatches[1].index
+            val valueOfCall = method.getInstruction<FiveRegisterInstruction>(valueOfIndex)
+            val colorRegister = valueOfCall.registerC
+
+            // ContextCompat.getColor() has already produced its value in this register.
+            // Overwrite only that runtime color immediately before ColorStateList.valueOf(),
+            // preserving the menu drawable, rounded corners, elevation and click behavior.
+            method.addInstructions(valueOfIndex, """
+                const v$colorRegister, -0x1000000
             """)
         }
     }
