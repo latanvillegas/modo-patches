@@ -49,10 +49,6 @@ private val dynamicColorsApplyFingerprint = Fingerprint(
     parameters = listOf(ACTIVITY, DYNAMIC_COLORS_OPTIONS),
 )
 
-/**
- * Locates Chromium's AppMenu popup without depending on its R8 class name.
- * The same method configures a PopupWindow background and installs its root content View.
- */
 private val appMenuPopupContentFingerprint = Fingerprint(
     returnType = "V",
     filters = listOf(
@@ -104,6 +100,9 @@ private val pureAmoledResourcesPatch = resourcePatch(
             "widget_button_bg.xml",
             "widget_searchbox_bg.xml",
             "xr_toolbar_bg.xml",
+            "menu_item_bg_color.xml",
+            "menu_item_bg_color_baseline.xml",
+            "menu_item_bg_color_dark_baseline.xml",
         )
 
         val appMenuDrawableFiles = setOf(
@@ -113,69 +112,37 @@ private val pureAmoledResourcesPatch = resourcePatch(
         )
 
         val drawableDirectories = listOf(
-            "res/drawable",
-            "res/drawable-night",
-            "res/drawable-v21",
-            "res/drawable-night-v21",
-            "res/drawable-v23",
-            "res/drawable-night-v23",
-            "res/drawable-v31",
-            "res/drawable-night-v31",
-            "res/drawable-v35",
-            "res/drawable-night-v35",
+            "res/drawable", "res/drawable-night", "res/drawable-v21", "res/drawable-night-v21",
+            "res/drawable-v23", "res/drawable-night-v23", "res/drawable-v31", "res/drawable-night-v31",
+            "res/drawable-v35", "res/drawable-night-v35",
         )
 
         val colorDirectories = listOf(
-            "res/color",
-            "res/color-night",
-            "res/color-night-v8",
-            "res/color-v31",
-            "res/color-night-v31",
-            "res/color-v35",
-            "res/color-night-v35",
+            "res/color", "res/color-night", "res/color-night-v8", "res/color-v31",
+            "res/color-night-v31", "res/color-v35", "res/color-night-v35",
         )
 
         val gm3DarkSurfaces = setOf(
-            "gm3_baseline_surface_dark",
-            "gm3_baseline_surface_bright_dark",
-            "gm3_baseline_surface_dim_dark",
-            "gm3_baseline_surface_container_lowest_dark",
-            "gm3_baseline_surface_container_low_dark",
-            "gm3_baseline_surface_container_dark",
-            "gm3_baseline_surface_container_high_dark",
+            "gm3_baseline_surface_dark", "gm3_baseline_surface_bright_dark", "gm3_baseline_surface_dim_dark",
+            "gm3_baseline_surface_container_lowest_dark", "gm3_baseline_surface_container_low_dark",
+            "gm3_baseline_surface_container_dark", "gm3_baseline_surface_container_high_dark",
             "gm3_baseline_surface_container_highest_dark",
         )
 
         val directSurfaceColorNames = setOf(
-            "default_bg_color_dark",
-            "settings_background_color_dark",
-            "primary_background_color_dark",
-            "color_surface_dark",
-            "color_surface_bright_dark",
-            "color_surface_dim_dark",
-            "color_surface_container_lowest_dark",
-            "color_surface_container_low_dark",
-            "color_surface_container_dark",
-            "color_surface_container_high_dark",
-            "color_surface_container_highest_dark",
-            "menu_bg_color",
-            "menu_bg_color_baseline",
-            "menu_bg_color_dark_baseline",
-            "mtrl_popupmenu_overlay_color",
-            "mtrl_filled_background_color",
+            "default_bg_color_dark", "settings_background_color_dark", "primary_background_color_dark",
+            "color_surface_dark", "color_surface_bright_dark", "color_surface_dim_dark",
+            "color_surface_container_lowest_dark", "color_surface_container_low_dark",
+            "color_surface_container_dark", "color_surface_container_high_dark", "color_surface_container_highest_dark",
+            "menu_bg_color", "menu_bg_color_baseline", "menu_bg_color_dark_baseline",
+            "menu_item_bg_color", "menu_item_bg_color_baseline", "menu_item_bg_color_dark_baseline",
+            "mtrl_popupmenu_overlay_color", "mtrl_filled_background_color",
         )
 
         val surfaceThemeAttrs = setOf(
-            "android:colorBackground",
-            "colorBackground",
-            "colorSurface",
-            "colorSurfaceBright",
-            "colorSurfaceDim",
-            "colorSurfaceContainerLowest",
-            "colorSurfaceContainerLow",
-            "colorSurfaceContainer",
-            "colorSurfaceContainerHigh",
-            "colorSurfaceContainerHighest",
+            "android:colorBackground", "colorBackground", "colorSurface", "colorSurfaceBright", "colorSurfaceDim",
+            "colorSurfaceContainerLowest", "colorSurfaceContainerLow", "colorSurfaceContainer",
+            "colorSurfaceContainerHigh", "colorSurfaceContainerHighest",
         )
 
         var valuesPatched = 0
@@ -190,7 +157,6 @@ private val pureAmoledResourcesPatch = resourcePatch(
                     valuesPatched++
                 }
             }
-
             val children = element.childNodes
             var hasElementChildren = false
             for (i in 0 until children.length) {
@@ -200,7 +166,6 @@ private val pureAmoledResourcesPatch = resourcePatch(
                     blacken(child as Element, forceLeaf)
                 }
             }
-
             if (!hasElementChildren) {
                 val value = element.textContent.trim()
                 if (forceLeaf || value.startsWith("#")) {
@@ -235,12 +200,8 @@ private val pureAmoledResourcesPatch = resourcePatch(
         }
 
         val valueQualifiers = listOf(
-            "res/values",
-            "res/values-night",
-            "res/values-v31",
-            "res/values-night-v31",
-            "res/values-v35",
-            "res/values-night-v35",
+            "res/values", "res/values-night", "res/values-v31", "res/values-night-v31",
+            "res/values-v35", "res/values-night-v35",
         )
 
         valueQualifiers.forEach { directory ->
@@ -282,8 +243,7 @@ private val pureAmoledResourcesPatch = resourcePatch(
 
         if (verifiedHits.isEmpty() || valuesPatched == 0) {
             throw IllegalStateException(
-                "Pure AMOLED resource verification failed for Cromite $CROMITE_VERSION: " +
-                    "none of the expected Material/Chromium surface resources were found."
+                "Pure AMOLED resource verification failed for Cromite $CROMITE_VERSION: none of the expected Material/Chromium surface resources were found."
             )
         }
     }
@@ -299,32 +259,20 @@ val pureAmoledPatch = bytecodePatch(
 
     execute {
         val targets = listOf(
-            colorSurfaceFingerprint,
-            colorSurfaceBrightFingerprint,
-            colorSurfaceContainerFingerprint,
-            colorSurfaceContainerHighestFingerprint,
-            colorSurfaceContainerLowFingerprint,
-            defaultBgColorFingerprint,
-            settingsBackgroundColorFingerprint,
-            primaryBackgroundColorFingerprint,
+            colorSurfaceFingerprint, colorSurfaceBrightFingerprint, colorSurfaceContainerFingerprint,
+            colorSurfaceContainerHighestFingerprint, colorSurfaceContainerLowFingerprint,
+            defaultBgColorFingerprint, settingsBackgroundColorFingerprint, primaryBackgroundColorFingerprint,
         )
 
         targets.forEach { fingerprint ->
-            fingerprint.method.addInstructions(
-                0,
-                """
-                    const v0, -0x1000000
-                    return v0
-                """
-            )
+            fingerprint.method.addInstructions(0, """
+                const v0, -0x1000000
+                return v0
+            """)
         }
 
         dynamicColorsApplyFingerprint.method.addInstructions(0, "return-void")
 
-        // Runtime AppMenu fix. The first matched call has already consumed its Drawable,
-        // so that argument register is reused as a temporary color register. This avoids
-        // increasing registerCount (which would shift parameter registers). The second
-        // matched call supplies the exact root View passed to PopupWindow.setContentView().
         appMenuPopupContentFingerprint.apply {
             val backgroundIndex = instructionMatches[0].index
             val contentIndex = instructionMatches[1].index
@@ -333,13 +281,10 @@ val pureAmoledPatch = bytecodePatch(
             val scratchRegister = backgroundCall.registerD
             val contentViewRegister = contentCall.registerD
 
-            method.addInstructions(
-                contentIndex,
-                """
-                    const v$scratchRegister, -0x1000000
-                    invoke-virtual { v$contentViewRegister, v$scratchRegister }, Landroid/view/View;->setBackgroundColor(I)V
-                """
-            )
+            method.addInstructions(contentIndex, """
+                const v$scratchRegister, -0x1000000
+                invoke-virtual { v$contentViewRegister, v$scratchRegister }, Landroid/view/View;->setBackgroundColor(I)V
+            """)
         }
     }
 }
