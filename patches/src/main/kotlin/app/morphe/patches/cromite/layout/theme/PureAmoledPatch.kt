@@ -2,8 +2,10 @@ package app.morphe.patches.cromite.layout.theme
 
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.methodCall
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.resourcePatch
+import com.android.tools.smali.dexlib2.Opcode
 import org.w3c.dom.Element
 import org.w3c.dom.Node
 
@@ -45,6 +47,30 @@ private val dynamicColorsApplyFingerprint = Fingerprint(
     parameters = listOf(ACTIVITY, DYNAMIC_COLORS_OPTIONS),
 )
 
+/**
+ * Locates the Chromium AppMenu popup structurally instead of relying on its R8 name.
+ *
+ * AppMenu configures the same PopupWindow with a background drawable and then installs
+ * the inflated root View as its content. Requiring both framework calls makes this far
+ * more specific than matching every PopupWindow.setContentView() call in Cromite.
+ *
+ * instructionMatches[1] is the setContentView(View) invoke. Its second invoke register
+ * is the exact root content View that will be forced to AMOLED black in the next step.
+ */
+private val appMenuPopupContentFingerprint = Fingerprint(
+    returnType = "V",
+    filters = listOf(
+        methodCall(
+            opcode = Opcode.INVOKE_VIRTUAL,
+            smali = "Landroid/widget/PopupWindow;->setBackgroundDrawable(Landroid/graphics/drawable/Drawable;)V",
+        ),
+        methodCall(
+            opcode = Opcode.INVOKE_VIRTUAL,
+            smali = "Landroid/widget/PopupWindow;->setContentView(Landroid/view/View;)V",
+        ),
+    ),
+)
+
 private val pureAmoledResourcesPatch = resourcePatch(
     description = "Internal resource component for Cromite Pure AMOLED."
 ) {
@@ -84,8 +110,6 @@ private val pureAmoledResourcesPatch = resourcePatch(
             "xr_toolbar_bg.xml",
         )
 
-        // Chromium AppMenu explicitly installs R.drawable.popup_bg on its PopupWindow.
-        // Patch that drawable family directly instead of relying on theme surface roles.
         val appMenuDrawableFiles = setOf(
             "popup_bg.xml",
             "popup_bg_8dp.xml",
@@ -203,8 +227,6 @@ private val pureAmoledResourcesPatch = resourcePatch(
             }
         }
 
-        // Critical AppMenu target. Only color attributes/literal color leaves are changed;
-        // dimensions, corner radii, padding and drawable references remain untouched.
         appMenuDrawableFiles.forEach { fileName ->
             drawableDirectories.forEach { directory ->
                 runCatching {
@@ -272,9 +294,6 @@ private val pureAmoledResourcesPatch = resourcePatch(
                     "none of the expected Material/Chromium surface resources were found."
             )
         }
-
-        // popup_bg is the specific AppMenu background. If its XML exists but contains no
-        // patchable color, menu_bg_color above remains the authoritative color dependency.
     }
 }
 
@@ -309,5 +328,10 @@ val pureAmoledPatch = bytecodePatch(
         }
 
         dynamicColorsApplyFingerprint.method.addInstructions(0, "return-void")
+
+        // Resolve the structural AppMenu matcher during patching. This deliberately
+        // performs no bytecode mutation yet; if the two-call signature is absent,
+        // patching fails instead of silently targeting an unrelated PopupWindow.
+        appMenuPopupContentFingerprint.method
     }
 }
