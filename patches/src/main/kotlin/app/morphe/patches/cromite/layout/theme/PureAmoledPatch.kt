@@ -23,13 +23,14 @@ private const val THEME_WHITE = "white"
 
 internal val browserThemeOption = stringOption(
     key = "browserTheme",
-    default = THEME_DEVICE,
+    default = THEME_BLACK,
     values = mapOf(
         "Device default" to THEME_DEVICE,
         "Pure Black" to THEME_BLACK,
         "Pure White" to THEME_WHITE,
     ),
     title = "Browser theme",
+    description = "Choose Device default, Pure Black (#000000), or Pure White (#FFFFFF).",
 )
 
 private fun semanticSurfaceFingerprint(name: String) = Fingerprint(
@@ -62,7 +63,7 @@ private val dynamicColorsApplyFingerprint = Fingerprint(
 )
 
 private val pureAmoledResourcesPatch = resourcePatch(
-    description = "Internal resources for system-following pure black / pure white Cromite UI."
+    description = "Internal resources for selectable Device default / Pure Black / Pure White Cromite UI."
 ) {
     compatibleWith("org.cromite.cromite"(CROMITE_VERSION))
 
