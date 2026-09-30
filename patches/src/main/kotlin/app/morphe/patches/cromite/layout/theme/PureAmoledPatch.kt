@@ -23,7 +23,7 @@ private const val THEME_WHITE = "white"
 
 internal val browserThemeOption = stringOption(
     key = "browserTheme",
-    default = THEME_BLACK,
+    default = THEME_DEVICE,
     values = mapOf(
         "Device default" to THEME_DEVICE,
         "Pure Black" to THEME_BLACK,
