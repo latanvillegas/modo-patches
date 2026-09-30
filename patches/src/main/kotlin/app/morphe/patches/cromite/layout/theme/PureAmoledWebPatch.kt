@@ -32,10 +32,8 @@ private val webContentsDarkModeDecisionFingerprint = Fingerprint(
     ),
 )
 
-@Suppress("unused")
-val pureAmoledWebPatch = bytecodePatch(
-    name = "Pure AMOLED web content",
-    description = "Makes Cromite web-content darkening follow the system theme: enabled in dark mode and disabled in light mode.",
+internal val pureAmoledWebPatch = bytecodePatch(
+    description = "Internal web-content theme synchronization for the Cromite browser theme patch.",
 ) {
     compatibleWith("org.cromite.cromite"(CROMITE_WEB_VERSION))
 
@@ -46,10 +44,12 @@ val pureAmoledWebPatch = bytecodePatch(
                 .getInstruction<OneRegisterInstruction>()
                 .registerA
 
-            fingerprint.method.addInstruction(
-                nightModeResult.index + 1,
-                "return v$register",
-            )
+            val injected = when (browserThemeOption.value) {
+                "black" -> "const/4 v$register, 0x1\nreturn v$register"
+                "white" -> "const/4 v$register, 0x0\nreturn v$register"
+                else -> "return v$register"
+            }
+            fingerprint.method.addInstruction(nightModeResult.index + 1, injected)
         }
     }
 }
