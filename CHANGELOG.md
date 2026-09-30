@@ -1,3 +1,9 @@
+## [1.48.0](https://github.com/latanvillegas/modo-patches/compare/v1.47.8...v1.48.0) (2026-09-30)
+
+### ✨ New Features
+
+* **cromite:** structurally fingerprint AppMenu PopupWindow content view ([7b36686](https://github.com/latanvillegas/modo-patches/commit/7b366860ce89f035c583ca03568f9a78b2dd53db))
+
 ## [1.47.8](https://github.com/latanvillegas/modo-patches/compare/v1.47.7...v1.47.8) (2026-09-30)
 
 ### 🐛 Bug Fixes

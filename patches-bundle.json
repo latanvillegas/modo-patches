@@ -1,7 +1,7 @@
 {
-  "created_at": "2026-09-30T01:01:20",
-  "description": "## [1.47.8](https://github.com/latanvillegas/modo-patches/compare/v1.47.7...v1.47.8) (2026-09-30)\n\n### 🐛 Bug Fixes\n\n* **cromite:** force AppMenu popup_bg drawables to AMOLED black ([fbac01d](https://github.com/latanvillegas/modo-patches/commit/fbac01d11cea26df38e10ffe8f83692852a0d6d2))",
-  "download_url": "https://github.com/latanvillegas/modo-patches/releases/download/v1.47.8/patches-1.47.8.mpp",
+  "created_at": "2026-09-30T01:24:53",
+  "description": "## [1.48.0](https://github.com/latanvillegas/modo-patches/compare/v1.47.8...v1.48.0) (2026-09-30)\n\n### ✨ New Features\n\n* **cromite:** structurally fingerprint AppMenu PopupWindow content view ([7b36686](https://github.com/latanvillegas/modo-patches/commit/7b366860ce89f035c583ca03568f9a78b2dd53db))",
+  "download_url": "https://github.com/latanvillegas/modo-patches/releases/download/v1.48.0/patches-1.48.0.mpp",
   "signature_download_url": "",
-  "version": "1.47.8"
+  "version": "1.48.0"
 }
