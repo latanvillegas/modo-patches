@@ -63,25 +63,6 @@ private val appMenuPopupContentFingerprint = Fingerprint(
     ),
 )
 
-// Structural fingerprint for BasicListMenu's runtime background tint. This intentionally
-// does not depend on Chromium/R8 class names: those are obfuscated in Cromite releases.
-private val listMenuRuntimeTintFingerprint = Fingerprint(
-    filters = listOf(
-        methodCall(
-            opcode = Opcode.INVOKE_STATIC,
-            smali = "Landroidx/core/content/ContextCompat;->getColor(Landroid/content/Context;I)I",
-        ),
-        methodCall(
-            opcode = Opcode.INVOKE_STATIC,
-            smali = "Landroid/content/res/ColorStateList;->valueOf(I)Landroid/content/res/ColorStateList;",
-        ),
-        methodCall(
-            opcode = Opcode.INVOKE_STATIC,
-            smali = "Landroidx/core/view/ViewCompat;->setBackgroundTintList(Landroid/view/View;Landroid/content/res/ColorStateList;)V",
-        ),
-    ),
-)
-
 private val pureAmoledResourcesPatch = resourcePatch(
     description = "Internal resource component for Cromite Pure AMOLED."
 ) {
@@ -105,9 +86,15 @@ private val pureAmoledResourcesPatch = resourcePatch(
             "list_menu_background_color.xml", "list_menu_background_tint.xml",
         )
 
+        // Chromium 153's app_menu_layout does NOT paint the visible panel with popup_bg.
+        // Its inner app_menu_content_container uses ?attr/popupBgShape. In 2026 Chromium
+        // this resolves to popup_bg_shape_24dp (or the baseline variant), whose <solid>
+        // is the actual visible menu surface. Patch those drawables directly.
         val appMenuDrawableFiles = setOf(
             "popup_bg.xml", "popup_bg_8dp.xml", "popup_bg_24dp.xml",
-            "list_menu_background.xml",
+            "popup_bg_shape_16dp.xml", "popup_bg_shape_24dp.xml",
+            "popup_bg_shape_24dp_baseline.xml",
+            "list_menu_background.xml", "menu_bg_tinted.xml",
         )
 
         val drawableDirectories = listOf(
@@ -193,7 +180,7 @@ private val pureAmoledResourcesPatch = resourcePatch(
                 runCatching {
                     document("$directory/$fileName").use { document ->
                         val before = valuesPatched
-                        blacken(document.documentElement, true)
+                        blacken(document.documentElement, false)
                         if (valuesPatched > before) verifiedHits += "$directory/$fileName"
                     }
                 }
@@ -253,7 +240,7 @@ private val pureAmoledResourcesPatch = resourcePatch(
 @Suppress("unused")
 val pureAmoledPatch = bytecodePatch(
     name = "Pure AMOLED theme",
-    description = "Forces Cromite 153 dark UI surfaces and AppMenu runtime tint to true black (#000000). Use with dark mode.",
+    description = "Forces Cromite 153 dark UI surfaces and the real AppMenu popupBgShape to true black (#000000). Use with dark mode.",
 ) {
     compatibleWith("org.cromite.cromite"(CROMITE_VERSION))
     dependsOn(pureAmoledResourcesPatch)
@@ -288,17 +275,8 @@ val pureAmoledPatch = bytecodePatch(
             """)
         }
 
-        listMenuRuntimeTintFingerprint.apply {
-            val valueOfIndex = instructionMatches[1].index
-            val valueOfCall = method.getInstruction<FiveRegisterInstruction>(valueOfIndex)
-            val colorRegister = valueOfCall.registerC
-
-            // ContextCompat.getColor() has already produced its value in this register.
-            // Overwrite only that runtime color immediately before ColorStateList.valueOf(),
-            // preserving the menu drawable, rounded corners, elevation and click behavior.
-            method.addInstructions(valueOfIndex, """
-                const v$colorRegister, -0x1000000
-            """)
-        }
+        // Do not require the old BasicListMenu runtime-tint fingerprint here. Cromite 153's
+        // optimized DEX does not retain that upstream call chain, and making it mandatory caused
+        // PatchException. The visible AppMenu surface is patched at its actual popupBgShape XML.
     }
 }
