@@ -67,12 +67,18 @@ private val pureAmoledResourcesPatch = resourcePatch(
             "menu_item_bg_color.xml", "menu_item_bg_color_baseline.xml", "menu_item_bg_color_dark_baseline.xml",
             "menu_bg_color.xml", "menu_bg_color_baseline.xml", "menu_bg_color_dark_baseline.xml",
             "list_menu_background_color.xml", "list_menu_background_tint.xml",
+            // Desktop-Android/Cromite toolbar and tab-strip surfaces. Missing files are intentionally ignored.
+            "toolbar_background_primary.xml", "toolbar_background_primary_incognito.xml",
+            "toolbar_background_color.xml", "top_toolbar_background_color.xml",
+            "tab_strip_background_color.xml", "tab_strip_bg_color.xml", "tab_strip_background.xml",
+            "primary_background_color.xml", "default_bg_color.xml",
         )
 
         val surfaceDrawableFiles = setOf(
             "popup_bg.xml", "popup_bg_8dp.xml", "popup_bg_24dp.xml",
             "popup_bg_shape_16dp.xml", "popup_bg_shape_24dp.xml", "popup_bg_shape_24dp_baseline.xml",
             "list_menu_background.xml", "menu_bg_tinted.xml",
+            "toolbar_background.xml", "tab_strip_background.xml",
         )
 
         val drawableDirectories = listOf(
@@ -92,24 +98,30 @@ private val pureAmoledResourcesPatch = resourcePatch(
         fun isNight(directory: String) = directory.substringAfter("res/").contains("night")
         fun pureSurface(directory: String) = if (isNight(directory)) PURE_BLACK else PURE_WHITE
 
-        val gm3DarkSurfaces = setOf(
+        val surfaceColorNames = setOf(
+            "default_bg_color", "default_bg_color_dark",
+            "settings_background_color", "settings_background_color_dark",
+            "primary_background_color", "primary_background_color_dark",
+            "toolbar_background_primary", "toolbar_background_primary_incognito", "toolbar_background_color",
+            "top_toolbar_background_color", "tab_strip_background_color", "tab_strip_bg_color",
+            "color_surface", "color_surface_dark", "color_surface_bright", "color_surface_bright_dark",
+            "color_surface_dim", "color_surface_dim_dark", "color_surface_container_lowest",
+            "color_surface_container_lowest_dark", "color_surface_container_low", "color_surface_container_low_dark",
+            "color_surface_container", "color_surface_container_dark", "color_surface_container_high",
+            "color_surface_container_high_dark", "color_surface_container_highest", "color_surface_container_highest_dark",
             "gm3_baseline_surface_dark", "gm3_baseline_surface_bright_dark", "gm3_baseline_surface_dim_dark",
             "gm3_baseline_surface_container_lowest_dark", "gm3_baseline_surface_container_low_dark",
             "gm3_baseline_surface_container_dark", "gm3_baseline_surface_container_high_dark",
             "gm3_baseline_surface_container_highest_dark",
-        )
-        val directSurfaceColorNames = setOf(
-            "default_bg_color_dark", "settings_background_color_dark", "primary_background_color_dark",
-            "color_surface_dark", "color_surface_bright_dark", "color_surface_dim_dark",
-            "color_surface_container_lowest_dark", "color_surface_container_low_dark",
-            "color_surface_container_dark", "color_surface_container_high_dark", "color_surface_container_highest_dark",
             "menu_bg_color", "menu_bg_color_baseline", "menu_bg_color_dark_baseline",
             "menu_item_bg_color", "menu_item_bg_color_baseline", "menu_item_bg_color_dark_baseline",
             "list_menu_background_color", "list_menu_background_tint",
             "mtrl_popupmenu_overlay_color", "mtrl_filled_background_color",
         )
+
         val surfaceThemeAttrs = setOf(
-            "android:colorBackground", "colorBackground", "colorSurface", "colorSurfaceBright", "colorSurfaceDim",
+            "android:colorBackground", "android:windowBackground", "android:navigationBarColor", "android:statusBarColor",
+            "colorBackground", "colorSurface", "colorSurfaceBright", "colorSurfaceDim", "colorSurfaceVariant",
             "colorSurfaceContainerLowest", "colorSurfaceContainerLow", "colorSurfaceContainer",
             "colorSurfaceContainerHigh", "colorSurfaceContainerHighest",
         )
@@ -170,16 +182,17 @@ private val pureAmoledResourcesPatch = resourcePatch(
         }
 
         valueDirectories.forEach { directory ->
+            val target = pureSurface(directory)
             runCatching {
                 document("$directory/colors.xml").use { document ->
                     val colors = document.getElementsByTagName("color")
                     var localHits = 0
                     for (index in 0 until colors.length) {
                         val color = colors.item(index) as? Element ?: continue
-                        val name = color.getAttribute("name")
-                        if (name in gm3DarkSurfaces || name in directSurfaceColorNames) {
-                            val semanticDark = name in gm3DarkSurfaces || name.endsWith("_dark") || name.contains("_dark_")
-                            color.textContent = if (semanticDark) PURE_BLACK else pureSurface(directory)
+                        if (color.getAttribute("name") in surfaceColorNames) {
+                            // The qualifier, not a *_dark suffix in the resource name, decides the final color.
+                            // This is required because Cromite can reference *_dark aliases from the light resource set.
+                            color.textContent = target
                             localHits++
                             valuesPatched++
                         }
@@ -196,7 +209,7 @@ private val pureAmoledResourcesPatch = resourcePatch(
                         for (index in 0 until items.length) {
                             val item = items.item(index) as? Element ?: continue
                             if (item.getAttribute("name") in surfaceThemeAttrs) {
-                                item.textContent = pureSurface(directory)
+                                item.textContent = target
                                 localHits++
                                 valuesPatched++
                             }
@@ -234,7 +247,7 @@ private const val SYSTEM_SURFACE_SMALI = """
 @Suppress("unused")
 val pureAmoledPatch = bytecodePatch(
     name = "Pure AMOLED / Pure White system theme",
-    description = "Follows Android system theme: true black (#000000) in dark mode and true white (#FFFFFF) in light mode for Cromite 153 UI surfaces.",
+    description = "Follows Android system theme: true black (#000000) in dark mode and true white (#FFFFFF) in light mode for Cromite 153 native UI surfaces.",
 ) {
     compatibleWith("org.cromite.cromite"(CROMITE_VERSION))
     dependsOn(pureAmoledResourcesPatch)
