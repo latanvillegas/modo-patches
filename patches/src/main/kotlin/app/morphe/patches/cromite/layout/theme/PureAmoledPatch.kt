@@ -277,11 +277,11 @@ private fun surfaceSmali(theme: String): String = when (theme) {
 @Suppress("unused")
 val pureAmoledPatch = bytecodePatch(
     name = "Pure AMOLED / Pure White system theme",
-    description = "Adds Device default, Pure Black (#000000), and Pure White (#FFFFFF) themes for Cromite 153 native UI and web-content darkening.",
+    description = "Adds Device default, Pure Black (#000000), and Pure White (#FFFFFF) themes for Cromite 153 browser UI without forcing external web-content colors.",
 ) {
     compatibleWith("org.cromite.cromite"(CROMITE_VERSION))
     val browserTheme by browserThemeOption()
-    dependsOn(pureAmoledResourcesPatch, pureAmoledWebPatch)
+    dependsOn(pureAmoledResourcesPatch)
 
     execute {
         val systemSurfaceTargets = listOf(
