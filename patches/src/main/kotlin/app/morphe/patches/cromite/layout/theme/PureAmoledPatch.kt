@@ -2,10 +2,12 @@ package app.morphe.patches.cromite.layout.theme
 
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.methodCall
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.resourcePatch
 import com.android.tools.smali.dexlib2.Opcode
+import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
 import org.w3c.dom.Element
 import org.w3c.dom.Node
 
@@ -48,14 +50,8 @@ private val dynamicColorsApplyFingerprint = Fingerprint(
 )
 
 /**
- * Locates the Chromium AppMenu popup structurally instead of relying on its R8 name.
- *
- * AppMenu configures the same PopupWindow with a background drawable and then installs
- * the inflated root View as its content. Requiring both framework calls makes this far
- * more specific than matching every PopupWindow.setContentView() call in Cromite.
- *
- * instructionMatches[1] is the setContentView(View) invoke. Its second invoke register
- * is the exact root content View that will be forced to AMOLED black in the next step.
+ * Locates Chromium's AppMenu popup without depending on its R8 class name.
+ * The same method configures a PopupWindow background and installs its root content View.
  */
 private val appMenuPopupContentFingerprint = Fingerprint(
     returnType = "V",
@@ -183,7 +179,6 @@ private val pureAmoledResourcesPatch = resourcePatch(
         )
 
         var valuesPatched = 0
-        var popupDrawableHits = 0
         val verifiedHits = mutableListOf<String>()
 
         fun blacken(element: Element, forceLeaf: Boolean) {
@@ -233,10 +228,7 @@ private val pureAmoledResourcesPatch = resourcePatch(
                     document("$directory/$fileName").use { document ->
                         val before = valuesPatched
                         blacken(document.documentElement, false)
-                        if (valuesPatched > before) {
-                            popupDrawableHits++
-                            verifiedHits += "$directory/$fileName"
-                        }
+                        if (valuesPatched > before) verifiedHits += "$directory/$fileName"
                     }
                 }
             }
@@ -329,9 +321,25 @@ val pureAmoledPatch = bytecodePatch(
 
         dynamicColorsApplyFingerprint.method.addInstructions(0, "return-void")
 
-        // Resolve the structural AppMenu matcher during patching. This deliberately
-        // performs no bytecode mutation yet; if the two-call signature is absent,
-        // patching fails instead of silently targeting an unrelated PopupWindow.
-        appMenuPopupContentFingerprint.method
+        // Runtime AppMenu fix. The first matched call has already consumed its Drawable,
+        // so that argument register is reused as a temporary color register. This avoids
+        // increasing registerCount (which would shift parameter registers). The second
+        // matched call supplies the exact root View passed to PopupWindow.setContentView().
+        appMenuPopupContentFingerprint.apply {
+            val backgroundIndex = instructionMatches[0].index
+            val contentIndex = instructionMatches[1].index
+            val backgroundCall = method.getInstruction<FiveRegisterInstruction>(backgroundIndex)
+            val contentCall = method.getInstruction<FiveRegisterInstruction>(contentIndex)
+            val scratchRegister = backgroundCall.registerD
+            val contentViewRegister = contentCall.registerD
+
+            method.addInstructions(
+                contentIndex,
+                """
+                    const v$scratchRegister, -0x1000000
+                    invoke-virtual { v$contentViewRegister, v$scratchRegister }, Landroid/view/View;->setBackgroundColor(I)V
+                """
+            )
+        }
     }
 }
