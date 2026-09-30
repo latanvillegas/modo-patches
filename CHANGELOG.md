@@ -1,3 +1,9 @@
+## [1.50.0](https://github.com/latanvillegas/modo-patches/compare/v1.49.0...v1.50.0) (2026-09-30)
+
+### ✨ New Features
+
+* **cromite:** make web dark mode follow system theme ([43a9016](https://github.com/latanvillegas/modo-patches/commit/43a9016f74124fd86b59e4b42da99ca86cdd24c0))
+
 ## [1.49.0](https://github.com/latanvillegas/modo-patches/compare/v1.48.0...v1.49.0) (2026-09-30)
 
 ### 🐛 Bug Fixes

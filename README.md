@@ -35,7 +35,7 @@ All modifications made by Morphe, along with their dates, can be found in the Gi
 ## 🩹 Patches list
 
 <!-- PATCHES_START -->
-> **[v1.49.0](https://github.com/latanvillegas/modo-patches/releases/tag/v1.49.0)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;152 patches total
+> **[v1.50.0](https://github.com/latanvillegas/modo-patches/releases/tag/v1.50.0)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;153 patches total
 <details>
 <summary>📦 YouTube&nbsp;&nbsp;•&nbsp;&nbsp;84 patches</summary>
 <br>
@@ -225,7 +225,7 @@ All modifications made by Morphe, along with their dates, can be found in the Gi
 </details>
 
 <details>
-<summary>📦 org.cromite.cromite&nbsp;&nbsp;•&nbsp;&nbsp;2 patches</summary>
+<summary>📦 org.cromite.cromite&nbsp;&nbsp;•&nbsp;&nbsp;3 patches</summary>
 <br>
 
 **🎯 Supported versions:**
@@ -237,6 +237,7 @@ All modifications made by Morphe, along with their dates, can be found in the Gi
 |----------|----------------|-----------|
 | [Hide Android status bar](#hide-android-status-bar) | Hides the Android status bar in Cromite (clock, battery, signal and notification icons). |  |
 | [Pure AMOLED / Pure White system theme](#pure-amoled-pure-white-system-theme) | Follows Android system theme: true black (#000000) in dark mode and true white (#FFFFFF) in light mode for Cromite 153 native UI surfaces. |  |
+| [Pure AMOLED web content](#pure-amoled-web-content) | Makes Cromite web-content darkening follow the system theme: enabled in dark mode and disabled in light mode. |  |
 
 </details>
 
