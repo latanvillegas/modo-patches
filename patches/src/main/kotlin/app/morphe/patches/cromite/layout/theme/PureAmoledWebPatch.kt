@@ -1,55 +1,32 @@
 package app.morphe.patches.cromite.layout.theme
 
-import app.morphe.patcher.Fingerprint
-import app.morphe.patcher.extensions.InstructionExtensions.addInstruction
-import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
-import app.morphe.patcher.opcode
 import app.morphe.patcher.patch.bytecodePatch
-import app.morphe.patcher.string
-import com.android.tools.smali.dexlib2.Opcode
-import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 
 private const val CROMITE_WEB_VERSION = "153.0.8010.37"
-private const val DARKEN_WEBSITES_PREF = "darken_websites_enabled"
 
 /**
- * Chromium's web-content dark-mode decision is the conjunction of the global
- * night-mode state and the darken-websites preference.  Anchor on the stable
- * preference key, but capture the first boolean result produced before that
- * key is read: this is the global night-mode provider result.
+ * Web-content AMOLED support for Cromite 153.
  *
- * Returning that value immediately makes algorithmic web darkening follow
- * Android/Cromite night mode directly, without depending on the checkbox.
+ * Chromium 153 drives preferred_color_scheme from the Android night-mode
+ * delegate and force_dark_mode_enabled from IsForceDarkWebContentEnabled().
+ * The previous implementation attempted to fingerprint the historical
+ * "darken_websites_enabled" Java preference path. That path is not present in
+ * Cromite 153's DEX and caused patch application to fail.
+ *
+ * Keep this patch application-safe until the exact obfuscated Cromite 153
+ * method backing IsForceDarkWebContentEnabled() is fingerprinted from the
+ * target APK/mapping. Do not ship a speculative DEX fingerprint.
  */
-private val webContentsDarkModeDecisionFingerprint = Fingerprint(
-    returnType = "Z",
-    parameters = listOf(),
-    strings = listOf(DARKEN_WEBSITES_PREF),
-    filters = listOf(
-        opcode(Opcode.INVOKE_INTERFACE),
-        opcode(Opcode.MOVE_RESULT),
-        string(DARKEN_WEBSITES_PREF),
-    ),
-)
-
 @Suppress("unused")
 val pureAmoledWebPatch = bytecodePatch(
     name = "Pure AMOLED web content",
-    description = "Makes Cromite web-content darkening follow the system theme: enabled in dark mode and disabled in light mode.",
+    description = "Cromite 153 web AMOLED hook. Safe placeholder pending an exact fingerprint of the current force-dark delegate.",
 ) {
     compatibleWith("org.cromite.cromite"(CROMITE_WEB_VERSION))
 
     execute {
-        webContentsDarkModeDecisionFingerprint.let { fingerprint ->
-            val nightModeResult = fingerprint.instructionMatches[1]
-            val register = nightModeResult
-                .getInstruction<OneRegisterInstruction>()
-                .registerA
-
-            fingerprint.method.addInstruction(
-                nightModeResult.index + 1,
-                "return v$register",
-            )
-        }
+        // Intentionally no bytecode mutation yet.
+        // This removes the known-bad historical fingerprint so patching the
+        // target APK no longer aborts with Failed to match the fingerprint.
     }
 }
