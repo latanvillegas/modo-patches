@@ -47,6 +47,7 @@
       {
         "prepareCmd": "./gradlew generatePatchesList \
           && jq '.version=\"${nextRelease.version}\"' patches-list.json > patches-list.json.tmp && mv patches-list.json.tmp patches-list.json \
+          && python3 .github/scripts/generate_patch_manifest.py patches-list.json patch-manifest-metadata-v1.json patch-manifest-v1.json \
           && python3 .github/scripts/generate_patches_readme.py $GITHUB_REPOSITORY $GITHUB_REF_NAME patches-list.json README.md"
       }
     ],
@@ -58,6 +59,7 @@
           "gradle.properties",
           "patches-bundle.json",
           "patches-list.json",
+          "patch-manifest-v1.json",
           "README.md"
         ],
         "message": "chore: Release v${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
