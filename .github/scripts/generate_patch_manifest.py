@@ -42,7 +42,7 @@ def main():
             "applications":meta.get("applications",[]),
             "packageNames":sorted(set(packages)),
             "versionRules":{"exact":sorted(set(exact))},
-            "versionCodes":sorted(version_codes),
+            "versionCodes":sorted(version_codes or {int(v) for v in meta.get("versionCodes",[])}),
             "abis":meta.get("abis",[]),
             "inputTypes":sorted(input_types or set(meta.get("inputTypes",["APK","UNIVERSAL_APK","SPLIT"]))),
             "dependencies":meta.get("dependencies",[]),
