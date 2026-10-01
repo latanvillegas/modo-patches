@@ -38,13 +38,14 @@ A specific patch is eligible only when all declared package, version/versionCode
 rules match. Unknown manifest versions, malformed restrictions, declared conflicts, or an unmet
 minimum patcher version are incompatible. A missing optional restriction does not invent one.
 
-Application profiles in Modo-Manager are additional preflight restrictions. They do not contain
-Android code, Smali, fingerprints or executable dependency logic.
+`application-profiles-v1.json` contains optional application-specific preflight restrictions owned by
+`modo-patches`. Modo-Manager consumes profiles as generic data and MUST NOT compile application names,
+package IDs, versions, hashes, Android code, Smali or fingerprints into its own source.
 
 ## Ownership
 
-- `modo-patches`: executable patches, patcher-native compatibility, PatchManifest metadata.
-- `Modo-Manager`: APK inspection, profile restrictions, UI/preflight, transaction/report/export.
+- `modo-patches`: executable patches, patcher-native compatibility, PatchManifest metadata and declarative application profiles.
+- `Modo-Manager`: generic APK inspection, profile consumption, UI/preflight, transaction/report/export.
 - `morphe-patcher`: dependency resolution, ordering and patch execution.
 
 The source layout `all`, `cromite`, `youtube`, `reddit`, `music`, `shared` remains unchanged.
