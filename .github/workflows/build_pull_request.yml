@@ -38,7 +38,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          ./gradlew :patches:generatePatchManifest --no-daemon
+          # Patch discovery must not see stale compiled classes from Gradle cache
+          # after a patch source is deleted or renamed.
+          ./gradlew :patches:clean :patches:generatePatchManifest --no-daemon
           git diff --exit-code -- patch-manifest-v1.json
 
       - name: Upload artifacts
