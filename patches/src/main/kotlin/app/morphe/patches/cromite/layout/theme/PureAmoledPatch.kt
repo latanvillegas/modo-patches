@@ -157,6 +157,29 @@ private val pureAmoledResourcesPatch = resourcePatch(
                 normalized.startsWith("material_dynamic_neutral") && "surface" in normalized
         }
 
+        // R8 in Cromite 153 inlines SemanticColorUtils.getSettingsBackgroundColor()
+        // and several other surface getters into their consumers. Consequently a
+        // bytecode hook on SemanticColorUtils alone cannot cover Settings. Match
+        // decoded resources by semantic surface/background naming as well, while
+        // deliberately excluding foreground, media and state/accent resources.
+        fun isUiSurfaceResourceName(name: String): Boolean {
+            val normalized = name.lowercase()
+            if (normalized.isBlank()) return false
+            if ("on_surface" in normalized || "onsurface" in normalized) return false
+            if ("foreground" in normalized || "text" in normalized || "icon" in normalized) return false
+            if ("ripple" in normalized || "divider" in normalized || "stroke" in normalized) return false
+            if ("accent" in normalized || "primary" in normalized && "background" !in normalized) return false
+            return "surface" in normalized ||
+                "background" in normalized ||
+                normalized.endsWith("_bg") ||
+                "_bg_" in normalized ||
+                normalized.endsWith("_bg_color") ||
+                normalized.startsWith("menu_bg") ||
+                normalized.startsWith("dialog_bg") ||
+                normalized.startsWith("sheet_bg") ||
+                normalized.startsWith("popup_bg")
+        }
+
         val surfaceMacroNames = setOf(
             "default_bg_color", "default_bg_color_elev_0",
             "toolbar_background_primary", "settings_bg_color", "settings_container_background_color",
@@ -293,7 +316,8 @@ private val pureAmoledResourcesPatch = resourcePatch(
                                 val isNamedSurface =
                                     name in surfaceColorNames ||
                                     name in surfaceMacroNames ||
-                                    isMaterialSurfaceColorName(name)
+                                    isMaterialSurfaceColorName(name) ||
+                                    isUiSurfaceResourceName(name)
 
                                 when {
                                     isNamedSurface &&
