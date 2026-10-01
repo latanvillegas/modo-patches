@@ -146,6 +146,17 @@ private val pureAmoledResourcesPatch = resourcePatch(
             "fake_search_box_base_color", "hub_search_box_bg_color",
         )
 
+        fun isMaterialSurfaceColorName(name: String): Boolean {
+            val normalized = name.lowercase()
+            if ("on_surface" in normalized || "onsurface" in normalized) return false
+            return normalized.startsWith("gm3_baseline_surface") ||
+                normalized.startsWith("m3_sys_color_light_surface") ||
+                normalized.startsWith("m3_sys_color_dark_surface") ||
+                normalized.startsWith("m3_sys_color_dynamic_light_surface") ||
+                normalized.startsWith("m3_sys_color_dynamic_dark_surface") ||
+                normalized.startsWith("material_dynamic_neutral") && "surface" in normalized
+        }
+
         val surfaceMacroNames = setOf(
             "default_bg_color", "default_bg_color_elev_0",
             "toolbar_background_primary", "settings_bg_color", "settings_container_background_color",
@@ -267,7 +278,8 @@ private val pureAmoledResourcesPatch = resourcePatch(
                     var localHits = 0
                     for (index in 0 until colors.length) {
                         val color = colors.item(index) as? Element ?: continue
-                        if (color.getAttribute("name") in surfaceColorNames) {
+                        val colorName = color.getAttribute("name")
+                        if (colorName in surfaceColorNames || isMaterialSurfaceColorName(colorName)) {
                             // The qualifier, not a *_dark suffix in the resource name, decides the final color.
                             // This is required because Cromite can reference *_dark aliases from the light resource set.
                             color.textContent = target
