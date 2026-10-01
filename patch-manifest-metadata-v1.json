@@ -4,44 +4,63 @@
     {
       "id": "cromite.hide-android-status-bar",
       "name": "Hide Android status bar",
-      "applications": ["cromite"],
-      "abis": ["arm64-v8a"],
-      "versionCodes": [801003702],
-      "inputTypes": ["APK", "UNIVERSAL_APK"],
-      "mutations": ["BYTECODE"],
+      "applications": [
+        "cromite"
+      ],
+      "abis": [
+        "arm64-v8a"
+      ],
+      "versionCodes": [
+        801003702
+      ],
+      "inputTypes": [
+        "APK",
+        "UNIVERSAL_APK"
+      ],
+      "mutations": [
+        "BYTECODE"
+      ],
       "signatureImpact": "RESIGN_REQUIRED",
       "risk": "HIGH",
       "reversible": true,
-      "tests": ["cromite-153-status-bar-bytecode", "cromite-153-status-bar-device"],
-      "documentation": ["docs/cromite-153-binary-mapping-analysis.md"]
+      "tests": [
+        "cromite-153-status-bar-bytecode",
+        "cromite-153-status-bar-device"
+      ],
+      "documentation": [
+        "docs/cromite-153-binary-mapping-analysis.md"
+      ]
     },
     {
       "id": "cromite.pure-amoled-system-theme",
       "name": "Pure AMOLED / Pure White system theme",
-      "applications": ["cromite"],
-      "abis": ["arm64-v8a"],
-      "versionCodes": [801003702],
-      "inputTypes": ["APK", "UNIVERSAL_APK"],
-      "mutations": ["RESOURCE", "BYTECODE"],
+      "applications": [
+        "cromite"
+      ],
+      "abis": [
+        "arm64-v8a"
+      ],
+      "versionCodes": [
+        801003702
+      ],
+      "inputTypes": [
+        "APK",
+        "UNIVERSAL_APK"
+      ],
+      "mutations": [
+        "RESOURCE",
+        "BYTECODE"
+      ],
       "signatureImpact": "RESIGN_REQUIRED",
       "risk": "HIGH",
       "reversible": true,
-      "tests": ["cromite-153-theme-bytecode", "cromite-153-theme-visual"],
-      "documentation": ["docs/cromite-153-binary-mapping-analysis.md"]
-    },
-    {
-      "id": "cromite.pure-amoled-web-content",
-      "name": "Pure AMOLED web content",
-      "applications": ["cromite"],
-      "abis": ["arm64-v8a"],
-      "versionCodes": [801003702],
-      "inputTypes": ["APK", "UNIVERSAL_APK"],
-      "mutations": ["BYTECODE"],
-      "signatureImpact": "RESIGN_REQUIRED",
-      "risk": "HIGH",
-      "reversible": true,
-      "tests": ["cromite-153-web-content-bytecode", "cromite-153-web-content-media"],
-      "documentation": ["docs/cromite-153-binary-mapping-analysis.md"]
+      "tests": [
+        "cromite-153-theme-bytecode",
+        "cromite-153-theme-visual"
+      ],
+      "documentation": [
+        "docs/cromite-153-binary-mapping-analysis.md"
+      ]
     }
   ]
 }
