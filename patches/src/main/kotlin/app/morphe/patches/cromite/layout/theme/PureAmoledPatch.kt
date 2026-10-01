@@ -113,7 +113,7 @@ private val pureAmoledResourcesPatch = resourcePatch(
             .filter { it.name.startsWith("values") }
             .map { it.absolutePath }
 
-        fun isNight(directory: String) = directory.substringAfterLast('/').contains("night")
+        fun isNight(directory: String) = java.io.File(directory).name.contains("night")
         fun pureSurface(directory: String) = when (browserThemeOption.value) {
             THEME_BLACK -> PURE_BLACK
             THEME_WHITE -> PURE_WHITE
@@ -139,6 +139,11 @@ private val pureAmoledResourcesPatch = resourcePatch(
             "menu_item_bg_color", "menu_item_bg_color_baseline", "menu_item_bg_color_dark_baseline",
             "list_menu_background_color", "list_menu_background_tint",
             "mtrl_popupmenu_overlay_color", "mtrl_filled_background_color",
+            "settings_container_background_color", "settings_bg_color",
+            "default_card_bg_color", "card_background_color",
+            "home_surface_ui_background_color", "home_surface_background_color",
+            "omnibox_suggestion_bg_color", "omnibox_popover_suggestion_bg_color",
+            "fake_search_box_base_color", "hub_search_box_bg_color",
         )
 
         val surfaceThemeAttrs = setOf(
