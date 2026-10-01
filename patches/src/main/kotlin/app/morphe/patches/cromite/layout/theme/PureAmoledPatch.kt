@@ -97,21 +97,23 @@ private val pureAmoledResourcesPatch = resourcePatch(
             "toolbar_background.xml", "tab_strip_background.xml",
         )
 
-        val drawableDirectories = listOf(
-            "res/drawable", "res/drawable-night", "res/drawable-v21", "res/drawable-night-v21",
-            "res/drawable-v23", "res/drawable-night-v23", "res/drawable-v31", "res/drawable-night-v31",
-            "res/drawable-v35", "res/drawable-night-v35",
-        )
-        val colorDirectories = listOf(
-            "res/color", "res/color-night", "res/color-night-v8", "res/color-v31",
-            "res/color-night-v31", "res/color-v35", "res/color-night-v35",
-        )
-        val valueDirectories = listOf(
-            "res/values", "res/values-night", "res/values-v31", "res/values-night-v31",
-            "res/values-v35", "res/values-night-v35",
-        )
+        // Chromium resources are compiled into qualifier sets that can change between
+        // releases (values-v34, values-sw600dp, color-night-vXX, etc.). Discover the
+        // actual decoded directories instead of assuming a short fixed list.
+        val resourceDirectories = get("res").listFiles()
+            ?.filter { it.isDirectory }
+            .orEmpty()
+        val drawableDirectories = resourceDirectories
+            .filter { it.name.startsWith("drawable") }
+            .map { it.absolutePath }
+        val colorDirectories = resourceDirectories
+            .filter { it.name.startsWith("color") }
+            .map { it.absolutePath }
+        val valueDirectories = resourceDirectories
+            .filter { it.name.startsWith("values") }
+            .map { it.absolutePath }
 
-        fun isNight(directory: String) = directory.substringAfter("res/").contains("night")
+        fun isNight(directory: String) = directory.substringAfterLast('/').contains("night")
         fun pureSurface(directory: String) = when (browserThemeOption.value) {
             THEME_BLACK -> PURE_BLACK
             THEME_WHITE -> PURE_WHITE
