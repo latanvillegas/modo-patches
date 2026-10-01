@@ -246,6 +246,39 @@ private val pureAmoledResourcesPatch = resourcePatch(
             "colorOnBackground", "colorOnSurface", "colorOnSurfaceVariant",
         )
 
+        // Material 3 inherits most surface roles from parent themes. Merely replacing
+        // <item> nodes that already exist leaves those inherited gray roles untouched.
+        // Inject every required role into Chromium's actual activity/settings themes so
+        // MaterialColors resolves the selected pure palette before views are inflated.
+        val chromiumThemePrefixes = listOf(
+            "Theme.Chromium", "Base.Theme.Chromium",
+            "ThemeOverlay.Chromium", "Base.ThemeOverlay.Chromium",
+        )
+
+        fun isChromiumUiTheme(name: String): Boolean =
+            chromiumThemePrefixes.any { name.startsWith(it) }
+
+        fun setOrAppendThemeItem(
+            document: org.w3c.dom.Document,
+            style: Element,
+            name: String,
+            value: String,
+        ): Boolean {
+            val children = style.childNodes
+            for (index in 0 until children.length) {
+                val child = children.item(index) as? Element ?: continue
+                if (child.tagName == "item" && child.getAttribute("name") == name) {
+                    child.textContent = value
+                    return true
+                }
+            }
+            val item = document.createElement("item")
+            item.setAttribute("name", name)
+            item.textContent = value
+            style.appendChild(item)
+            return true
+        }
+
         val foregroundColorNames = setOf(
             "default_text_color", "default_icon_color",
             "color_on_background", "color_on_surface", "color_on_surface_variant",
@@ -415,6 +448,31 @@ private val pureAmoledResourcesPatch = resourcePatch(
                                     }
                                 }
                             }
+
+                            // Force the complete palette at the Chromium theme boundary.
+                            // This covers inherited Material 3 roles used by Settings,
+                            // toolbar/omnibox, NTP and dialogs even when R8 inlined the
+                            // SemanticColorUtils callers.
+                            val styles = document.getElementsByTagName("style")
+                            for (styleIndex in 0 until styles.length) {
+                                val style = styles.item(styleIndex) as? Element ?: continue
+                                val styleName = style.getAttribute("name")
+                                if (!isChromiumUiTheme(styleName)) continue
+
+                                surfaceThemeAttrs.forEach { attr ->
+                                    if (setOrAppendThemeItem(document, style, attr, target)) {
+                                        localHits++
+                                        valuesPatched++
+                                    }
+                                }
+                                foregroundThemeAttrs.forEach { attr ->
+                                    if (setOrAppendThemeItem(document, style, attr, foreground)) {
+                                        localHits++
+                                        valuesPatched++
+                                    }
+                                }
+                            }
+
                             if (localHits > 0) verifiedHits += "${file.absolutePath}:$localHits"
                         }
                     }
