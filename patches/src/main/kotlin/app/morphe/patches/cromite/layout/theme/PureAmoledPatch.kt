@@ -177,7 +177,54 @@ private val pureAmoledResourcesPatch = resourcePatch(
                 normalized.startsWith("menu_bg") ||
                 normalized.startsWith("dialog_bg") ||
                 normalized.startsWith("sheet_bg") ||
-                normalized.startsWith("popup_bg")
+                normalized.startsWith("popup_bg") ||
+                normalized.contains("container") && (
+                    normalized.contains("card") ||
+                    normalized.contains("settings") ||
+                    normalized.contains("menu") ||
+                    normalized.contains("toolbar") ||
+                    normalized.contains("omnibox") ||
+                    normalized.contains("tab") ||
+                    normalized.contains("ntp") ||
+                    normalized.contains("home")
+                )
+        }
+
+        fun isGrayUiColorLiteral(value: String): Boolean {
+            if (browserThemeOption.value != THEME_BLACK) return false
+            val hex = value.trim().removePrefix("#")
+            val rgb = when (hex.length) {
+                6 -> hex
+                8 -> hex.substring(2)
+                else -> return false
+            }
+            val red = rgb.substring(0, 2).toIntOrNull(16) ?: return false
+            val green = rgb.substring(2, 4).toIntOrNull(16) ?: return false
+            val blue = rgb.substring(4, 6).toIntOrNull(16) ?: return false
+            // Only neutral dark grays used as UI surfaces. Excludes colored
+            // accents/media and excludes light foreground text.
+            return red == green && green == blue && red in 1..96
+        }
+
+        fun isSafeUiBackgroundName(name: String): Boolean {
+            val normalized = name.lowercase()
+            if (normalized.isBlank()) return false
+            if ("text" in normalized || "icon" in normalized || "foreground" in normalized) return false
+            if ("ripple" in normalized || "divider" in normalized || "stroke" in normalized) return false
+            if ("accent" in normalized || "scrim" in normalized || "overlay" in normalized) return false
+            return "background" in normalized ||
+                "surface" in normalized ||
+                "_bg" in normalized ||
+                "container" in normalized ||
+                "toolbar" in normalized ||
+                "omnibox" in normalized ||
+                "menu" in normalized ||
+                "dialog" in normalized ||
+                "sheet" in normalized ||
+                "card" in normalized ||
+                "tab_strip" in normalized ||
+                "ntp" in normalized ||
+                "home_surface" in normalized
         }
 
         val surfaceMacroNames = setOf(
@@ -335,9 +382,12 @@ private val pureAmoledResourcesPatch = resourcePatch(
                                 val isNamedForeground =
                                     name in foregroundColorNames ||
                                     isMaterialForegroundColorName(name)
+                                val isDarkGrayUiBackground =
+                                    isSafeUiBackgroundName(name) &&
+                                    isGrayUiColorLiteral(element.textContent)
 
                                 when {
-                                    isNamedSurface &&
+                                    (isNamedSurface || isDarkGrayUiBackground) &&
                                         (element.tagName == "color" ||
                                          element.tagName == "macro" ||
                                          (element.tagName == "item" && type == "color")) -> {
