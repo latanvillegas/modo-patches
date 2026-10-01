@@ -259,6 +259,7 @@ val hideStatusBarPatch = bytecodePatch(
                 invoke-virtual {v1, v0}, Landroid/view/View;->setSystemUiVisibility(I)V
             """,
             ExternalLabel("morphe_status_bar_done", method.getInstruction(0)),
+        )
 
         // Chromium calls showSystemBars() when leaving fullscreen and while
         // reconciling system-bar state. Without guarding this method it can
@@ -327,7 +328,6 @@ val hideStatusBarPatch = bytecodePatch(
                 goto :morphe_show_original
             """,
             ExternalLabel("morphe_show_original", showMethod.getInstruction(0)),
-        )
         )
     }
 }
