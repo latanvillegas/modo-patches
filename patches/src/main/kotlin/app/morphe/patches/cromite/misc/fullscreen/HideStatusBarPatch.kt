@@ -38,9 +38,27 @@ private val hideStatusBarPreferenceResourcesPatch = resourcePatch(
     compatibleWith("org.cromite.cromite"(CROMITE_VERSION))
 
     execute {
-        document("res/xml/accessibility_preferences.xml").use { document ->
+        val accessibilityPreferences = get("res").walk()
+            .filter { it.isFile && it.extension == "xml" }
+            .firstOrNull { file ->
+                runCatching {
+                    document(file.absolutePath).use { document ->
+                        val root = document.documentElement ?: return@use false
+                        (0 until root.childNodes.length)
+                            .mapNotNull { root.childNodes.item(it) as? Element }
+                            .any { it.getAttribute("android:key") == "force_tablet_ui" }
+                    }
+                }.getOrDefault(false)
+            }
+            ?: throw IllegalStateException(
+                "Cromite $CROMITE_VERSION Accessibility XML containing force_tablet_ui was not found"
+            )
+
+        document(accessibilityPreferences.absolutePath).use { document ->
             val root = document.documentElement
-                ?: throw IllegalStateException("accessibility_preferences.xml has no root element")
+                ?: throw IllegalStateException(
+                    "${accessibilityPreferences.absolutePath} has no root element"
+                )
 
             val existing = (0 until root.childNodes.length)
                 .mapNotNull { root.childNodes.item(it) as? Element }
