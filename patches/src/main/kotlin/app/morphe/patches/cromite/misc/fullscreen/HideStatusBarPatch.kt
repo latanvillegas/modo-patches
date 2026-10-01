@@ -201,6 +201,17 @@ val hideStatusBarPatch = bytecodePatch(
                 move-result-object v0
                 const/4 v1, 0x1
                 invoke-virtual {v0, v1}, Llng;->hide(I)V
+                invoke-virtual {p0, p1}, Lng5;->t(Landroid/view/View;)Z
+                move-result v0
+                if-eqz v0, :morphe_status_hide_not_confirmed
+                const-string v0, "MorpheStatusBar"
+                const-string v1, "verify isStatusBarHidden=1"
+                invoke-static {v0, v1}, Landroid/util/Log;->d(Ljava/lang/String;Ljava/lang/String;)I
+                goto :morphe_status_bar_done
+                :morphe_status_hide_not_confirmed
+                const-string v0, "MorpheStatusBar"
+                const-string v1, "verify isStatusBarHidden=0 after hide"
+                invoke-static {v0, v1}, Landroid/util/Log;->w(Ljava/lang/String;Ljava/lang/String;)I
                 goto :morphe_status_bar_done
 
                 :morphe_show_status_bar_pref
@@ -219,6 +230,17 @@ val hideStatusBarPatch = bytecodePatch(
                 move-result-object v0
                 const/4 v1, 0x1
                 invoke-virtual {v0, v1}, Llng;->show(I)V
+                invoke-virtual {p0, p1}, Lng5;->t(Landroid/view/View;)Z
+                move-result v0
+                if-nez v0, :morphe_status_show_not_confirmed
+                const-string v0, "MorpheStatusBar"
+                const-string v1, "verify isStatusBarHidden=0"
+                invoke-static {v0, v1}, Landroid/util/Log;->d(Ljava/lang/String;Ljava/lang/String;)I
+                goto :morphe_status_bar_done
+                :morphe_status_show_not_confirmed
+                const-string v0, "MorpheStatusBar"
+                const-string v1, "verify isStatusBarHidden=1 after show"
+                invoke-static {v0, v1}, Landroid/util/Log;->w(Ljava/lang/String;Ljava/lang/String;)I
             """,
             ExternalLabel("morphe_status_bar_done", method.getInstruction(0)),
         )
