@@ -29,6 +29,12 @@ dependencies {
 }
 
 tasks {
+    // Ship declarative application profiles inside the patch bundle itself. The manager reads
+    // this optional resource generically; application-specific policy remains owned here.
+    named<ProcessResources>("processResources") {
+        from(rootProject.file("application-profiles-v1.json"))
+    }
+
     register<JavaExec>("checkStringResources") {
         description = "Checks resource strings for invalid formatting"
 
