@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "patches": [
+    {
+      "id": "cromite.hide-android-status-bar",
+      "name": "Hide Android status bar",
+      "applications": ["cromite"],
+      "abis": ["arm64-v8a"],
+      "mutations": ["BYTECODE"],
+      "signatureImpact": "RESIGN_REQUIRED",
+      "risk": "HIGH",
+      "reversible": true,
+      "tests": ["cromite-153-status-bar-bytecode", "cromite-153-status-bar-device"],
+      "documentation": ["docs/cromite-153-binary-mapping-analysis.md"]
+    },
+    {
+      "id": "cromite.pure-amoled-system-theme",
+      "name": "Pure AMOLED / Pure White system theme",
+      "applications": ["cromite"],
+      "abis": ["arm64-v8a"],
+      "mutations": ["RESOURCE", "BYTECODE"],
+      "signatureImpact": "RESIGN_REQUIRED",
+      "risk": "HIGH",
+      "reversible": true,
+      "tests": ["cromite-153-theme-bytecode", "cromite-153-theme-visual"],
+      "documentation": ["docs/cromite-153-binary-mapping-analysis.md"]
+    },
+    {
+      "id": "cromite.pure-amoled-web-content",
+      "name": "Pure AMOLED web content",
+      "applications": ["cromite"],
+      "abis": ["arm64-v8a"],
+      "mutations": ["BYTECODE"],
+      "signatureImpact": "RESIGN_REQUIRED",
+      "risk": "HIGH",
+      "reversible": true,
+      "tests": ["cromite-153-web-content-bytecode", "cromite-153-web-content-media"],
+      "documentation": ["docs/cromite-153-binary-mapping-analysis.md"]
+    }
+  ]
+}
