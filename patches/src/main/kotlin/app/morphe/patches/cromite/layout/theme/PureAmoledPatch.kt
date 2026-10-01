@@ -309,7 +309,7 @@ val pureAmoledPatch = bytecodePatch(
             defaultBgColorFingerprint, settingsBackgroundColorFingerprint, primaryBackgroundColorFingerprint,
         )
         systemSurfaceTargets.forEach { fingerprint ->
-            fingerprint.method.addInstructions(0, surfaceSmali(browserTheme))
+            fingerprint.method.addInstructions(0, surfaceSmali(browserTheme ?: THEME_DEVICE))
         }
 
         // Dynamic Material colors would re-introduce tinted gray/colored surfaces.
