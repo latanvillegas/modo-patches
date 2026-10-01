@@ -46,6 +46,8 @@ private val colorSurfaceContainerFingerprint = semanticSurfaceFingerprint("e")
 private val colorSurfaceContainerHighestFingerprint = semanticSurfaceFingerprint("f")
 private val colorSurfaceContainerLowFingerprint = semanticSurfaceFingerprint("g")
 private val defaultBgColorFingerprint = semanticSurfaceFingerprint("h")
+private val defaultIconColorFingerprint = semanticSurfaceFingerprint("i")
+private val defaultTextColorFingerprint = semanticSurfaceFingerprint("j")
 private val settingsBackgroundColorFingerprint = semanticSurfaceFingerprint("l")
 
 private val primaryBackgroundColorFingerprint = Fingerprint(
@@ -487,6 +489,32 @@ private val pureAmoledResourcesPatch = resourcePatch(
     }
 }
 
+private fun foregroundSmali(theme: String): String = when (theme) {
+    THEME_BLACK -> """
+        const v0, -0x1
+        return v0
+    """
+    THEME_WHITE -> """
+        const v0, -0x1000000
+        return v0
+    """
+    else -> """
+        invoke-virtual {p0}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
+        move-result-object v0
+        invoke-virtual {v0}, Landroid/content/res/Resources;->getConfiguration()Landroid/content/res/Configuration;
+        move-result-object v0
+        iget v0, v0, Landroid/content/res/Configuration;->uiMode:I
+        and-int/lit8 v0, v0, 0x30
+        xor-int/lit8 v0, v0, 0x20
+        if-nez v0, :pure_foreground_light
+        const v0, -0x1
+        return v0
+        :pure_foreground_light
+        const v0, -0x1000000
+        return v0
+    """
+}
+
 private fun surfaceSmali(theme: String): String = when (theme) {
     THEME_BLACK -> """
         const v0, -0x1000000
@@ -530,6 +558,13 @@ val pureAmoledPatch = bytecodePatch(
         )
         systemSurfaceTargets.forEach { fingerprint ->
             fingerprint.method.addInstructions(0, surfaceSmali(browserTheme ?: THEME_DEVICE))
+        }
+
+        // These two SemanticColorUtils methods survive R8 in Cromite 153 as pac.i/pac.j.
+        // Patch them independently from surfaces so Pure Black never leaves black
+        // primary text/icons on a black browser surface (and vice versa for Pure White).
+        listOf(defaultIconColorFingerprint, defaultTextColorFingerprint).forEach { fingerprint ->
+            fingerprint.method.addInstructions(0, foregroundSmali(browserTheme ?: THEME_DEVICE))
         }
 
         // Dynamic Material colors would re-introduce tinted gray/colored surfaces.
