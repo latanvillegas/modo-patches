@@ -88,49 +88,6 @@
       "documentation": [
         "docs/cromite-153-binary-mapping-analysis.md"
       ]
-    },
-    {
-      "schemaVersion": 1,
-      "id": "cromite.pure-amoled-web-content",
-      "name": "Pure AMOLED web content",
-      "description": "Makes Cromite web-content darkening follow the system theme: enabled in dark mode and disabled in light mode.",
-      "applications": [
-        "cromite"
-      ],
-      "packageNames": [
-        "org.cromite.cromite"
-      ],
-      "versionRules": {
-        "exact": [
-          "153.0.8010.37"
-        ]
-      },
-      "versionCodes": [
-        801003702
-      ],
-      "abis": [
-        "arm64-v8a"
-      ],
-      "inputTypes": [
-        "APK",
-        "UNIVERSAL_APK"
-      ],
-      "dependencies": [],
-      "conflicts": [],
-      "minimumPatcherVersion": null,
-      "mutations": [
-        "BYTECODE"
-      ],
-      "signatureImpact": "RESIGN_REQUIRED",
-      "risk": "HIGH",
-      "reversible": true,
-      "tests": [
-        "cromite-153-web-content-bytecode",
-        "cromite-153-web-content-media"
-      ],
-      "documentation": [
-        "docs/cromite-153-binary-mapping-analysis.md"
-      ]
     }
   ]
 }
