@@ -15,9 +15,9 @@ private const val DEFAULT_PREFERENCES = "org.cromite.cromite_preferences"
 /*
  * Verified against the R8 mapping shipped with Cromite 153.0.8010.37:
  *   FullscreenHtmlApiHandlerCompat -> ng5
- *   getWindowInsetsController() -> E
- *   WindowInsetsControllerCompat -> lng
- *   hide(int) -> a
+ *   FullscreenHtmlApiHandlerBase -> mg5
+ *   getPersistentFullscreenMode() -> h
+ *   onApplyWindowInsets(View, WindowInsets) keeps its source name/signature
  *
  * DeviceFormFactor itself is intentionally not obfuscated in this build. R8
  * inlines isForceTabletUI(), but preserves its backing static boolean as field
@@ -36,7 +36,7 @@ private val windowInsetsPolicyFingerprint = Fingerprint(
  * default, so AndroidX stores the boolean in Cromite's default preference file.
  *
  * The preference depends on Force Tablet Mode. The bytecode hook below reads
- * both persisted/effective states when the browser UI is created.
+ * both persisted/effective states whenever Chromium reapplies window insets.
  */
 private val hideStatusBarPreferenceResourcesPatch = resourcePatch(
     description = "Adds the tablet-only status-bar preference to Cromite Accessibility settings.",
@@ -130,7 +130,18 @@ val hideStatusBarPatch = bytecodePatch(
     dependsOn(hideStatusBarPreferenceResourcesPatch)
 
     execute {
-        windowInsetsPolicyFingerprint.method.addInstructionsWithLabels(
+        val method = windowInsetsPolicyFingerprint.method
+        val implementation = method.implementation
+            ?: throw IllegalStateException("FullscreenHtmlApiHandlerCompat.onApplyWindowInsets has no implementation")
+        val parameterRegisters = 3 // p0 + View + WindowInsets
+        val localRegisters = implementation.registerCount - parameterRegisters
+        if (localRegisters < 3) {
+            throw IllegalStateException(
+                "FullscreenHtmlApiHandlerCompat.onApplyWindowInsets requires 3 free local registers; found $localRegisters"
+            )
+        }
+
+        method.addInstructionsWithLabels(
             0,
             """
                 invoke-virtual {p0}, Lmg5;->h()Z
@@ -151,14 +162,14 @@ val hideStatusBarPatch = bytecodePatch(
                 sget-boolean v0, Lorg/chromium/ui/base/DeviceFormFactor;->a:Z
                 if-eqz v0, :morphe_show_status_bar
 
-                sget v0, Landroid/os/Build$VERSION;->SDK_INT:I
+                sget v0, Landroid/os/Build${'->SDK_INT:I
                 const/16 v1, 0x1e
                 if-lt v0, v1, :morphe_hide_status_bar_legacy
 
                 invoke-virtual {p1}, Landroid/view/View;->getWindowInsetsController()Landroid/view/WindowInsetsController;
                 move-result-object v0
                 if-eqz v0, :morphe_status_bar_done
-                invoke-static {}, Landroid/view/WindowInsets$Type;->statusBars()I
+                invoke-static {}, Landroid/view/WindowInsets${'->statusBars()I
                 move-result v1
                 invoke-virtual {v0, v1}, Landroid/view/WindowInsetsController;->hide(I)V
                 goto :morphe_status_bar_done
@@ -179,6 +190,357 @@ val hideStatusBarPatch = bytecodePatch(
                 move-result-object v0
                 if-eqz v0, :morphe_status_bar_done
                 invoke-static {}, Landroid/view/WindowInsets$Type;->statusBars()I
+                move-result v1
+                invoke-virtual {v0, v1}, Landroid/view/WindowInsetsController;->show(I)V
+                goto :morphe_status_bar_done
+
+                :morphe_show_status_bar_legacy
+                invoke-virtual {p1}, Landroid/view/View;->getSystemUiVisibility()I
+                move-result v0
+                and-int/lit8 v0, v0, -0x5
+                invoke-virtual {p1, v0}, Landroid/view/View;->setSystemUiVisibility(I)V
+            """,
+            ExternalLabel("morphe_status_bar_done", method.getInstruction(0)),
+        )
+    }
+}
+}VERSION;->SDK_INT:I
+                const/16 v1, 0x1e
+                if-lt v0, v1, :morphe_hide_status_bar_legacy
+
+                invoke-virtual {p1}, Landroid/view/View;->getWindowInsetsController()Landroid/view/WindowInsetsController;
+                move-result-object v0
+                if-eqz v0, :morphe_status_bar_done
+                invoke-static {}, Landroid/view/WindowInsets$Type;->statusBars()I
+                move-result v1
+                invoke-virtual {v0, v1}, Landroid/view/WindowInsetsController;->hide(I)V
+                goto :morphe_status_bar_done
+
+                :morphe_hide_status_bar_legacy
+                invoke-virtual {p1}, Landroid/view/View;->getSystemUiVisibility()I
+                move-result v0
+                or-int/lit8 v0, v0, 0x4
+                invoke-virtual {p1, v0}, Landroid/view/View;->setSystemUiVisibility(I)V
+                goto :morphe_status_bar_done
+
+                :morphe_show_status_bar
+                sget v0, Landroid/os/Build${'->SDK_INT:I
+                const/16 v1, 0x1e
+                if-lt v0, v1, :morphe_show_status_bar_legacy
+
+                invoke-virtual {p1}, Landroid/view/View;->getWindowInsetsController()Landroid/view/WindowInsetsController;
+                move-result-object v0
+                if-eqz v0, :morphe_status_bar_done
+                invoke-static {}, Landroid/view/WindowInsets$Type;->statusBars()I
+                move-result v1
+                invoke-virtual {v0, v1}, Landroid/view/WindowInsetsController;->show(I)V
+                goto :morphe_status_bar_done
+
+                :morphe_show_status_bar_legacy
+                invoke-virtual {p1}, Landroid/view/View;->getSystemUiVisibility()I
+                move-result v0
+                and-int/lit8 v0, v0, -0x5
+                invoke-virtual {p1, v0}, Landroid/view/View;->setSystemUiVisibility(I)V
+            """,
+            ExternalLabel("morphe_status_bar_done", windowInsetsPolicyFingerprint.method.getInstruction(0)),
+        )
+    }
+}
+}VERSION;->SDK_INT:I
+                const/16 v1, 0x1e
+                if-lt v0, v1, :morphe_show_status_bar_legacy
+
+                invoke-virtual {p1}, Landroid/view/View;->getWindowInsetsController()Landroid/view/WindowInsetsController;
+                move-result-object v0
+                if-eqz v0, :morphe_status_bar_done
+                invoke-static {}, Landroid/view/WindowInsets$Type;->statusBars()I
+                move-result v1
+                invoke-virtual {v0, v1}, Landroid/view/WindowInsetsController;->show(I)V
+                goto :morphe_status_bar_done
+
+                :morphe_show_status_bar_legacy
+                invoke-virtual {p1}, Landroid/view/View;->getSystemUiVisibility()I
+                move-result v0
+                and-int/lit8 v0, v0, -0x5
+                invoke-virtual {p1, v0}, Landroid/view/View;->setSystemUiVisibility(I)V
+            """,
+            ExternalLabel("morphe_status_bar_done", windowInsetsPolicyFingerprint.method.getInstruction(0)),
+        )
+    }
+}
+}Type;->statusBars()I
+                move-result v1
+                invoke-virtual {v0, v1}, Landroid/view/WindowInsetsController;->hide(I)V
+                goto :morphe_status_bar_done
+
+                :morphe_hide_status_bar_legacy
+                invoke-virtual {p1}, Landroid/view/View;->getSystemUiVisibility()I
+                move-result v0
+                or-int/lit8 v0, v0, 0x4
+                invoke-virtual {p1, v0}, Landroid/view/View;->setSystemUiVisibility(I)V
+                goto :morphe_status_bar_done
+
+                :morphe_show_status_bar
+                sget v0, Landroid/os/Build$VERSION;->SDK_INT:I
+                const/16 v1, 0x1e
+                if-lt v0, v1, :morphe_show_status_bar_legacy
+
+                invoke-virtual {p1}, Landroid/view/View;->getWindowInsetsController()Landroid/view/WindowInsetsController;
+                move-result-object v0
+                if-eqz v0, :morphe_status_bar_done
+                invoke-static {}, Landroid/view/WindowInsets${'->statusBars()I
+                move-result v1
+                invoke-virtual {v0, v1}, Landroid/view/WindowInsetsController;->show(I)V
+                goto :morphe_status_bar_done
+
+                :morphe_show_status_bar_legacy
+                invoke-virtual {p1}, Landroid/view/View;->getSystemUiVisibility()I
+                move-result v0
+                and-int/lit8 v0, v0, -0x5
+                invoke-virtual {p1, v0}, Landroid/view/View;->setSystemUiVisibility(I)V
+            """,
+            ExternalLabel("morphe_status_bar_done", windowInsetsPolicyFingerprint.method.getInstruction(0)),
+        )
+    }
+}
+}VERSION;->SDK_INT:I
+                const/16 v1, 0x1e
+                if-lt v0, v1, :morphe_hide_status_bar_legacy
+
+                invoke-virtual {p1}, Landroid/view/View;->getWindowInsetsController()Landroid/view/WindowInsetsController;
+                move-result-object v0
+                if-eqz v0, :morphe_status_bar_done
+                invoke-static {}, Landroid/view/WindowInsets$Type;->statusBars()I
+                move-result v1
+                invoke-virtual {v0, v1}, Landroid/view/WindowInsetsController;->hide(I)V
+                goto :morphe_status_bar_done
+
+                :morphe_hide_status_bar_legacy
+                invoke-virtual {p1}, Landroid/view/View;->getSystemUiVisibility()I
+                move-result v0
+                or-int/lit8 v0, v0, 0x4
+                invoke-virtual {p1, v0}, Landroid/view/View;->setSystemUiVisibility(I)V
+                goto :morphe_status_bar_done
+
+                :morphe_show_status_bar
+                sget v0, Landroid/os/Build${'->SDK_INT:I
+                const/16 v1, 0x1e
+                if-lt v0, v1, :morphe_show_status_bar_legacy
+
+                invoke-virtual {p1}, Landroid/view/View;->getWindowInsetsController()Landroid/view/WindowInsetsController;
+                move-result-object v0
+                if-eqz v0, :morphe_status_bar_done
+                invoke-static {}, Landroid/view/WindowInsets$Type;->statusBars()I
+                move-result v1
+                invoke-virtual {v0, v1}, Landroid/view/WindowInsetsController;->show(I)V
+                goto :morphe_status_bar_done
+
+                :morphe_show_status_bar_legacy
+                invoke-virtual {p1}, Landroid/view/View;->getSystemUiVisibility()I
+                move-result v0
+                and-int/lit8 v0, v0, -0x5
+                invoke-virtual {p1, v0}, Landroid/view/View;->setSystemUiVisibility(I)V
+            """,
+            ExternalLabel("morphe_status_bar_done", windowInsetsPolicyFingerprint.method.getInstruction(0)),
+        )
+    }
+}
+}VERSION;->SDK_INT:I
+                const/16 v1, 0x1e
+                if-lt v0, v1, :morphe_show_status_bar_legacy
+
+                invoke-virtual {p1}, Landroid/view/View;->getWindowInsetsController()Landroid/view/WindowInsetsController;
+                move-result-object v0
+                if-eqz v0, :morphe_status_bar_done
+                invoke-static {}, Landroid/view/WindowInsets$Type;->statusBars()I
+                move-result v1
+                invoke-virtual {v0, v1}, Landroid/view/WindowInsetsController;->show(I)V
+                goto :morphe_status_bar_done
+
+                :morphe_show_status_bar_legacy
+                invoke-virtual {p1}, Landroid/view/View;->getSystemUiVisibility()I
+                move-result v0
+                and-int/lit8 v0, v0, -0x5
+                invoke-virtual {p1, v0}, Landroid/view/View;->setSystemUiVisibility(I)V
+            """,
+            ExternalLabel("morphe_status_bar_done", windowInsetsPolicyFingerprint.method.getInstruction(0)),
+        )
+    }
+}
+}Type;->statusBars()I
+                move-result v1
+                invoke-virtual {v0, v1}, Landroid/view/WindowInsetsController;->show(I)V
+                goto :morphe_status_bar_done
+
+                :morphe_show_status_bar_legacy
+                invoke-virtual {p1}, Landroid/view/View;->getSystemUiVisibility()I
+                move-result v0
+                and-int/lit8 v0, v0, -0x5
+                invoke-virtual {p1, v0}, Landroid/view/View;->setSystemUiVisibility(I)V
+            """,
+            ExternalLabel("morphe_status_bar_done", windowInsetsPolicyFingerprint.method.getInstruction(0)),
+        )
+    }
+}
+}VERSION;->SDK_INT:I
+                const/16 v1, 0x1e
+                if-lt v0, v1, :morphe_hide_status_bar_legacy
+
+                invoke-virtual {p1}, Landroid/view/View;->getWindowInsetsController()Landroid/view/WindowInsetsController;
+                move-result-object v0
+                if-eqz v0, :morphe_status_bar_done
+                invoke-static {}, Landroid/view/WindowInsets${'->statusBars()I
+                move-result v1
+                invoke-virtual {v0, v1}, Landroid/view/WindowInsetsController;->hide(I)V
+                goto :morphe_status_bar_done
+
+                :morphe_hide_status_bar_legacy
+                invoke-virtual {p1}, Landroid/view/View;->getSystemUiVisibility()I
+                move-result v0
+                or-int/lit8 v0, v0, 0x4
+                invoke-virtual {p1, v0}, Landroid/view/View;->setSystemUiVisibility(I)V
+                goto :morphe_status_bar_done
+
+                :morphe_show_status_bar
+                sget v0, Landroid/os/Build${'->SDK_INT:I
+                const/16 v1, 0x1e
+                if-lt v0, v1, :morphe_show_status_bar_legacy
+
+                invoke-virtual {p1}, Landroid/view/View;->getWindowInsetsController()Landroid/view/WindowInsetsController;
+                move-result-object v0
+                if-eqz v0, :morphe_status_bar_done
+                invoke-static {}, Landroid/view/WindowInsets$Type;->statusBars()I
+                move-result v1
+                invoke-virtual {v0, v1}, Landroid/view/WindowInsetsController;->show(I)V
+                goto :morphe_status_bar_done
+
+                :morphe_show_status_bar_legacy
+                invoke-virtual {p1}, Landroid/view/View;->getSystemUiVisibility()I
+                move-result v0
+                and-int/lit8 v0, v0, -0x5
+                invoke-virtual {p1, v0}, Landroid/view/View;->setSystemUiVisibility(I)V
+            """,
+            ExternalLabel("morphe_status_bar_done", windowInsetsPolicyFingerprint.method.getInstruction(0)),
+        )
+    }
+}
+}VERSION;->SDK_INT:I
+                const/16 v1, 0x1e
+                if-lt v0, v1, :morphe_show_status_bar_legacy
+
+                invoke-virtual {p1}, Landroid/view/View;->getWindowInsetsController()Landroid/view/WindowInsetsController;
+                move-result-object v0
+                if-eqz v0, :morphe_status_bar_done
+                invoke-static {}, Landroid/view/WindowInsets$Type;->statusBars()I
+                move-result v1
+                invoke-virtual {v0, v1}, Landroid/view/WindowInsetsController;->show(I)V
+                goto :morphe_status_bar_done
+
+                :morphe_show_status_bar_legacy
+                invoke-virtual {p1}, Landroid/view/View;->getSystemUiVisibility()I
+                move-result v0
+                and-int/lit8 v0, v0, -0x5
+                invoke-virtual {p1, v0}, Landroid/view/View;->setSystemUiVisibility(I)V
+            """,
+            ExternalLabel("morphe_status_bar_done", windowInsetsPolicyFingerprint.method.getInstruction(0)),
+        )
+    }
+}
+}Type;->statusBars()I
+                move-result v1
+                invoke-virtual {v0, v1}, Landroid/view/WindowInsetsController;->hide(I)V
+                goto :morphe_status_bar_done
+
+                :morphe_hide_status_bar_legacy
+                invoke-virtual {p1}, Landroid/view/View;->getSystemUiVisibility()I
+                move-result v0
+                or-int/lit8 v0, v0, 0x4
+                invoke-virtual {p1, v0}, Landroid/view/View;->setSystemUiVisibility(I)V
+                goto :morphe_status_bar_done
+
+                :morphe_show_status_bar
+                sget v0, Landroid/os/Build${'->SDK_INT:I
+                const/16 v1, 0x1e
+                if-lt v0, v1, :morphe_show_status_bar_legacy
+
+                invoke-virtual {p1}, Landroid/view/View;->getWindowInsetsController()Landroid/view/WindowInsetsController;
+                move-result-object v0
+                if-eqz v0, :morphe_status_bar_done
+                invoke-static {}, Landroid/view/WindowInsets${'->statusBars()I
+                move-result v1
+                invoke-virtual {v0, v1}, Landroid/view/WindowInsetsController;->show(I)V
+                goto :morphe_status_bar_done
+
+                :morphe_show_status_bar_legacy
+                invoke-virtual {p1}, Landroid/view/View;->getSystemUiVisibility()I
+                move-result v0
+                and-int/lit8 v0, v0, -0x5
+                invoke-virtual {p1, v0}, Landroid/view/View;->setSystemUiVisibility(I)V
+            """,
+            ExternalLabel("morphe_status_bar_done", windowInsetsPolicyFingerprint.method.getInstruction(0)),
+        )
+    }
+}
+}VERSION;->SDK_INT:I
+                const/16 v1, 0x1e
+                if-lt v0, v1, :morphe_show_status_bar_legacy
+
+                invoke-virtual {p1}, Landroid/view/View;->getWindowInsetsController()Landroid/view/WindowInsetsController;
+                move-result-object v0
+                if-eqz v0, :morphe_status_bar_done
+                invoke-static {}, Landroid/view/WindowInsets$Type;->statusBars()I
+                move-result v1
+                invoke-virtual {v0, v1}, Landroid/view/WindowInsetsController;->show(I)V
+                goto :morphe_status_bar_done
+
+                :morphe_show_status_bar_legacy
+                invoke-virtual {p1}, Landroid/view/View;->getSystemUiVisibility()I
+                move-result v0
+                and-int/lit8 v0, v0, -0x5
+                invoke-virtual {p1, v0}, Landroid/view/View;->setSystemUiVisibility(I)V
+            """,
+            ExternalLabel("morphe_status_bar_done", windowInsetsPolicyFingerprint.method.getInstruction(0)),
+        )
+    }
+}
+}Type;->statusBars()I
+                move-result v1
+                invoke-virtual {v0, v1}, Landroid/view/WindowInsetsController;->show(I)V
+                goto :morphe_status_bar_done
+
+                :morphe_show_status_bar_legacy
+                invoke-virtual {p1}, Landroid/view/View;->getSystemUiVisibility()I
+                move-result v0
+                and-int/lit8 v0, v0, -0x5
+                invoke-virtual {p1, v0}, Landroid/view/View;->setSystemUiVisibility(I)V
+            """,
+            ExternalLabel("morphe_status_bar_done", windowInsetsPolicyFingerprint.method.getInstruction(0)),
+        )
+    }
+}
+}VERSION;->SDK_INT:I
+                const/16 v1, 0x1e
+                if-lt v0, v1, :morphe_show_status_bar_legacy
+
+                invoke-virtual {p1}, Landroid/view/View;->getWindowInsetsController()Landroid/view/WindowInsetsController;
+                move-result-object v0
+                if-eqz v0, :morphe_status_bar_done
+                invoke-static {}, Landroid/view/WindowInsets${'->statusBars()I
+                move-result v1
+                invoke-virtual {v0, v1}, Landroid/view/WindowInsetsController;->show(I)V
+                goto :morphe_status_bar_done
+
+                :morphe_show_status_bar_legacy
+                invoke-virtual {p1}, Landroid/view/View;->getSystemUiVisibility()I
+                move-result v0
+                and-int/lit8 v0, v0, -0x5
+                invoke-virtual {p1, v0}, Landroid/view/View;->setSystemUiVisibility(I)V
+            """,
+            ExternalLabel("morphe_status_bar_done", windowInsetsPolicyFingerprint.method.getInstruction(0)),
+        )
+    }
+}
+}Type;->statusBars()I
                 move-result v1
                 invoke-virtual {v0, v1}, Landroid/view/WindowInsetsController;->show(I)V
                 goto :morphe_status_bar_done
