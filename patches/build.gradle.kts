@@ -50,13 +50,13 @@ tasks {
     register<Exec>("generatePatchManifest") {
         description = "Generate audited PatchManifest v1 metadata from the executable patch catalog"
         dependsOn("generatePatchesList")
-        workingDir(rootProject.projectDir)
+        workingDir(project.projectDir)
         commandLine(
             "python3",
-            ".github/scripts/generate_patch_manifest.py",
+            rootProject.file(".github/scripts/generate_patch_manifest.py").absolutePath,
             "patches-list.json",
-            "patch-manifest-metadata-v1.json",
-            "patch-manifest-v1.json",
+            rootProject.file("patch-manifest-metadata-v1.json").absolutePath,
+            rootProject.file("patch-manifest-v1.json").absolutePath,
         )
     }
     // Used by gradle-semantic-release-plugin.
