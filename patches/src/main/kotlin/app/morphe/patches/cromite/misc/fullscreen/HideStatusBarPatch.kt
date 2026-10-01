@@ -164,8 +164,13 @@ val hideStatusBarPatch = bytecodePatch(
             """
                 invoke-virtual {p0}, Lmg5;->h()Z
                 move-result v0
-                if-nez v0, :morphe_status_bar_done
+                if-eqz v0, :morphe_status_not_persistent
+                const-string v0, "MorpheStatusBar"
+                const-string v1, "persistent=1 action=skip"
+                invoke-static {v0, v1}, Landroid/util/Log;->d(Ljava/lang/String;Ljava/lang/String;)I
+                goto :morphe_status_bar_done
 
+                :morphe_status_not_persistent
                 invoke-virtual {p1}, Landroid/view/View;->getContext()Landroid/content/Context;
                 move-result-object v0
                 const-string v1, "$DEFAULT_PREFERENCES"
@@ -175,70 +180,37 @@ val hideStatusBarPatch = bytecodePatch(
                 const-string v1, "$HIDE_STATUS_BAR_PREF"
                 invoke-interface {v0, v1, p1}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
                 move-result v0
-                if-eqz v0, :morphe_show_status_bar
+                if-eqz v0, :morphe_show_status_bar_pref
 
                 sget-boolean v0, Lorg/chromium/ui/base/DeviceFormFactor;->a:Z
-                if-eqz v0, :morphe_show_status_bar
+                if-eqz v0, :morphe_show_status_bar_phone
 
-                sget v0, Landroid/os/Build${'$'}VERSION;->SDK_INT:I
-                const/16 v1, 0x1e
-                if-lt v0, v1, :morphe_hide_status_bar_legacy
+                const-string v0, "MorpheStatusBar"
+                const-string v1, "persistent=0 tablet=1 pref=1 action=hide statusBars"
+                invoke-static {v0, v1}, Landroid/util/Log;->d(Ljava/lang/String;Ljava/lang/String;)I
 
-                iget-object v0, p0, Lmg5;->b:Landroid/app/Activity;
-                invoke-virtual {v0}, Landroid/app/Activity;->getWindow()Landroid/view/Window;
+                invoke-virtual {p0}, Lng5;->E()Llng;
                 move-result-object v0
-                invoke-virtual {v0}, Landroid/view/Window;->getDecorView()Landroid/view/View;
-                move-result-object v0
-                invoke-virtual {v0}, Landroid/view/View;->getWindowInsetsController()Landroid/view/WindowInsetsController;
-                move-result-object v0
-                if-eqz v0, :morphe_status_bar_done
-                invoke-static {}, Landroid/view/WindowInsets${'$'}Type;->statusBars()I
-                move-result v1
-                invoke-virtual {v0, v1}, Landroid/view/WindowInsetsController;->hide(I)V
+                const/4 v1, 0x1
+                invoke-virtual {v0, v1}, Llng;->hide(I)V
                 goto :morphe_status_bar_done
 
-                :morphe_hide_status_bar_legacy
-                iget-object v0, p0, Lmg5;->b:Landroid/app/Activity;
-                invoke-virtual {v0}, Landroid/app/Activity;->getWindow()Landroid/view/Window;
-                move-result-object v0
-                invoke-virtual {v0}, Landroid/view/Window;->getDecorView()Landroid/view/View;
-                move-result-object v0
-                move-object v1, v0
-                invoke-virtual {v1}, Landroid/view/View;->getSystemUiVisibility()I
-                move-result v0
-                or-int/lit8 v0, v0, 0x4
-                invoke-virtual {v1, v0}, Landroid/view/View;->setSystemUiVisibility(I)V
-                goto :morphe_status_bar_done
+                :morphe_show_status_bar_pref
+                const-string v0, "MorpheStatusBar"
+                const-string v1, "persistent=0 pref=0 action=show statusBars"
+                invoke-static {v0, v1}, Landroid/util/Log;->d(Ljava/lang/String;Ljava/lang/String;)I
+                goto :morphe_show_status_bar
+
+                :morphe_show_status_bar_phone
+                const-string v0, "MorpheStatusBar"
+                const-string v1, "persistent=0 tablet=0 action=show statusBars"
+                invoke-static {v0, v1}, Landroid/util/Log;->d(Ljava/lang/String;Ljava/lang/String;)I
 
                 :morphe_show_status_bar
-                sget v0, Landroid/os/Build${'$'}VERSION;->SDK_INT:I
-                const/16 v1, 0x1e
-                if-lt v0, v1, :morphe_show_status_bar_legacy
-
-                iget-object v0, p0, Lmg5;->b:Landroid/app/Activity;
-                invoke-virtual {v0}, Landroid/app/Activity;->getWindow()Landroid/view/Window;
+                invoke-virtual {p0}, Lng5;->E()Llng;
                 move-result-object v0
-                invoke-virtual {v0}, Landroid/view/Window;->getDecorView()Landroid/view/View;
-                move-result-object v0
-                invoke-virtual {v0}, Landroid/view/View;->getWindowInsetsController()Landroid/view/WindowInsetsController;
-                move-result-object v0
-                if-eqz v0, :morphe_status_bar_done
-                invoke-static {}, Landroid/view/WindowInsets${'$'}Type;->statusBars()I
-                move-result v1
-                invoke-virtual {v0, v1}, Landroid/view/WindowInsetsController;->show(I)V
-                goto :morphe_status_bar_done
-
-                :morphe_show_status_bar_legacy
-                iget-object v0, p0, Lmg5;->b:Landroid/app/Activity;
-                invoke-virtual {v0}, Landroid/app/Activity;->getWindow()Landroid/view/Window;
-                move-result-object v0
-                invoke-virtual {v0}, Landroid/view/Window;->getDecorView()Landroid/view/View;
-                move-result-object v0
-                move-object v1, v0
-                invoke-virtual {v1}, Landroid/view/View;->getSystemUiVisibility()I
-                move-result v0
-                and-int/lit8 v0, v0, -0x5
-                invoke-virtual {v1, v0}, Landroid/view/View;->setSystemUiVisibility(I)V
+                const/4 v1, 0x1
+                invoke-virtual {v0, v1}, Llng;->show(I)V
             """,
             ExternalLabel("morphe_status_bar_done", method.getInstruction(0)),
         )
