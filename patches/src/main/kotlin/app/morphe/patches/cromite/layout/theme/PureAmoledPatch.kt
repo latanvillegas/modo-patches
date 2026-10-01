@@ -195,9 +195,23 @@ private val pureAmoledResourcesPatch = resourcePatch(
         )
 
         val foregroundThemeAttrs = setOf(
-            "android:textColorPrimary", "android:textColorSecondary", "android:textColorPrimaryInverse",
-            "android:textColorSecondaryInverse", "colorOnSurface", "colorOnSurfaceVariant",
+            "android:textColorPrimary", "android:textColorSecondary",
+            "colorOnBackground", "colorOnSurface", "colorOnSurfaceVariant",
         )
+
+        val foregroundColorNames = setOf(
+            "default_text_color", "default_icon_color",
+            "color_on_background", "color_on_surface", "color_on_surface_variant",
+            "gm3_baseline_on_surface", "gm3_baseline_on_surface_variant",
+        )
+
+        fun isMaterialForegroundColorName(name: String): Boolean {
+            val normalized = name.lowercase()
+            return "on_surface" in normalized ||
+                "onsurface" in normalized ||
+                "on_background" in normalized ||
+                "onbackground" in normalized
+        }
 
         fun pureForeground(directory: String) = when (browserThemeOption.value) {
             THEME_BLACK -> PURE_WHITE
@@ -318,6 +332,9 @@ private val pureAmoledResourcesPatch = resourcePatch(
                                     name in surfaceMacroNames ||
                                     isMaterialSurfaceColorName(name) ||
                                     isUiSurfaceResourceName(name)
+                                val isNamedForeground =
+                                    name in foregroundColorNames ||
+                                    isMaterialForegroundColorName(name)
 
                                 when {
                                     isNamedSurface &&
@@ -326,6 +343,13 @@ private val pureAmoledResourcesPatch = resourcePatch(
                                          (element.tagName == "item" && type == "color")) -> {
                                         element.textContent =
                                             if (element.tagName == "macro") "@color/$pureSurfaceResource" else target
+                                        localHits++
+                                        valuesPatched++
+                                    }
+                                    isNamedForeground &&
+                                        (element.tagName == "color" ||
+                                         (element.tagName == "item" && type == "color")) -> {
+                                        element.textContent = foreground
                                         localHits++
                                         valuesPatched++
                                     }
