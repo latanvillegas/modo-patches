@@ -6,8 +6,6 @@ import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.resourcePatch
 import app.morphe.patcher.util.smali.ExternalLabel
-import app.morphe.util.indexOfFirstInstructionOrThrow
-import com.android.tools.smali.dexlib2.Opcode
 import org.w3c.dom.Element
 
 private const val CROMITE_VERSION = "153.0.8010.37"
@@ -26,16 +24,11 @@ private const val DEFAULT_PREFERENCES = "org.cromite.cromite_preferences"
  * "a". Reading that field is therefore the exact runtime equivalent for this
  * one pinned Cromite version.
  */
-private val fullscreenHandlerConstructorFingerprint = Fingerprint(
+private val windowInsetsPolicyFingerprint = Fingerprint(
     definingClass = "Lng5;",
-    name = "<init>",
-    returnType = "V",
-    parameters = listOf(
-        "Landroid/app/Activity;",
-        "Lorg/chromium/base/supplier/NonNullObservableSupplier;",
-        "Z",
-        "Lorg/chromium/chrome/browser/multiwindow/MultiWindowModeStateDispatcher;",
-    ),
+    name = "onApplyWindowInsets",
+    returnType = "Landroid/view/WindowInsets;",
+    parameters = listOf("Landroid/view/View;", "Landroid/view/WindowInsets;"),
 )
 
 /**
@@ -115,14 +108,17 @@ private val hideStatusBarPreferenceResourcesPatch = resourcePatch(
 }
 
 /**
- * Hides only WindowInsetsCompat.Type.statusBars() (type bit 0x1). Navigation
- * bars and gesture navigation are deliberately untouched.
+ * Reapplies the tablet status-bar policy from Chromium's own insets callback.
  *
- * The switch is persisted by AndroidX. Cromite's existing Force Tablet Mode
- * already requests an application restart when changed; this preference is
- * documented as restart-applied as well. A new window naturally restores the
- * status bar when either condition is false, so no permanent system setting is
- * changed.
+ * FullscreenHtmlApiHandlerCompat.onApplyWindowInsets() is the source-verified
+ * recovery point used by Chromium when system insets change. The injected
+ * policy exits immediately while persistent HTML/video fullscreen is active,
+ * leaving Chromium's fullscreen state machine authoritative in that mode.
+ *
+ * Outside persistent fullscreen, only the status-bar type is changed:
+ * API 30+ uses WindowInsetsController + WindowInsets.Type.statusBars(); API 29
+ * uses the legacy FULLSCREEN bit (0x4), which also affects only the status bar.
+ * Navigation bars and gesture navigation are never modified.
  */
 @Suppress("unused")
 val hideStatusBarPatch = bytecodePatch(
@@ -134,32 +130,66 @@ val hideStatusBarPatch = bytecodePatch(
     dependsOn(hideStatusBarPreferenceResourcesPatch)
 
     execute {
-        val method = fullscreenHandlerConstructorFingerprint.method
-        val returnIndex = method.indexOfFirstInstructionOrThrow(Opcode.RETURN_VOID)
-        val returnInstruction = method.getInstruction(returnIndex)
-
-        method.addInstructionsWithLabels(
-            returnIndex,
+        windowInsetsPolicyFingerprint.method.addInstructionsWithLabels(
+            0,
             """
-                const-string v0, "$DEFAULT_PREFERENCES"
-                const/4 v1, 0x0
-                invoke-virtual {p1, v0, v1}, Landroid/app/Activity;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
+                invoke-virtual {p0}, Lmg5;->h()Z
+                move-result v0
+                if-nez v0, :morphe_status_bar_done
+
+                invoke-virtual {p1}, Landroid/view/View;->getContext()Landroid/content/Context;
+                move-result-object v0
+                const-string v1, "$DEFAULT_PREFERENCES"
+                const/4 v2, 0x0
+                invoke-virtual {v0, v1, v2}, Landroid/content/Context;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
                 move-result-object v0
                 const-string v1, "$HIDE_STATUS_BAR_PREF"
-                const/4 v2, 0x0
                 invoke-interface {v0, v1, v2}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
                 move-result v0
-                if-eqz v0, :morphe_status_bar_done
+                if-eqz v0, :morphe_show_status_bar
 
                 sget-boolean v0, Lorg/chromium/ui/base/DeviceFormFactor;->a:Z
-                if-eqz v0, :morphe_status_bar_done
+                if-eqz v0, :morphe_show_status_bar
 
-                invoke-direct {p0}, Lng5;->E()Llng;
+                sget v0, Landroid/os/Build$VERSION;->SDK_INT:I
+                const/16 v1, 0x1e
+                if-lt v0, v1, :morphe_hide_status_bar_legacy
+
+                invoke-virtual {p1}, Landroid/view/View;->getWindowInsetsController()Landroid/view/WindowInsetsController;
                 move-result-object v0
-                const/4 v1, 0x1
-                invoke-virtual {v0, v1}, Llng;->a(I)V
+                if-eqz v0, :morphe_status_bar_done
+                invoke-static {}, Landroid/view/WindowInsets$Type;->statusBars()I
+                move-result v1
+                invoke-virtual {v0, v1}, Landroid/view/WindowInsetsController;->hide(I)V
+                goto :morphe_status_bar_done
+
+                :morphe_hide_status_bar_legacy
+                invoke-virtual {p1}, Landroid/view/View;->getSystemUiVisibility()I
+                move-result v0
+                or-int/lit8 v0, v0, 0x4
+                invoke-virtual {p1, v0}, Landroid/view/View;->setSystemUiVisibility(I)V
+                goto :morphe_status_bar_done
+
+                :morphe_show_status_bar
+                sget v0, Landroid/os/Build$VERSION;->SDK_INT:I
+                const/16 v1, 0x1e
+                if-lt v0, v1, :morphe_show_status_bar_legacy
+
+                invoke-virtual {p1}, Landroid/view/View;->getWindowInsetsController()Landroid/view/WindowInsetsController;
+                move-result-object v0
+                if-eqz v0, :morphe_status_bar_done
+                invoke-static {}, Landroid/view/WindowInsets$Type;->statusBars()I
+                move-result v1
+                invoke-virtual {v0, v1}, Landroid/view/WindowInsetsController;->show(I)V
+                goto :morphe_status_bar_done
+
+                :morphe_show_status_bar_legacy
+                invoke-virtual {p1}, Landroid/view/View;->getSystemUiVisibility()I
+                move-result v0
+                and-int/lit8 v0, v0, -0x5
+                invoke-virtual {p1, v0}, Landroid/view/View;->setSystemUiVisibility(I)V
             """,
-            ExternalLabel("morphe_status_bar_done", returnInstruction),
+            ExternalLabel("morphe_status_bar_done", windowInsetsPolicyFingerprint.method.getInstruction(0)),
         )
     }
 }
