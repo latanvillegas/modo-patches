@@ -4,22 +4,26 @@
 
 - Analyzed artifact report: `reporte-cromite.txt`.
 - Analyzed R8 mapping: `arm64_ChromePublic.apk.mapping`, SHA-256 `386718f086f68a852d9a8c5a9ada27767f863a5c2dc9a161468b502108ffaf35`.
-- The supplied ZIP did not contain the APK bytes, so manifest and DEX-number claims are not inferred.
+- The supplied binary reports confirm package/version/SDK metadata and that the APK contains `classes.dex` plus `classes2.dex`; the APK bytes themselves are not materialized in the current validation environment, so class-to-DEX attribution is not inferred.
 - The report records APK SHA-256 `9db12af1af021f42b4371e76d0e9fe476a7085bbbbc76bc410a538d028bf6071`, matching the official Cromite 153 arm64 release asset.
 
 ## Build identity
 
 | Field | Verified value | Source |
 | --- | --- | --- |
-| Package | `org.cromite.cromite` | mapping `pg_map_id` |
+| Package | `org.cromite.cromite` | `apk-badging.txt` + mapping `pg_map_id` |
 | Variant | `ChromePublic` / arm64 asset | mapping + report filename |
 | R8 | `9.5.7-dev` | mapping header |
 | R8 min API | `29` | mapping header |
 | pg_map_id | `chromium-ChromePublic.apk-stable-801003702 (org.cromite.cromite)` | mapping header |
-| Version name | `153.0.8010.37` | release SHA correlation |
+| Version name | `153.0.8010.37` | `apk-badging.txt` |
 | APK SHA-256 | `9db12af1af021f42b4371e76d0e9fe476a7085bbbbc76bc410a538d028bf6071` | supplied report + release |
-| Target SDK | not verified | APK manifest bytes were not supplied |
-| Manifest versionCode | not independently verified | APK manifest bytes were not supplied |
+| Version code | `801003702` | `apk-badging.txt` |
+| Min SDK | `29` | `apk-badging.txt` |
+| Target SDK | `36` | `apk-badging.txt` |
+| Compile SDK | `37` | `apk-badging.txt` |
+| Native ABI | `arm64-v8a` | `apk-badging.txt` |
+
 
 ## R8 identities used by patches
 
@@ -60,4 +64,4 @@ The mapping validates the existing `Lpac;` descriptor for `SemanticColorUtils`. 
 
 ## DEX attribution
 
-The R8 mapping does not encode the destination DEX. Because the uploaded ZIP does not contain the APK or extracted `classes*.dex`, DEX numbers remain unverified and are deliberately not guessed.
+The R8 mapping does not encode the destination DEX. `dex-y-recursos.txt` confirms two DEX containers: `classes.dex` and `classes2.dex`. The mapping still does not encode which DEX contains a mapped class, so class-to-DEX attribution remains unverified and is deliberately not guessed.
