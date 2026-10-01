@@ -147,12 +147,15 @@ val hideStatusBarPatch = bytecodePatch(
             )
 
         // Instance method: p0=this, p1=View, p2=WindowInsets.
-        // The injected sequence needs v0..v2. Fail before patching if the
-        // pinned DEX does not provide those locals.
+        // Cromite 153's method has two local registers. Chromium source confirms
+        // that the original method never reads p1 and only returns p2, so after
+        // obtaining the Context we can safely reuse p1 as a temporary register.
+        // p2 remains untouched. This avoids growing the register file and shifting
+        // parameter registers in the existing DEX implementation.
         val localRegisters = implementation.registerCount - 3
-        if (localRegisters < 3) {
+        if (localRegisters < 2) {
             throw IllegalStateException(
-                "FullscreenHtmlApiHandlerCompat.onApplyWindowInsets requires 3 local registers; found $localRegisters"
+                "FullscreenHtmlApiHandlerCompat.onApplyWindowInsets requires 2 local registers; found $localRegisters"
             )
         }
 
@@ -166,11 +169,11 @@ val hideStatusBarPatch = bytecodePatch(
                 invoke-virtual {p1}, Landroid/view/View;->getContext()Landroid/content/Context;
                 move-result-object v0
                 const-string v1, "$DEFAULT_PREFERENCES"
-                const/4 v2, 0x0
-                invoke-virtual {v0, v1, v2}, Landroid/content/Context;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
+                const/4 p1, 0x0
+                invoke-virtual {v0, v1, p1}, Landroid/content/Context;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
                 move-result-object v0
                 const-string v1, "$HIDE_STATUS_BAR_PREF"
-                invoke-interface {v0, v1, v2}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
+                invoke-interface {v0, v1, p1}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
                 move-result v0
                 if-eqz v0, :morphe_show_status_bar
 
@@ -181,7 +184,12 @@ val hideStatusBarPatch = bytecodePatch(
                 const/16 v1, 0x1e
                 if-lt v0, v1, :morphe_hide_status_bar_legacy
 
-                invoke-virtual {p1}, Landroid/view/View;->getWindowInsetsController()Landroid/view/WindowInsetsController;
+                iget-object v0, p0, Lmg5;->b:Landroid/app/Activity;
+                invoke-virtual {v0}, Landroid/app/Activity;->getWindow()Landroid/view/Window;
+                move-result-object v0
+                invoke-virtual {v0}, Landroid/view/Window;->getDecorView()Landroid/view/View;
+                move-result-object v0
+                invoke-virtual {v0}, Landroid/view/View;->getWindowInsetsController()Landroid/view/WindowInsetsController;
                 move-result-object v0
                 if-eqz v0, :morphe_status_bar_done
                 invoke-static {}, Landroid/view/WindowInsets${'$'}Type;->statusBars()I
@@ -190,10 +198,16 @@ val hideStatusBarPatch = bytecodePatch(
                 goto :morphe_status_bar_done
 
                 :morphe_hide_status_bar_legacy
-                invoke-virtual {p1}, Landroid/view/View;->getSystemUiVisibility()I
+                iget-object v0, p0, Lmg5;->b:Landroid/app/Activity;
+                invoke-virtual {v0}, Landroid/app/Activity;->getWindow()Landroid/view/Window;
+                move-result-object v0
+                invoke-virtual {v0}, Landroid/view/Window;->getDecorView()Landroid/view/View;
+                move-result-object v0
+                move-object v1, v0
+                invoke-virtual {v1}, Landroid/view/View;->getSystemUiVisibility()I
                 move-result v0
                 or-int/lit8 v0, v0, 0x4
-                invoke-virtual {p1, v0}, Landroid/view/View;->setSystemUiVisibility(I)V
+                invoke-virtual {v1, v0}, Landroid/view/View;->setSystemUiVisibility(I)V
                 goto :morphe_status_bar_done
 
                 :morphe_show_status_bar
@@ -201,7 +215,12 @@ val hideStatusBarPatch = bytecodePatch(
                 const/16 v1, 0x1e
                 if-lt v0, v1, :morphe_show_status_bar_legacy
 
-                invoke-virtual {p1}, Landroid/view/View;->getWindowInsetsController()Landroid/view/WindowInsetsController;
+                iget-object v0, p0, Lmg5;->b:Landroid/app/Activity;
+                invoke-virtual {v0}, Landroid/app/Activity;->getWindow()Landroid/view/Window;
+                move-result-object v0
+                invoke-virtual {v0}, Landroid/view/Window;->getDecorView()Landroid/view/View;
+                move-result-object v0
+                invoke-virtual {v0}, Landroid/view/View;->getWindowInsetsController()Landroid/view/WindowInsetsController;
                 move-result-object v0
                 if-eqz v0, :morphe_status_bar_done
                 invoke-static {}, Landroid/view/WindowInsets${'$'}Type;->statusBars()I
@@ -210,10 +229,16 @@ val hideStatusBarPatch = bytecodePatch(
                 goto :morphe_status_bar_done
 
                 :morphe_show_status_bar_legacy
-                invoke-virtual {p1}, Landroid/view/View;->getSystemUiVisibility()I
+                iget-object v0, p0, Lmg5;->b:Landroid/app/Activity;
+                invoke-virtual {v0}, Landroid/app/Activity;->getWindow()Landroid/view/Window;
+                move-result-object v0
+                invoke-virtual {v0}, Landroid/view/Window;->getDecorView()Landroid/view/View;
+                move-result-object v0
+                move-object v1, v0
+                invoke-virtual {v1}, Landroid/view/View;->getSystemUiVisibility()I
                 move-result v0
                 and-int/lit8 v0, v0, -0x5
-                invoke-virtual {p1, v0}, Landroid/view/View;->setSystemUiVisibility(I)V
+                invoke-virtual {v1, v0}, Landroid/view/View;->setSystemUiVisibility(I)V
             """,
             ExternalLabel("morphe_status_bar_done", method.getInstruction(0)),
         )
