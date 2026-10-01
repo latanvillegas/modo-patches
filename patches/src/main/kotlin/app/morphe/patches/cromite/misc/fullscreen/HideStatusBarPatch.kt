@@ -32,6 +32,13 @@ private val windowInsetsPolicyFingerprint = Fingerprint(
     parameters = listOf("Landroid/view/View;", "Landroid/view/WindowInsets;"),
 )
 
+private val showSystemBarsFingerprint = Fingerprint(
+    definingClass = "Lng5;",
+    name = "A",
+    returnType = "V",
+    parameters = listOf("Landroid/view/View;"),
+)
+
 private val hideStatusBarPreferenceResourcesPatch = resourcePatch(
     description = "Adds the tablet-only status-bar preference to Cromite Accessibility settings.",
 ) {
@@ -60,9 +67,14 @@ private val hideStatusBarPreferenceResourcesPatch = resourcePatch(
                     "${accessibilityPreferences.absolutePath} has no root element"
                 )
 
-            val existing = (0 until root.childNodes.length)
+            val preferences = (0 until root.childNodes.length)
                 .mapNotNull { root.childNodes.item(it) as? Element }
-                .any { it.getAttribute("android:key") == HIDE_STATUS_BAR_PREF }
+            val existing = preferences.any { it.getAttribute("android:key") == HIDE_STATUS_BAR_PREF }
+            val forceTabletPreference = preferences.firstOrNull {
+                it.getAttribute("android:key") == "force_tablet_ui"
+            } ?: throw IllegalStateException(
+                "Cromite $CROMITE_VERSION force_tablet_ui preference disappeared during patching"
+            )
 
             if (!existing) {
                 val preference = document.createElement(
@@ -73,7 +85,10 @@ private val hideStatusBarPreferenceResourcesPatch = resourcePatch(
                 preference.setAttribute("android:summary", "@string/hide_status_bar_info_tablet_ui_summary")
                 preference.setAttribute("android:defaultValue", "false")
                 preference.setAttribute("android:dependency", "force_tablet_ui")
-                root.appendChild(preference)
+                // Keep the control discoverable: it belongs immediately after
+                // Force Tablet Mode, not at the end of the Accessibility screen.
+                val next = forceTabletPreference.nextSibling
+                if (next != null) root.insertBefore(preference, next) else root.appendChild(preference)
             }
         }
 
@@ -213,6 +228,58 @@ val hideStatusBarPatch = bytecodePatch(
                 invoke-virtual {v0, v1}, Llng;->show(I)V
             """,
             ExternalLabel("morphe_status_bar_done", method.getInstruction(0)),
+        )
+
+        // Chromium's showSystemBars() is the authoritative route that can undo
+        // our earlier statusBars() hide after a fullscreen transition. Let it
+        // restore its normal state first (including navigation/gestures), then
+        // re-assert ONLY statusBars() when the tablet preference is active.
+        // TopInsetCoordinator/CompositorViewHolder remain layout consumers and
+        // are deliberately not turned into additional system-bar writers.
+        val showMethod = showSystemBarsFingerprint.method
+        val showImplementation = showMethod.implementation
+            ?: throw IllegalStateException(
+                "FullscreenHtmlApiHandlerCompat.showSystemBars has no implementation"
+            )
+        val showLocalRegisters = showImplementation.registerCount - 2 // p0=this, p1=View
+        if (showLocalRegisters < 2) {
+            throw IllegalStateException(
+                "FullscreenHtmlApiHandlerCompat.showSystemBars requires 2 local registers; found $showLocalRegisters"
+            )
+        }
+        val showReturnIndex = showImplementation.instructions.size - 1
+
+        showMethod.addInstructionsWithLabels(
+            showReturnIndex,
+            """
+                invoke-virtual {p0}, Lmg5;->h()Z
+                move-result v0
+                if-nez v0, :morphe_after_show_done
+
+                invoke-virtual {p1}, Landroid/view/View;->getContext()Landroid/content/Context;
+                move-result-object v0
+                const-string v1, "$DEFAULT_PREFERENCES"
+                const/4 p1, 0x0
+                invoke-virtual {v0, v1, p1}, Landroid/content/Context;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
+                move-result-object v0
+                const-string v1, "$HIDE_STATUS_BAR_PREF"
+                invoke-interface {v0, v1, p1}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
+                move-result v0
+                if-eqz v0, :morphe_after_show_done
+
+                sget-boolean v0, Lorg/chromium/ui/base/DeviceFormFactor;->a:Z
+                if-eqz v0, :morphe_after_show_done
+
+                invoke-virtual {p0}, Lng5;->E()Llng;
+                move-result-object v0
+                const/4 v1, 0x1
+                invoke-virtual {v0, v1}, Llng;->hide(I)V
+
+                const-string v0, "MorpheStatusBar"
+                const-string v1, "post-show action=rehide statusBars"
+                invoke-static {v0, v1}, Landroid/util/Log;->d(Ljava/lang/String;Ljava/lang/String;)I
+            """,
+            ExternalLabel("morphe_after_show_done", showMethod.getInstruction(showReturnIndex)),
         )
     }
 }
