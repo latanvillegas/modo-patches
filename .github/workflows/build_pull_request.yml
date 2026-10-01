@@ -29,11 +29,6 @@ jobs:
       - name: Cache Gradle
         uses: burrunan/gradle-cache-action@v3
 
-      - name: Build
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: ./gradlew :patches:buildAndroid --no-daemon
-
       - name: Verify PatchManifest
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -42,6 +37,11 @@ jobs:
           # after a patch source is deleted or renamed.
           ./gradlew :patches:clean :patches:generatePatchManifest --no-daemon
           git diff --exit-code -- patch-manifest-v1.json
+
+      - name: Build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./gradlew :patches:buildAndroid --no-daemon
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
