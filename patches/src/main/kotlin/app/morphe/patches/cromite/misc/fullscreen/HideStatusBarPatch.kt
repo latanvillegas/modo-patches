@@ -170,6 +170,19 @@ val hideStatusBarPatch = bytecodePatch(
         method.addInstructionsWithLabels(
             0,
             """
+                invoke-virtual {p0, p1}, Lng5;->t(Landroid/view/View;)Z
+                move-result v0
+                if-eqz v0, :morphe_status_observed_visible
+                const-string v0, "MorpheStatusBar"
+                const-string v1, "observed isStatusBarHidden=1"
+                invoke-static {v0, v1}, Landroid/util/Log;->d(Ljava/lang/String;Ljava/lang/String;)I
+                goto :morphe_status_observed_done
+                :morphe_status_observed_visible
+                const-string v0, "MorpheStatusBar"
+                const-string v1, "observed isStatusBarHidden=0"
+                invoke-static {v0, v1}, Landroid/util/Log;->d(Ljava/lang/String;Ljava/lang/String;)I
+                :morphe_status_observed_done
+
                 invoke-virtual {p0}, Lmg5;->h()Z
                 move-result v0
                 if-eqz v0, :morphe_status_not_persistent
