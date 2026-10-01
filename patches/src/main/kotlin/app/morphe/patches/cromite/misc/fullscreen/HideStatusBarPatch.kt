@@ -32,6 +32,13 @@ private val windowInsetsPolicyFingerprint = Fingerprint(
     parameters = listOf("Landroid/view/View;", "Landroid/view/WindowInsets;"),
 )
 
+private val showSystemBarsFingerprint = Fingerprint(
+    definingClass = "Lng5;",
+    name = "A",
+    returnType = "V",
+    parameters = listOf("Landroid/view/View;"),
+)
+
 private val hideStatusBarPreferenceResourcesPatch = resourcePatch(
     description = "Adds the tablet-only status-bar preference to Cromite Accessibility settings.",
 ) {
@@ -252,6 +259,71 @@ val hideStatusBarPatch = bytecodePatch(
                 invoke-virtual {v1, v0}, Landroid/view/View;->setSystemUiVisibility(I)V
             """,
             ExternalLabel("morphe_status_bar_done", method.getInstruction(0)),
+
+        // Chromium calls showSystemBars() when leaving fullscreen and while
+        // reconciling system-bar state. Without guarding this method it can
+        // immediately undo the statusBars().hide() above. Keep Chromium's
+        // original implementation for every normal case, but while the
+        // tablet-only preference is active, hide only statusBars and return.
+        val showMethod = showSystemBarsFingerprint.method
+        val showImplementation = showMethod.implementation
+            ?: throw IllegalStateException(
+                "FullscreenHtmlApiHandlerCompat.showSystemBars has no implementation"
+            )
+        val showLocals = showImplementation.registerCount - 2
+        if (showLocals < 2) {
+            throw IllegalStateException(
+                "FullscreenHtmlApiHandlerCompat.showSystemBars requires 2 local registers; found $showLocals"
+            )
+        }
+
+        showMethod.addInstructionsWithLabels(
+            0,
+            """
+                invoke-virtual {p1}, Landroid/view/View;->getContext()Landroid/content/Context;
+                move-result-object v0
+                const-string v1, "$DEFAULT_PREFERENCES"
+                const/4 v0, 0x0
+                invoke-virtual {p1}, Landroid/view/View;->getContext()Landroid/content/Context;
+                move-result-object v1
+                const-string v0, "$DEFAULT_PREFERENCES"
+                const/4 p1, 0x0
+                invoke-virtual {v1, v0, p1}, Landroid/content/Context;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
+                move-result-object v1
+                const-string v0, "$HIDE_STATUS_BAR_PREF"
+                invoke-interface {v1, v0, p1}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
+                move-result v0
+                if-eqz v0, :morphe_show_original
+                sget-boolean v0, Lorg/chromium/ui/base/DeviceFormFactor;->a:Z
+                if-eqz v0, :morphe_show_original
+
+                iget-object v0, p0, Lmg5;->b:Landroid/app/Activity;
+                invoke-virtual {v0}, Landroid/app/Activity;->getWindow()Landroid/view/Window;
+                move-result-object v0
+                invoke-virtual {v0}, Landroid/view/Window;->getDecorView()Landroid/view/View;
+                move-result-object v0
+                sget v1, Landroid/os/Build$VERSION;->SDK_INT:I
+                const/16 p1, 0x1e
+                if-lt v1, p1, :morphe_show_hide_legacy
+                invoke-virtual {v0}, Landroid/view/View;->getWindowInsetsController()Landroid/view/WindowInsetsController;
+                move-result-object v0
+                if-eqz v0, :morphe_show_return
+                invoke-static {}, Landroid/view/WindowInsets$Type;->statusBars()I
+                move-result v1
+                invoke-virtual {v0, v1}, Landroid/view/WindowInsetsController;->hide(I)V
+                return-void
+
+                :morphe_show_hide_legacy
+                move-object v1, v0
+                invoke-virtual {v1}, Landroid/view/View;->getSystemUiVisibility()I
+                move-result v0
+                or-int/lit8 v0, v0, 0x4
+                invoke-virtual {v1, v0}, Landroid/view/View;->setSystemUiVisibility(I)V
+                :morphe_show_return
+                return-void
+            """,
+            ExternalLabel("morphe_show_original", showMethod.getInstruction(0)),
+        )
         )
     }
 }
