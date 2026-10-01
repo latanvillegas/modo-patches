@@ -283,19 +283,15 @@ val hideStatusBarPatch = bytecodePatch(
                 invoke-virtual {p1}, Landroid/view/View;->getContext()Landroid/content/Context;
                 move-result-object v0
                 const-string v1, "$DEFAULT_PREFERENCES"
-                const/4 v0, 0x0
-                invoke-virtual {p1}, Landroid/view/View;->getContext()Landroid/content/Context;
-                move-result-object v1
-                const-string v0, "$DEFAULT_PREFERENCES"
                 const/4 p1, 0x0
-                invoke-virtual {v1, v0, p1}, Landroid/content/Context;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
-                move-result-object v1
-                const-string v0, "$HIDE_STATUS_BAR_PREF"
-                invoke-interface {v1, v0, p1}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
+                invoke-virtual {v0, v1, p1}, Landroid/content/Context;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
+                move-result-object v0
+                const-string v1, "$HIDE_STATUS_BAR_PREF"
+                invoke-interface {v0, v1, p1}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
                 move-result v0
-                if-eqz v0, :morphe_show_original
+                if-eqz v0, :morphe_restore_show_view
                 sget-boolean v0, Lorg/chromium/ui/base/DeviceFormFactor;->a:Z
-                if-eqz v0, :morphe_show_original
+                if-eqz v0, :morphe_restore_show_view
 
                 iget-object v0, p0, Lmg5;->b:Landroid/app/Activity;
                 invoke-virtual {v0}, Landroid/app/Activity;->getWindow()Landroid/view/Window;
@@ -321,6 +317,14 @@ val hideStatusBarPatch = bytecodePatch(
                 invoke-virtual {v1, v0}, Landroid/view/View;->setSystemUiVisibility(I)V
                 :morphe_show_return
                 return-void
+
+                :morphe_restore_show_view
+                iget-object v0, p0, Lmg5;->b:Landroid/app/Activity;
+                invoke-virtual {v0}, Landroid/app/Activity;->getWindow()Landroid/view/Window;
+                move-result-object v0
+                invoke-virtual {v0}, Landroid/view/Window;->getDecorView()Landroid/view/View;
+                move-result-object p1
+                goto :morphe_show_original
             """,
             ExternalLabel("morphe_show_original", showMethod.getInstruction(0)),
         )
