@@ -146,6 +146,13 @@ private val pureAmoledResourcesPatch = resourcePatch(
             "fake_search_box_base_color", "hub_search_box_bg_color",
         )
 
+        val surfaceMacroNames = setOf(
+            "default_bg_color", "default_bg_color_elev_0",
+            "toolbar_background_primary", "settings_bg_color", "settings_container_background_color",
+            "sheet_bg_color", "sheet_container_bg_color", "sheet_chrome_icon_bg",
+            "default_card_bg_color", "menu_bg_color", "history_chip_bg_color",
+        )
+
         val surfaceThemeAttrs = setOf(
             "android:colorBackground", "android:windowBackground", "android:navigationBarColor", "android:statusBarColor",
             "colorBackground", "colorSurface", "colorSurfaceBright", "colorSurfaceDim", "colorSurfaceVariant",
@@ -162,6 +169,39 @@ private val pureAmoledResourcesPatch = resourcePatch(
             THEME_BLACK -> PURE_WHITE
             THEME_WHITE -> PURE_BLACK
             else -> if (isNight(directory)) PURE_WHITE else PURE_BLACK
+        }
+
+        val pureSurfaceResource = "morphe_pure_browser_surface"
+
+        // Macros in semantic_colors_dynamic.xml are compiled aliases to Material surface
+        // attributes. Give them one resource whose day/night variants implement Device
+        // default, while explicit Pure Black/Pure White remain fixed in both qualifiers.
+        listOf("res/values", "res/values-night").forEach { directory ->
+            runCatching {
+                document("$directory/colors.xml").use { document ->
+                    val root = document.documentElement
+                        ?: throw IllegalStateException("$directory/colors.xml has no root")
+                    val colors = document.getElementsByTagName("color")
+                    var existing: Element? = null
+                    for (index in 0 until colors.length) {
+                        val color = colors.item(index) as? Element ?: continue
+                        if (color.getAttribute("name") == pureSurfaceResource) {
+                            existing = color
+                            break
+                        }
+                    }
+                    val color = existing ?: document.createElement("color").also {
+                        it.setAttribute("name", pureSurfaceResource)
+                        root.appendChild(it)
+                    }
+                    color.textContent = pureSurface(directory)
+                }
+            }.getOrElse {
+                throw IllegalStateException(
+                    "Unable to define $pureSurfaceResource in $directory/colors.xml for Cromite $CROMITE_VERSION",
+                    it,
+                )
+            }
         }
 
         var valuesPatched = 0
@@ -236,6 +276,22 @@ private val pureAmoledResourcesPatch = resourcePatch(
                         }
                     }
                     if (localHits > 0) verifiedHits += "$directory/colors.xml:$localHits"
+                }
+            }
+
+            runCatching {
+                document("$directory/semantic_colors_dynamic.xml").use { document ->
+                    val macros = document.getElementsByTagName("macro")
+                    var localHits = 0
+                    for (index in 0 until macros.length) {
+                        val macro = macros.item(index) as? Element ?: continue
+                        if (macro.getAttribute("name") in surfaceMacroNames) {
+                            macro.textContent = "@color/$pureSurfaceResource"
+                            localHits++
+                            valuesPatched++
+                        }
+                    }
+                    if (localHits > 0) verifiedHits += "$directory/semantic_colors_dynamic.xml:$localHits"
                 }
             }
 
