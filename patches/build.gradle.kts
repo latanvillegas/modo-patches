@@ -46,6 +46,19 @@ tasks {
         classpath = sourceSets["main"].runtimeClasspath + patchListGeneratorClasspath
         mainClass.set("app.morphe.util.PatchListGeneratorKt")
     }
+
+    register<Exec>("generatePatchManifest") {
+        description = "Generate audited PatchManifest v1 metadata from the executable patch catalog"
+        dependsOn("generatePatchesList")
+        workingDir(rootProject.projectDir)
+        commandLine(
+            "python3",
+            ".github/scripts/generate_patch_manifest.py",
+            "patches-list.json",
+            "patch-manifest-metadata-v1.json",
+            "patch-manifest-v1.json",
+        )
+    }
     // Used by gradle-semantic-release-plugin.
     publish {
         dependsOn("generatePatchesList")
