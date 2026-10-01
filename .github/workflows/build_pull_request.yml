@@ -34,6 +34,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./gradlew :patches:buildAndroid --no-daemon
 
+      - name: Verify PatchManifest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ./gradlew :patches:generatePatchManifest --no-daemon
+          git diff --exit-code -- patch-manifest-v1.json
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
         with:
