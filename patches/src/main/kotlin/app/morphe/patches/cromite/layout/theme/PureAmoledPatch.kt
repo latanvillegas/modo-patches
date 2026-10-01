@@ -270,68 +270,57 @@ private val pureAmoledResourcesPatch = resourcePatch(
             }
         }
 
+        // Decoded APKs do not preserve Chromium's source XML filenames reliably.
+        // Walk every values*.xml file and patch by resource/attribute name instead of
+        // assuming colors.xml, semantic_colors_dynamic.xml, styles.xml, or themes.xml.
+        // This reaches direct XML references used by Settings containment and the NTP.
         valueDirectories.forEach { directory ->
             val target = pureSurface(directory)
-            runCatching {
-                document("$directory/colors.xml").use { document ->
-                    val colors = document.getElementsByTagName("color")
-                    var localHits = 0
-                    for (index in 0 until colors.length) {
-                        val color = colors.item(index) as? Element ?: continue
-                        val colorName = color.getAttribute("name")
-                        if (colorName in surfaceColorNames || isMaterialSurfaceColorName(colorName)) {
-                            // The qualifier, not a *_dark suffix in the resource name, decides the final color.
-                            // This is required because Cromite can reference *_dark aliases from the light resource set.
-                            color.textContent = target
-                            localHits++
-                            valuesPatched++
-                        }
-                    }
-                    if (localHits > 0) verifiedHits += "$directory/colors.xml:$localHits"
-                }
-            }
+            val foreground = pureForeground(directory)
+            java.io.File(directory).listFiles()
+                ?.filter { it.isFile && it.extension == "xml" }
+                .orEmpty()
+                .forEach { file ->
+                    runCatching {
+                        document(file.absolutePath).use { document ->
+                            var localHits = 0
+                            val all = document.getElementsByTagName("*")
+                            for (index in 0 until all.length) {
+                                val element = all.item(index) as? Element ?: continue
+                                val name = element.getAttribute("name")
+                                val type = element.getAttribute("type")
 
-            runCatching {
-                document("$directory/semantic_colors_dynamic.xml").use { document ->
-                    val macros = document.getElementsByTagName("macro")
-                    var localHits = 0
-                    for (index in 0 until macros.length) {
-                        val macro = macros.item(index) as? Element ?: continue
-                        if (macro.getAttribute("name") in surfaceMacroNames) {
-                            macro.textContent = "@color/$pureSurfaceResource"
-                            localHits++
-                            valuesPatched++
-                        }
-                    }
-                    if (localHits > 0) verifiedHits += "$directory/semantic_colors_dynamic.xml:$localHits"
-                }
-            }
+                                val isNamedSurface =
+                                    name in surfaceColorNames ||
+                                    name in surfaceMacroNames ||
+                                    isMaterialSurfaceColorName(name)
 
-            listOf("styles.xml", "themes.xml").forEach { fileName ->
-                runCatching {
-                    document("$directory/$fileName").use { document ->
-                        val items = document.getElementsByTagName("item")
-                        var localHits = 0
-                        for (index in 0 until items.length) {
-                            val item = items.item(index) as? Element ?: continue
-                            val name = item.getAttribute("name")
-                            when {
-                                name in surfaceThemeAttrs -> {
-                                    item.textContent = target
-                                    localHits++
-                                    valuesPatched++
-                                }
-                                name in foregroundThemeAttrs -> {
-                                    item.textContent = pureForeground(directory)
-                                    localHits++
-                                    valuesPatched++
+                                when {
+                                    isNamedSurface &&
+                                        (element.tagName == "color" ||
+                                         element.tagName == "macro" ||
+                                         (element.tagName == "item" && type == "color")) -> {
+                                        element.textContent =
+                                            if (element.tagName == "macro") "@color/$pureSurfaceResource" else target
+                                        localHits++
+                                        valuesPatched++
+                                    }
+                                    element.tagName == "item" && name in surfaceThemeAttrs -> {
+                                        element.textContent = target
+                                        localHits++
+                                        valuesPatched++
+                                    }
+                                    element.tagName == "item" && name in foregroundThemeAttrs -> {
+                                        element.textContent = foreground
+                                        localHits++
+                                        valuesPatched++
+                                    }
                                 }
                             }
+                            if (localHits > 0) verifiedHits += "${file.absolutePath}:$localHits"
                         }
-                        if (localHits > 0) verifiedHits += "$directory/$fileName:$localHits"
                     }
                 }
-            }
         }
 
         if (verifiedHits.isEmpty() || valuesPatched == 0) {
