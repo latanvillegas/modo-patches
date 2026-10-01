@@ -73,7 +73,18 @@ private val hideStatusBarPreferenceResourcesPatch = resourcePatch(
                 preference.setAttribute("android:summary", "@string/hide_status_bar_info_tablet_ui_summary")
                 preference.setAttribute("android:defaultValue", "false")
                 preference.setAttribute("android:dependency", "force_tablet_ui")
-                root.appendChild(preference)
+                val forceTabletPreference = (0 until root.childNodes.length)
+                    .mapNotNull { root.childNodes.item(it) as? Element }
+                    .firstOrNull { it.getAttribute("android:key") == "force_tablet_ui" }
+                    ?: throw IllegalStateException(
+                        "${accessibilityPreferences.absolutePath} no longer contains force_tablet_ui"
+                    )
+                val nextNode = forceTabletPreference.nextSibling
+                if (nextNode != null) {
+                    root.insertBefore(preference, nextNode)
+                } else {
+                    root.appendChild(preference)
+                }
             }
         }
 
