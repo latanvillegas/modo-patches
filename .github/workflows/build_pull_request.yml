@@ -7,6 +7,7 @@ on:
       - dev
       - fix/appmenu-runtime-black
       - feat/amoled-web
+      - feature/amoled-browser-theme-tablet-status-bar
   pull_request:
     branches:
       - dev
