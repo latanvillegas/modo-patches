@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "profiles": [
+    {
+      "id": "cromite-153.0.8010.37-arm64",
+      "displayName": "Cromite 153.0.8010.37 (arm64-v8a)",
+      "packageNames": ["org.cromite.cromite"],
+      "versionRules": {
+        "exact": ["153.0.8010.37"]
+      },
+      "versionCodes": [801003702],
+      "abis": ["arm64-v8a"],
+      "expectedHashes": [
+        "9db12af1af021f42b4371e76d0e9fe476a7085bbbbc76bc410a538d028bf6071"
+      ],
+      "patchIds": [
+        "cromite.hide-android-status-bar",
+        "cromite.pure-amoled-system-theme",
+        "cromite.pure-amoled-web-content"
+      ],
+      "restrictions": [],
+      "minimumPatcherVersion": null,
+      "signingPolicy": {
+        "mode": "USER_KEY",
+        "requireVerifiedOutput": true
+      },
+      "tests": [
+        {"id": "identity", "description": "Package, version name, version code and ABI must match."},
+        {"id": "source-hash", "description": "The selected source APK must match the declared SHA-256."},
+        {"id": "signed-output", "description": "The final APK signature must verify cryptographically."}
+      ],
+      "risk": "HIGH"
+    }
+  ]
+}
