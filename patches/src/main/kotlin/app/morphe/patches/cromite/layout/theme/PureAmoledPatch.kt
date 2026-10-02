@@ -224,7 +224,7 @@ private val pureAmoledResourcesPatch = resourcePatch(
                 "dialog" in normalized ||
                 "sheet" in normalized ||
                 "card" in normalized ||
-                "tab_strip" in normalized ||
+                "tab_strip" in normalized
         }
 
         val surfaceMacroNames = setOf(
