@@ -230,49 +230,10 @@ val hideStatusBarPatch = bytecodePatch(
     dependsOn(hideStatusBarPreferenceResourcesPatch)
 
     execute {
-        // Primary lifecycle hook: operate on ChromeTabbedActivity's actual Window.
-        // This does not depend on a View insets listener firing. statusBars() == 1;
-        // navigation bars and gesture navigation are intentionally untouched.
-        val activityResume = chromeTabbedActivityResumeFingerprint.method
-        val resumeImpl = activityResume.implementation
-            ?: throw IllegalStateException("ChromeTabbedActivity.onResume has no implementation")
-        val resumeLocals = resumeImpl.registerCount - 1
-        if (resumeLocals < 2) {
-            throw IllegalStateException(
-                "ChromeTabbedActivity.onResume requires 2 local registers; found $resumeLocals"
-            )
-        }
-        activityResume.addInstructions(
-            0,
-            """
-                const-string v0, "MorpheStatusBar"
-                const-string v1, "trigger=ChromeTabbedActivity.onResume"
-                invoke-static {v0, v1}, Landroid/util/Log;->d(Ljava/lang/String;Ljava/lang/String;)I
-                const-string v0, "$DEFAULT_PREFERENCES"
-                const/4 v1, 0x0
-                invoke-virtual {p0, v0, v1}, Landroid/content/Context;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
-                move-result-object v0
-                const-string v1, "$HIDE_STATUS_BAR_PREF"
-                invoke-interface {v0, v1, v1}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
-                move-result v0
-                if-eqz v0, :morphe_activity_resume_done
-                sget-boolean v0, Lorg/chromium/ui/base/DeviceFormFactor;->a:Z
-                if-eqz v0, :morphe_activity_resume_done
-                invoke-virtual {p0}, Landroid/app/Activity;->getWindow()Landroid/view/Window;
-                move-result-object v0
-                invoke-virtual {v0}, Landroid/view/Window;->getInsetsController()Landroid/view/WindowInsetsController;
-                move-result-object v0
-                if-eqz v0, :morphe_activity_resume_done
-                const/4 v1, 0x1
-                invoke-interface {v0, v1}, Landroid/view/WindowInsetsController;->hide(I)V
-                const-string v0, "MorpheStatusBar"
-                const-string v1, "activity=ChromeTabbedActivity action=hide statusBars"
-                invoke-static {v0, v1}, Landroid/util/Log;->d(Ljava/lang/String;Ljava/lang/String;)I
-                :morphe_activity_resume_done
-                nop
-            """
-        )
-
+        // ChromeTabbedActivity lifecycle hook temporarily disabled: the target
+        // exposes only two local registers and reusing parameter p0 corrupts the
+        // Activity receiver. Keep the known-safe fullscreen authority path until
+        // a register-safe lifecycle bridge is implemented.
         val authorityCallback = windowInsetsPolicyFingerprint.method
         val implementation = authorityCallback.implementation
             ?: throw IllegalStateException(
