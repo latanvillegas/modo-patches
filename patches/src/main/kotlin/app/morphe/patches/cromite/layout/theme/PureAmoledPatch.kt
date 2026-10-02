@@ -82,13 +82,12 @@ private val pureAmoledResourcesPatch = resourcePatch(
 
         val explicitColorFiles = setOf(
             "context_menu_header_circle_bg_color.xml",
-            "hub_search_box_bg_color.xml", "interactable_chip_bg_color.xml", "item_chooser_row_background.xml",
+            "interactable_chip_bg_color.xml", "item_chooser_row_background.xml",
             "m3_list_item_background_color_selector.xml", "m3_segmented_list_item_background_color_selector.xml",
             "m3_textfield_filled_background_color.xml", "mtrl_filled_background_color.xml",
-            "omnibox_popover_suggestion_bg_color.xml",
-            "omnibox_suggestion_dropdown_bg.xml", "search_suggestion_bg_color.xml", "single_tab_favicon_bg_color.xml",
+            "single_tab_favicon_bg_color.xml",
             "tab_strip_ntb_bg_tint_list.xml",
-            "toolbar_text_box_bg_color.xml",
+            
             
 
             // Desktop-Android/Cromite toolbar and tab-strip surfaces. Missing files are intentionally ignored.
@@ -141,8 +140,6 @@ private val pureAmoledResourcesPatch = resourcePatch(
             "gm3_baseline_surface_container_dark", "gm3_baseline_surface_container_high_dark",
             "gm3_baseline_surface_container_highest_dark",
             "mtrl_filled_background_color",
-            "omnibox_suggestion_bg_color", "omnibox_popover_suggestion_bg_color",
-            "hub_search_box_bg_color",
         )
 
         fun isMaterialSurfaceColorName(name: String): Boolean {
@@ -258,7 +255,8 @@ private val pureAmoledResourcesPatch = resourcePatch(
                 "appmenu" in name || "menu_" in name || "popup_" in name ||
                 "mtrl_popupmenu" in name ||
                 "dialog" in name || "sheet" in name || "card" in name || "snackbar" in name ||
-                "message_bg" in name || "toast_color" in name || "widget" in name || "xr_" in name
+                "message_bg" in name || "toast_color" in name || "widget" in name || "xr_" in name ||
+                "omnibox" in name || "search_box" in name || "search_suggestion" in name || "toolbar_text_box" in name
             if (isolatedDomain) return false
 
             // Structural boundary first: Material/Chromium themes and overlays,
@@ -449,6 +447,8 @@ private val pureAmoledResourcesPatch = resourcePatch(
                                     "card" in name.lowercase() || "snackbar" in name.lowercase() ||
                                     "message_bg" in name.lowercase() || "toast_color" in name.lowercase() ||
                                     "widget" in name.lowercase() || "xr_" in name.lowercase() ||
+                                    "omnibox" in name.lowercase() || "search_box" in name.lowercase() ||
+                                    "search_suggestion" in name.lowercase() || "toolbar_text_box" in name.lowercase() ||
                                     "fake_search_box" in name.lowercase() ||
                                     "tile_view" in name.lowercase()
                                 val isNamedSurface = !isolatedResource && (
