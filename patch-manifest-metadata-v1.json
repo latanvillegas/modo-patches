@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "patches": [
     {
-      "id": "cromite.hide-android-status-bar",
-      "name": "Hide Android status bar",
+      "id": "cromite.hide-status-bar-main-browser",
+      "name": "Hide status bar in main browser (tablet mode)",
       "applications": [
         "cromite"
       ],
@@ -18,6 +18,7 @@
         "UNIVERSAL_APK"
       ],
       "mutations": [
+        "RESOURCE",
         "BYTECODE"
       ],
       "signatureImpact": "RESIGN_REQUIRED",
@@ -57,6 +58,36 @@
       "tests": [
         "cromite-153-theme-bytecode",
         "cromite-153-theme-visual"
+      ],
+      "documentation": [
+        "docs/cromite-153-binary-mapping-analysis.md"
+      ]
+    },
+    {
+      "id": "cromite.hide-status-bar-settings",
+      "name": "Hide status bar in Settings",
+      "applications": [
+        "cromite"
+      ],
+      "abis": [
+        "arm64-v8a"
+      ],
+      "versionCodes": [
+        801003702
+      ],
+      "inputTypes": [
+        "APK",
+        "UNIVERSAL_APK"
+      ],
+      "mutations": [
+        "RESOURCE"
+      ],
+      "signatureImpact": "RESIGN_REQUIRED",
+      "risk": "MEDIUM",
+      "reversible": true,
+      "tests": [
+        "cromite-153-settings-status-bar-resource",
+        "cromite-153-settings-status-bar-device"
       ],
       "documentation": [
         "docs/cromite-153-binary-mapping-analysis.md"
