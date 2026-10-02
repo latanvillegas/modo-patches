@@ -7,6 +7,7 @@ import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod.Companion.toMuta
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.builder.MutableMethodImplementation
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
+import com.android.tools.smali.dexlib2.immutable.ImmutableMethodParameter
 
 private const val CROMITE_SETTINGS_VERSION = "153.0.8010.37"
 private const val SETTINGS_ACTIVITY =
@@ -52,7 +53,7 @@ val hideSettingsStatusBarPatch = bytecodePatch(
                 ImmutableMethod(
                     type,
                     "onWindowFocusChanged",
-                    listOf("Z"),
+                    listOf(ImmutableMethodParameter("Z", null, null)),
                     "V",
                     AccessFlags.PUBLIC.value or AccessFlags.FINAL.value,
                     null,
