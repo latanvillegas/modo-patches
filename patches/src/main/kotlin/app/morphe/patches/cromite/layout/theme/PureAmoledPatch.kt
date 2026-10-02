@@ -243,8 +243,8 @@ private val pureAmoledResourcesPatch = resourcePatch(
 
         // Material 3 inherits most surface roles from parent themes. Merely replacing
         // <item> nodes that already exist leaves those inherited gray roles untouched.
-        // Inject every required role into Chromium's actual activity/settings themes so
-        // MaterialColors resolves the selected pure palette before views are inflated.
+        // Restrict injected roles to the main Chrome UI theme boundary so
+        // MaterialColors resolves the selected palette without coupling Settings or system bars.
         // AppMenu, omnibox and tab surfaces can be inflated through ContextThemeWrapper
         // using Material/BrowserUI overlays rather than a Theme.Chromium root. R8 mapping
         // for Cromite 153 confirms those consumers resolve surface-container roles after
