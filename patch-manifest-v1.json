@@ -4,9 +4,9 @@
   "patches": [
     {
       "schemaVersion": 1,
-      "id": "cromite.hide-android-status-bar",
-      "name": "Hide Android status bar",
-      "description": "Hides the Android status bar in Cromite (clock, battery, signal and notification icons).",
+      "id": "cromite.hide-status-bar-main-browser",
+      "name": "Hide status bar in main browser (tablet mode)",
+      "description": "Independent main-browser patch. Hides only the Android status bar in the main Chromium activity while Force Tablet Mode and its persisted option are enabled. Does not patch SettingsActivity.",
       "applications": [
         "cromite"
       ],
@@ -32,6 +32,7 @@
       "conflicts": [],
       "minimumPatcherVersion": null,
       "mutations": [
+        "RESOURCE",
         "BYTECODE"
       ],
       "signatureImpact": "RESIGN_REQUIRED",
@@ -47,9 +48,52 @@
     },
     {
       "schemaVersion": 1,
+      "id": "cromite.hide-status-bar-settings",
+      "name": "Hide status bar in Settings",
+      "description": "Independent Cromite Settings patch. Hides the Android status bar only in SettingsActivity and does not modify the working main-browser status-bar patch.",
+      "applications": [
+        "cromite"
+      ],
+      "packageNames": [
+        "org.cromite.cromite"
+      ],
+      "versionRules": {
+        "exact": [
+          "153.0.8010.37"
+        ]
+      },
+      "versionCodes": [
+        801003702
+      ],
+      "abis": [
+        "arm64-v8a"
+      ],
+      "inputTypes": [
+        "APK",
+        "UNIVERSAL_APK"
+      ],
+      "dependencies": [],
+      "conflicts": [],
+      "minimumPatcherVersion": null,
+      "mutations": [
+        "RESOURCE"
+      ],
+      "signatureImpact": "RESIGN_REQUIRED",
+      "risk": "MEDIUM",
+      "reversible": true,
+      "tests": [
+        "cromite-153-settings-status-bar-resource",
+        "cromite-153-settings-status-bar-device"
+      ],
+      "documentation": [
+        "docs/cromite-153-binary-mapping-analysis.md"
+      ]
+    },
+    {
+      "schemaVersion": 1,
       "id": "cromite.pure-amoled-system-theme",
       "name": "Pure AMOLED / Pure White system theme",
-      "description": "Follows Android system theme: true black (#000000) in dark mode and true white (#FFFFFF) in light mode for Cromite 153 native UI surfaces.",
+      "description": "Adds Device default, Pure Black (#000000), and Pure White (#FFFFFF) themes for Cromite 153 browser UI without forcing external web-content colors.",
       "applications": [
         "cromite"
       ],
