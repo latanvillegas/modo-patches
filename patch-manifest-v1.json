@@ -91,9 +91,9 @@
     },
     {
       "schemaVersion": 1,
-      "id": "cromite.pure-amoled-system-theme",
-      "name": "Pure AMOLED / Pure White system theme",
-      "description": "Adds Device default, Pure Black (#000000), and Pure White (#FFFFFF) themes for Cromite 153 browser UI without forcing external web-content colors.",
+      "id": "cromite.amoled-main-browser-ui",
+      "name": "AMOLED - Main browser UI",
+      "description": "Main Cromite browser UI theme: toolbar/tab surfaces and shared native browser surfaces. Web content is not recolored.",
       "applications": [
         "cromite"
       ],
@@ -128,6 +128,49 @@
       "tests": [
         "cromite-153-theme-bytecode",
         "cromite-153-theme-visual"
+      ],
+      "documentation": [
+        "docs/cromite-153-binary-mapping-analysis.md"
+      ]
+    },
+    {
+      "schemaVersion": 1,
+      "id": "cromite.amoled-settings",
+      "name": "AMOLED - Settings",
+      "description": "Applies the selected Device default / Pure Black / Pure White palette to the native Cromite Settings background independently from the main browser UI.",
+      "applications": [
+        "cromite"
+      ],
+      "packageNames": [
+        "org.cromite.cromite"
+      ],
+      "versionRules": {
+        "exact": [
+          "153.0.8010.37"
+        ]
+      },
+      "versionCodes": [
+        801003702
+      ],
+      "abis": [
+        "arm64-v8a"
+      ],
+      "inputTypes": [
+        "APK",
+        "UNIVERSAL_APK"
+      ],
+      "dependencies": [],
+      "conflicts": [],
+      "minimumPatcherVersion": null,
+      "mutations": [
+        "BYTECODE"
+      ],
+      "signatureImpact": "RESIGN_REQUIRED",
+      "risk": "HIGH",
+      "reversible": true,
+      "tests": [
+        "cromite-153-settings-theme-bytecode",
+        "cromite-153-settings-theme-visual"
       ],
       "documentation": [
         "docs/cromite-153-binary-mapping-analysis.md"
