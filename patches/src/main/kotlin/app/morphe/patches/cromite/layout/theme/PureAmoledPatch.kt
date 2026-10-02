@@ -260,6 +260,15 @@ private val pureAmoledResourcesPatch = resourcePatch(
             val parent = style.getAttribute("parent").lowercase()
             if (name.isBlank()) return false
 
+            // Main-browser themes must not absorb independently selectable domains.
+            // Parent inheritance alone is insufficient because Settings/NTP overlays
+            // commonly inherit Material/Chromium parents as well.
+            val isolatedDomain =
+                "settings" in name || "preference" in name ||
+                "newtab" in name || "new_tab" in name || "ntp" in name ||
+                "home_surface" in name
+            if (isolatedDomain) return false
+
             // Structural boundary first: Material/Chromium themes and overlays,
             // plus any style that already declares a whitelisted surface role.
             // This catches anonymous/specialized ContextThemeWrapper overlays whose
@@ -269,7 +278,7 @@ private val pureAmoledResourcesPatch = resourcePatch(
             val nativeUiName =
                 "chromium" in name || "browser" in name || "material" in name ||
                 "appmenu" in name || "menu" in name || "toolbar" in name ||
-                "omnibox" in name || "tab" in name || "settings" in name ||
+                "omnibox" in name || "tab" in name ||
                 "dialog" in name || "sheet" in name || "card" in name ||
                 "snackbar" in name
 
