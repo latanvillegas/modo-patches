@@ -156,9 +156,9 @@ val hideStatusBarPatch = bytecodePatch(
             )
 
         val localRegisters = implementation.registerCount - 3
-        if (localRegisters < 3) {
+        if (localRegisters < 2) {
             throw IllegalStateException(
-                "FullscreenHtmlApiHandlerCompat.onApplyWindowInsets requires 3 local registers; found $localRegisters"
+                "FullscreenHtmlApiHandlerCompat.onApplyWindowInsets requires 2 local registers; found $localRegisters"
             )
         }
 
@@ -173,34 +173,25 @@ val hideStatusBarPatch = bytecodePatch(
             """
                 invoke-virtual {p0}, Lmg5;->h()Z
                 move-result v0
-                if-eqz v0, :morphe_status_not_persistent
-                const-string v0, "MorpheStatusBar"
-                const-string v1, "persistent=1 action=skip"
-                invoke-static {v0, v1}, Landroid/util/Log;->d(Ljava/lang/String;Ljava/lang/String;)I
-                goto :morphe_status_policy_done
+                if-nez v0, :morphe_status_policy_done
 
-                :morphe_status_not_persistent
                 invoke-virtual {p1}, Landroid/view/View;->getContext()Landroid/content/Context;
                 move-result-object v0
                 const-string v1, "$DEFAULT_PREFERENCES"
-                const/4 v2, 0x0
-                invoke-virtual {v0, v1, v2}, Landroid/content/Context;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
+                const/4 p1, 0x0
+                invoke-virtual {v0, v1, p1}, Landroid/content/Context;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
                 move-result-object v0
-                move-object v2, v0
+
                 const-string v1, "$HIDE_STATUS_BAR_PREF"
-                const/4 v0, 0x0
-                invoke-interface {v2, v1, v0}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
+                invoke-interface {v0, v1, p1}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
                 move-result v1
                 if-eqz v1, :morphe_status_show
 
                 const-string v1, "force_tablet_ui"
-                invoke-interface {v2, v1, v0}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
+                invoke-interface {v0, v1, p1}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
                 move-result v1
                 if-eqz v1, :morphe_status_show
 
-                const-string v0, "MorpheStatusBar"
-                const-string v1, "persistent=0 tablet=1 pref=1 action=hide statusBars"
-                invoke-static {v0, v1}, Landroid/util/Log;->d(Ljava/lang/String;Ljava/lang/String;)I
                 invoke-virtual {p0}, $authorityClass->E()Llng;
                 move-result-object v0
                 const/4 v1, 0x1
@@ -208,9 +199,6 @@ val hideStatusBarPatch = bytecodePatch(
                 goto :morphe_status_policy_done
 
                 :morphe_status_show
-                const-string v0, "MorpheStatusBar"
-                const-string v1, "persistent=0 action=show statusBars"
-                invoke-static {v0, v1}, Landroid/util/Log;->d(Ljava/lang/String;Ljava/lang/String;)I
                 invoke-virtual {p0}, $authorityClass->E()Llng;
                 move-result-object v0
                 const/4 v1, 0x1
