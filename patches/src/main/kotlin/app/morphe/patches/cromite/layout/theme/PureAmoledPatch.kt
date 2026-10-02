@@ -81,13 +81,13 @@ private val pureAmoledResourcesPatch = resourcePatch(
         if (browserThemeOption.value == THEME_DEVICE) return@execute
 
         val explicitColorFiles = setOf(
-            "bottom_sheet_bg_color.xml", "context_menu_header_circle_bg_color.xml", "dialog_bg_color.xml",
+            "context_menu_header_circle_bg_color.xml",
             "hub_search_box_bg_color.xml", "interactable_chip_bg_color.xml", "item_chooser_row_background.xml",
             "m3_list_item_background_color_selector.xml", "m3_segmented_list_item_background_color_selector.xml",
             "m3_textfield_filled_background_color.xml", "mtrl_filled_background_color.xml",
             "message_bg_color.xml", "omnibox_popover_suggestion_bg_color.xml",
             "omnibox_suggestion_dropdown_bg.xml", "search_suggestion_bg_color.xml", "single_tab_favicon_bg_color.xml",
-            "tab_group_dialog_bg_color.xml", "tab_hover_card_bg_color.xml", "tab_strip_ntb_bg_tint_list.xml",
+            "tab_hover_card_bg_color.xml", "tab_strip_ntb_bg_tint_list.xml",
             "toast_color.xml", "toolbar_text_box_bg_color.xml",
             "widget_bg.xml", "widget_button_bg.xml", "widget_searchbox_bg.xml", "xr_toolbar_bg.xml",
 
@@ -256,7 +256,8 @@ private val pureAmoledResourcesPatch = resourcePatch(
                 "newtab" in name || "new_tab" in name || "ntp" in name ||
                 "home_surface" in name ||
                 "appmenu" in name || "menu_" in name || "popup_" in name ||
-                "mtrl_popupmenu" in name
+                "mtrl_popupmenu" in name ||
+                "dialog" in name || "sheet" in name
             if (isolatedDomain) return false
 
             // Structural boundary first: Material/Chromium themes and overlays,
@@ -269,8 +270,7 @@ private val pureAmoledResourcesPatch = resourcePatch(
                 "chromium" in name || "browser" in name || "material" in name ||
                 "appmenu" in name || "menu" in name || "toolbar" in name ||
                 "omnibox" in name || "tab" in name ||
-                "dialog" in name || "sheet" in name || "card" in name ||
-                "snackbar" in name
+                "card" in name || "snackbar" in name
 
             var declaresSurfaceRole = false
             val children = style.childNodes
@@ -444,6 +444,7 @@ private val pureAmoledResourcesPatch = resourcePatch(
                                     "appmenu" in name.lowercase() ||
                                     "menu_" in name.lowercase() || "popup_" in name.lowercase() ||
                                     "mtrl_popupmenu" in name.lowercase() ||
+                                    "dialog" in name.lowercase() || "sheet" in name.lowercase() ||
                                     "fake_search_box" in name.lowercase() ||
                                     "tile_view" in name.lowercase()
                                 val isNamedSurface = !isolatedResource && (
