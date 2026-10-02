@@ -85,14 +85,12 @@ private val pureAmoledResourcesPatch = resourcePatch(
             "hub_search_box_bg_color.xml", "interactable_chip_bg_color.xml", "item_chooser_row_background.xml",
             "m3_list_item_background_color_selector.xml", "m3_segmented_list_item_background_color_selector.xml",
             "m3_textfield_filled_background_color.xml", "mtrl_filled_background_color.xml",
-            "mtrl_popupmenu_overlay_color.xml", "message_bg_color.xml", "omnibox_popover_suggestion_bg_color.xml",
+            "message_bg_color.xml", "omnibox_popover_suggestion_bg_color.xml",
             "omnibox_suggestion_dropdown_bg.xml", "search_suggestion_bg_color.xml", "single_tab_favicon_bg_color.xml",
             "tab_group_dialog_bg_color.xml", "tab_hover_card_bg_color.xml", "tab_strip_ntb_bg_tint_list.xml",
             "toast_color.xml", "toolbar_text_box_bg_color.xml",
             "widget_bg.xml", "widget_button_bg.xml", "widget_searchbox_bg.xml", "xr_toolbar_bg.xml",
-            "menu_item_bg_color.xml", "menu_item_bg_color_baseline.xml", "menu_item_bg_color_dark_baseline.xml",
-            "menu_bg_color.xml", "menu_bg_color_baseline.xml", "menu_bg_color_dark_baseline.xml",
-            "list_menu_background_color.xml", "list_menu_background_tint.xml",
+
             // Desktop-Android/Cromite toolbar and tab-strip surfaces. Missing files are intentionally ignored.
             "toolbar_background_primary.xml", "toolbar_background_primary_incognito.xml",
             "toolbar_background_color.xml", "top_toolbar_background_color.xml",
@@ -101,9 +99,7 @@ private val pureAmoledResourcesPatch = resourcePatch(
         )
 
         val surfaceDrawableFiles = setOf(
-            "popup_bg.xml", "popup_bg_8dp.xml", "popup_bg_24dp.xml",
-            "popup_bg_shape_16dp.xml", "popup_bg_shape_24dp.xml", "popup_bg_shape_24dp_baseline.xml",
-            "list_menu_background.xml", "menu_bg_tinted.xml",
+
             "toolbar_background.xml", "tab_strip_background.xml",
         )
 
@@ -144,10 +140,7 @@ private val pureAmoledResourcesPatch = resourcePatch(
             "gm3_baseline_surface_container_lowest_dark", "gm3_baseline_surface_container_low_dark",
             "gm3_baseline_surface_container_dark", "gm3_baseline_surface_container_high_dark",
             "gm3_baseline_surface_container_highest_dark",
-            "menu_bg_color", "menu_bg_color_baseline", "menu_bg_color_dark_baseline",
-            "menu_item_bg_color", "menu_item_bg_color_baseline", "menu_item_bg_color_dark_baseline",
-            "list_menu_background_color", "list_menu_background_tint",
-            "mtrl_popupmenu_overlay_color", "mtrl_filled_background_color",
+            "mtrl_filled_background_color",
             "omnibox_suggestion_bg_color", "omnibox_popover_suggestion_bg_color",
             "hub_search_box_bg_color",
         )
@@ -226,7 +219,7 @@ private val pureAmoledResourcesPatch = resourcePatch(
         val surfaceMacroNames = setOf(
             "default_bg_color", "default_bg_color_elev_0",
             "toolbar_background_primary",
-            "menu_bg_color", "history_chip_bg_color",
+            "history_chip_bg_color",
         )
 
         val surfaceThemeAttrs = setOf(
@@ -261,7 +254,9 @@ private val pureAmoledResourcesPatch = resourcePatch(
             val isolatedDomain =
                 "settings" in name || "preference" in name ||
                 "newtab" in name || "new_tab" in name || "ntp" in name ||
-                "home_surface" in name
+                "home_surface" in name ||
+                "appmenu" in name || "menu_" in name || "popup_" in name ||
+                "mtrl_popupmenu" in name
             if (isolatedDomain) return false
 
             // Structural boundary first: Material/Chromium themes and overlays,
@@ -446,6 +441,9 @@ private val pureAmoledResourcesPatch = resourcePatch(
                                     "new_tab" in name.lowercase() ||
                                     "ntp" in name.lowercase() ||
                                     "home_surface" in name.lowercase() ||
+                                    "appmenu" in name.lowercase() ||
+                                    "menu_" in name.lowercase() || "popup_" in name.lowercase() ||
+                                    "mtrl_popupmenu" in name.lowercase() ||
                                     "fake_search_box" in name.lowercase() ||
                                     "tile_view" in name.lowercase()
                                 val isNamedSurface = !isolatedResource && (
