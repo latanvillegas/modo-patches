@@ -33,8 +33,8 @@
       ]
     },
     {
-      "id": "cromite.pure-amoled-system-theme",
-      "name": "Pure AMOLED / Pure White system theme",
+      "id": "cromite.amoled-main-browser-ui",
+      "name": "AMOLED - Main browser UI",
       "applications": [
         "cromite"
       ],
@@ -88,6 +88,36 @@
       "tests": [
         "cromite-153-settings-status-bar-resource",
         "cromite-153-settings-status-bar-device"
+      ],
+      "documentation": [
+        "docs/cromite-153-binary-mapping-analysis.md"
+      ]
+    },
+    {
+      "id": "cromite.amoled-settings",
+      "name": "AMOLED - Settings",
+      "applications": [
+        "cromite"
+      ],
+      "abis": [
+        "arm64-v8a"
+      ],
+      "versionCodes": [
+        801003702
+      ],
+      "inputTypes": [
+        "APK",
+        "UNIVERSAL_APK"
+      ],
+      "mutations": [
+        "BYTECODE"
+      ],
+      "signatureImpact": "RESIGN_REQUIRED",
+      "risk": "HIGH",
+      "reversible": true,
+      "tests": [
+        "cromite-153-settings-theme-bytecode",
+        "cromite-153-settings-theme-visual"
       ],
       "documentation": [
         "docs/cromite-153-binary-mapping-analysis.md"
