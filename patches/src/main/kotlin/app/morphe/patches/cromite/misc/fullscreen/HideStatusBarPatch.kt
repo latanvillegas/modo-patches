@@ -235,10 +235,10 @@ val hideStatusBarPatch = bytecodePatch(
             )
         val focusLocalRegisters =
             focusImplementation.registerCount - focusMethod.parameters.size - 1
-        if (focusMethod.parameters.lastOrNull() != "Z" || focusLocalRegisters < 1) {
+        if (focusLocalRegisters < 1) {
             throw IllegalStateException(
-                "Fullscreen window-focus bridge shape changed: params=" +
-                    focusMethod.parameters + ", locals=" + focusLocalRegisters
+                "Fullscreen window-focus bridge requires at least 1 local register; found " +
+                    focusLocalRegisters
             )
         }
 
