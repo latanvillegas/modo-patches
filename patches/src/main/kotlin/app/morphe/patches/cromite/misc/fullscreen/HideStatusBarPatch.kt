@@ -340,6 +340,7 @@ val hideStatusBarPatch = bytecodePatch(
                 invoke-virtual {p1, p0, p2}, $authorityClass->onApplyWindowInsets(Landroid/view/View;Landroid/view/WindowInsets;)Landroid/view/WindowInsets;
                 move-result-object p2
                 :morphe_compositor_policy_done
+                nop
             """,
         )
     }}
