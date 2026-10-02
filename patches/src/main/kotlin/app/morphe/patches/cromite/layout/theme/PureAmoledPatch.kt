@@ -148,7 +148,6 @@ private val pureAmoledResourcesPatch = resourcePatch(
             "menu_item_bg_color", "menu_item_bg_color_baseline", "menu_item_bg_color_dark_baseline",
             "list_menu_background_color", "list_menu_background_tint",
             "mtrl_popupmenu_overlay_color", "mtrl_filled_background_color",
-            "default_card_bg_color", "card_background_color",
             "omnibox_suggestion_bg_color", "omnibox_popover_suggestion_bg_color",
             "hub_search_box_bg_color",
         )
@@ -182,8 +181,6 @@ private val pureAmoledResourcesPatch = resourcePatch(
                 "_bg_" in normalized ||
                 normalized.endsWith("_bg_color") ||
                 normalized.startsWith("menu_bg") ||
-                normalized.startsWith("dialog_bg") ||
-                normalized.startsWith("sheet_bg") ||
                 normalized.startsWith("popup_bg") ||
                 normalized.contains("container") && (
                     normalized.contains("card") ||
@@ -223,17 +220,13 @@ private val pureAmoledResourcesPatch = resourcePatch(
                 "toolbar" in normalized ||
                 "omnibox" in normalized ||
                 "menu" in normalized ||
-                "dialog" in normalized ||
-                "sheet" in normalized ||
-                "card" in normalized ||
                 "tab_strip" in normalized
         }
 
         val surfaceMacroNames = setOf(
             "default_bg_color", "default_bg_color_elev_0",
             "toolbar_background_primary",
-            "sheet_bg_color", "sheet_container_bg_color", "sheet_chrome_icon_bg",
-            "default_card_bg_color", "menu_bg_color", "history_chip_bg_color",
+            "menu_bg_color", "history_chip_bg_color",
         )
 
         val surfaceThemeAttrs = setOf(
