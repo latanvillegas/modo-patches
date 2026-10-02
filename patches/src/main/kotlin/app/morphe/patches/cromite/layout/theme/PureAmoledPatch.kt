@@ -252,13 +252,28 @@ private val pureAmoledResourcesPatch = resourcePatch(
         // <item> nodes that already exist leaves those inherited gray roles untouched.
         // Inject every required role into Chromium's actual activity/settings themes so
         // MaterialColors resolves the selected pure palette before views are inflated.
-        val chromiumThemePrefixes = listOf(
-            "Theme.Chromium", "Base.Theme.Chromium",
-            "ThemeOverlay.Chromium", "Base.ThemeOverlay.Chromium",
-        )
-
-        fun isChromiumUiTheme(name: String): Boolean =
-            chromiumThemePrefixes.any { name.startsWith(it) }
+        // AppMenu, omnibox and tab surfaces can be inflated through ContextThemeWrapper
+        // using Material/BrowserUI overlays rather than a Theme.Chromium root. R8 mapping
+        // for Cromite 153 confirms those consumers resolve surface-container roles after
+        // inlining SemanticColorUtils. Cover the native Android theme boundary, not only
+        // Theme.Chromium, while leaving WebContents completely untouched.
+        fun isNativeBrowserUiTheme(name: String): Boolean {
+            val normalized = name.lowercase()
+            if (normalized.isBlank()) return false
+            return "theme" in normalized && (
+                "chromium" in normalized ||
+                "browser" in normalized ||
+                "material" in normalized ||
+                "appmenu" in normalized ||
+                "menu" in normalized ||
+                "toolbar" in normalized ||
+                "omnibox" in normalized ||
+                "tab" in normalized ||
+                "settings" in normalized ||
+                "dialog" in normalized ||
+                "sheet" in normalized
+            )
+        }
 
         fun setOrAppendThemeItem(
             document: org.w3c.dom.Document,
@@ -451,15 +466,15 @@ private val pureAmoledResourcesPatch = resourcePatch(
                                 }
                             }
 
-                            // Force the complete palette at the Chromium theme boundary.
-                            // This covers inherited Material 3 roles used by Settings,
-                            // toolbar/omnibox, NTP and dialogs even when R8 inlined the
-                            // SemanticColorUtils callers.
+                            // Force the complete palette at native browser theme/overlay
+                            // boundaries. AppMenu and several toolbar/tab consumers use
+                            // ContextThemeWrapper + MaterialColors after R8 inlining, so
+                            // limiting this to Theme.Chromium leaves inherited gray roles.
                             val styles = document.getElementsByTagName("style")
                             for (styleIndex in 0 until styles.length) {
                                 val style = styles.item(styleIndex) as? Element ?: continue
                                 val styleName = style.getAttribute("name")
-                                if (!isChromiumUiTheme(styleName)) continue
+                                if (!isNativeBrowserUiTheme(styleName)) continue
 
                                 surfaceThemeAttrs.forEach { attr ->
                                     if (setOrAppendThemeItem(document, style, attr, target)) {
