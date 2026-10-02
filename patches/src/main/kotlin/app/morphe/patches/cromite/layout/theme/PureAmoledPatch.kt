@@ -49,7 +49,7 @@ private val colorSurfaceContainerLowFingerprint = semanticSurfaceFingerprint("g"
 private val defaultBgColorFingerprint = semanticSurfaceFingerprint("h")
 private val defaultIconColorFingerprint = semanticSurfaceFingerprint("i")
 private val defaultTextColorFingerprint = semanticSurfaceFingerprint("j")
-private val settingsBackgroundColorFingerprint = semanticSurfaceFingerprint("l")
+internal val settingsBackgroundColorFingerprint = semanticSurfaceFingerprint("l")
 
 private val primaryBackgroundColorFingerprint = Fingerprint(
     definingClass = CHROME_COLORS,
@@ -523,7 +523,7 @@ private val pureAmoledResourcesPatch = resourcePatch(
     }
 }
 
-private fun foregroundSmali(theme: String): String = when (theme) {
+internal fun foregroundSmali(theme: String): String = when (theme) {
     THEME_BLACK -> """
         const v0, -0x1
         return v0
@@ -549,7 +549,7 @@ private fun foregroundSmali(theme: String): String = when (theme) {
     """
 }
 
-private fun surfaceSmali(theme: String): String = when (theme) {
+internal fun surfaceSmali(theme: String): String = when (theme) {
     THEME_BLACK -> """
         const v0, -0x1000000
         return v0
@@ -577,8 +577,8 @@ private fun surfaceSmali(theme: String): String = when (theme) {
 
 @Suppress("unused")
 val pureAmoledPatch = bytecodePatch(
-    name = "Pure AMOLED / Pure White system theme",
-    description = "Adds Device default, Pure Black (#000000), and Pure White (#FFFFFF) themes for Cromite 153 browser UI without forcing external web-content colors.",
+    name = "AMOLED - Main browser UI",
+    description = "Main Cromite browser UI theme: toolbar/tab surfaces and shared native browser surfaces. Web content is not recolored.",
 ) {
     compatibleWith("org.cromite.cromite"(CROMITE_VERSION))
     val browserTheme by browserThemeOption()
@@ -588,7 +588,7 @@ val pureAmoledPatch = bytecodePatch(
         val systemSurfaceTargets = listOf(
             colorSurfaceFingerprint, colorSurfaceBrightFingerprint, colorSurfaceContainerFingerprint,
             colorSurfaceContainerHighestFingerprint, colorSurfaceContainerLowFingerprint,
-            defaultBgColorFingerprint, settingsBackgroundColorFingerprint, primaryBackgroundColorFingerprint,
+            defaultBgColorFingerprint, primaryBackgroundColorFingerprint,
         )
         systemSurfaceTargets.forEach { fingerprint ->
             fingerprint.method.addInstructions(0, surfaceSmali(browserTheme ?: THEME_DEVICE))
