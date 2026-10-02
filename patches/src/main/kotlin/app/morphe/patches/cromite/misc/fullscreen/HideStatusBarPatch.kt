@@ -10,6 +10,8 @@ import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.resourcePatch
 import app.morphe.patcher.util.smali.ExternalLabel
 import com.android.tools.smali.dexlib2.AccessFlags
+import com.android.tools.smali.dexlib2.builder.MutableMethodImplementation
+import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
@@ -230,10 +232,58 @@ val hideStatusBarPatch = bytecodePatch(
     dependsOn(hideStatusBarPreferenceResourcesPatch)
 
     execute {
-        // ChromeTabbedActivity lifecycle hook temporarily disabled: the target
-        // exposes only two local registers and reusing parameter p0 corrupts the
-        // Activity receiver. Keep the known-safe fullscreen authority path until
-        // a register-safe lifecycle bridge is implemented.
+        // Register-safe lifecycle bridge. onResume itself only forwards p0, so its
+        // original register frame is never modified. The helper owns an independent
+        // register frame (v0-v2 + p0) and can safely evaluate the persisted policy.
+        val activityResume = chromeTabbedActivityResumeFingerprint.method
+        val activityClass = chromeTabbedActivityResumeFingerprint.classDef
+        val helperName = "morpheApplyStatusBarPolicy"
+        if (activityClass.methods.none { it.name == helperName }) {
+            activityClass.methods.add(
+                ImmutableMethod(
+                    activityClass.type,
+                    helperName,
+                    listOf("Landroid/app/Activity;"),
+                    "V",
+                    AccessFlags.PRIVATE.value or AccessFlags.STATIC.value,
+                    null,
+                    null,
+                    MutableMethodImplementation(4),
+                ).toMutable().apply {
+                    addInstructionsWithLabels(
+                        0,
+                        """
+                            const-string v0, "$DEFAULT_PREFERENCES"
+                            const/4 v1, 0x0
+                            invoke-virtual {p0, v0, v1}, Landroid/content/Context;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
+                            move-result-object v0
+                            const-string v2, "$HIDE_STATUS_BAR_PREF"
+                            invoke-interface {v0, v2, v1}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
+                            move-result v0
+                            if-eqz v0, :morphe_activity_policy_done
+                            sget-boolean v0, Lorg/chromium/ui/base/DeviceFormFactor;->a:Z
+                            if-eqz v0, :morphe_activity_policy_done
+                            invoke-virtual {p0}, Landroid/app/Activity;->getWindow()Landroid/view/Window;
+                            move-result-object v0
+                            invoke-virtual {v0}, Landroid/view/Window;->getInsetsController()Landroid/view/WindowInsetsController;
+                            move-result-object v0
+                            if-eqz v0, :morphe_activity_policy_done
+                            const/4 v1, 0x1
+                            invoke-interface {v0, v1}, Landroid/view/WindowInsetsController;->hide(I)V
+                            const-string v0, "MorpheStatusBar"
+                            const-string v1, "trigger=ChromeTabbedActivity.onResume action=hide statusBars"
+                            invoke-static {v0, v1}, Landroid/util/Log;->d(Ljava/lang/String;Ljava/lang/String;)I
+                            :morphe_activity_policy_done
+                            return-void
+                        """
+                    )
+                }
+            )
+        }
+        activityResume.addInstruction(
+            0,
+            "invoke-static {p0}, $CHROME_TABBED_ACTIVITY->$helperName(Landroid/app/Activity;)V"
+        )
         val authorityCallback = windowInsetsPolicyFingerprint.method
         val implementation = authorityCallback.implementation
             ?: throw IllegalStateException(
