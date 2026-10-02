@@ -85,21 +85,18 @@ private val pureAmoledResourcesPatch = resourcePatch(
             "interactable_chip_bg_color.xml", "item_chooser_row_background.xml",
             "m3_list_item_background_color_selector.xml", "m3_segmented_list_item_background_color_selector.xml",
             "m3_textfield_filled_background_color.xml", "mtrl_filled_background_color.xml",
-            "single_tab_favicon_bg_color.xml",
-            "tab_strip_ntb_bg_tint_list.xml",
-            
+                        
             
 
             // Desktop-Android/Cromite toolbar and tab-strip surfaces. Missing files are intentionally ignored.
             "toolbar_background_primary.xml", "toolbar_background_primary_incognito.xml",
             "toolbar_background_color.xml", "top_toolbar_background_color.xml",
-            "tab_strip_background_color.xml", "tab_strip_bg_color.xml", "tab_strip_background.xml",
             "primary_background_color.xml", "default_bg_color.xml",
         )
 
         val surfaceDrawableFiles = setOf(
 
-            "toolbar_background.xml", "tab_strip_background.xml",
+            "toolbar_background.xml",
         )
 
         // Chromium resources are compiled into qualifier sets that can change between
@@ -129,7 +126,7 @@ private val pureAmoledResourcesPatch = resourcePatch(
             "default_bg_color", "default_bg_color_dark",
             "primary_background_color", "primary_background_color_dark",
             "toolbar_background_primary", "toolbar_background_primary_incognito", "toolbar_background_color",
-            "top_toolbar_background_color", "tab_strip_background_color", "tab_strip_bg_color",
+            
             "color_surface", "color_surface_dark", "color_surface_bright", "color_surface_bright_dark",
             "color_surface_dim", "color_surface_dim_dark", "color_surface_container_lowest",
             "color_surface_container_lowest_dark", "color_surface_container_low", "color_surface_container_low_dark",
@@ -256,7 +253,8 @@ private val pureAmoledResourcesPatch = resourcePatch(
                 "mtrl_popupmenu" in name ||
                 "dialog" in name || "sheet" in name || "card" in name || "snackbar" in name ||
                 "message_bg" in name || "toast_color" in name || "widget" in name || "xr_" in name ||
-                "omnibox" in name || "search_box" in name || "search_suggestion" in name || "toolbar_text_box" in name
+                "omnibox" in name || "search_box" in name || "search_suggestion" in name || "toolbar_text_box" in name ||
+                "tab_strip" in name || "single_tab" in name
             if (isolatedDomain) return false
 
             // Structural boundary first: Material/Chromium themes and overlays,
@@ -449,6 +447,7 @@ private val pureAmoledResourcesPatch = resourcePatch(
                                     "widget" in name.lowercase() || "xr_" in name.lowercase() ||
                                     "omnibox" in name.lowercase() || "search_box" in name.lowercase() ||
                                     "search_suggestion" in name.lowercase() || "toolbar_text_box" in name.lowercase() ||
+                                    "tab_strip" in name.lowercase() || "single_tab" in name.lowercase() ||
                                     "fake_search_box" in name.lowercase() ||
                                     "tile_view" in name.lowercase()
                                 val isNamedSurface = !isolatedResource && (
