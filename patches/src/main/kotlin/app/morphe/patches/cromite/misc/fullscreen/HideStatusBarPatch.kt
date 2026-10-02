@@ -6,6 +6,7 @@ import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.util.indexOfFirstInstructionReversedOrThrow
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.resourcePatch
+import com.android.tools.smali.dexlib2.Opcode
 import org.w3c.dom.Element
 
 private const val CROMITE_VERSION = "153.0.8010.37"
