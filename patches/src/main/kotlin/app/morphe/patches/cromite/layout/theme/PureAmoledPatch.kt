@@ -257,22 +257,36 @@ private val pureAmoledResourcesPatch = resourcePatch(
         // for Cromite 153 confirms those consumers resolve surface-container roles after
         // inlining SemanticColorUtils. Cover the native Android theme boundary, not only
         // Theme.Chromium, while leaving WebContents completely untouched.
-        fun isNativeBrowserUiTheme(name: String): Boolean {
-            val normalized = name.lowercase()
-            if (normalized.isBlank()) return false
-            return "theme" in normalized && (
-                "chromium" in normalized ||
-                "browser" in normalized ||
-                "material" in normalized ||
-                "appmenu" in normalized ||
-                "menu" in normalized ||
-                "toolbar" in normalized ||
-                "omnibox" in normalized ||
-                "tab" in normalized ||
-                "settings" in normalized ||
-                "dialog" in normalized ||
-                "sheet" in normalized
-            )
+        fun isNativeBrowserUiTheme(style: Element): Boolean {
+            val name = style.getAttribute("name").lowercase()
+            val parent = style.getAttribute("parent").lowercase()
+            if (name.isBlank()) return false
+
+            // Structural boundary first: Material/Chromium themes and overlays,
+            // plus any style that already declares a whitelisted surface role.
+            // This catches anonymous/specialized ContextThemeWrapper overlays whose
+            // names do not contain "theme", without touching WebContents/media.
+            val materialOrBrowserParent =
+                "material" in parent || "chromium" in parent || "browser" in parent
+            val nativeUiName =
+                "chromium" in name || "browser" in name || "material" in name ||
+                "appmenu" in name || "menu" in name || "toolbar" in name ||
+                "omnibox" in name || "tab" in name || "settings" in name ||
+                "dialog" in name || "sheet" in name || "card" in name ||
+                "snackbar" in name || "ntp" in name || "home" in name
+
+            var declaresSurfaceRole = false
+            val children = style.childNodes
+            for (index in 0 until children.length) {
+                val child = children.item(index) as? Element ?: continue
+                if (child.tagName == "item" &&
+                    child.getAttribute("name") in surfaceThemeAttrs) {
+                    declaresSurfaceRole = true
+                    break
+                }
+            }
+
+            return materialOrBrowserParent || nativeUiName || declaresSurfaceRole
         }
 
         fun setOrAppendThemeItem(
@@ -473,8 +487,7 @@ private val pureAmoledResourcesPatch = resourcePatch(
                             val styles = document.getElementsByTagName("style")
                             for (styleIndex in 0 until styles.length) {
                                 val style = styles.item(styleIndex) as? Element ?: continue
-                                val styleName = style.getAttribute("name")
-                                if (!isNativeBrowserUiTheme(styleName)) continue
+                                if (!isNativeBrowserUiTheme(style)) continue
 
                                 surfaceThemeAttrs.forEach { attr ->
                                     if (setOrAppendThemeItem(document, style, attr, target)) {
