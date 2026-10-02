@@ -23,6 +23,8 @@ private val pureAmoledNtpResourcesPatch = resourcePatch(
     val browserTheme by browserThemeOption()
 
     execute {
+        if ((browserTheme ?: "device") == "device") return@execute
+
         val colorDirectories = get("res").listFiles()
             ?.filter { it.isDirectory && it.name.startsWith("color") }
             .orEmpty()
@@ -122,9 +124,12 @@ val pureAmoledNtpPatch = bytecodePatch(
     dependsOn(pureAmoledNtpResourcesPatch)
 
     execute {
+        val selectedTheme = browserTheme ?: "device"
+        if (selectedTheme == "device") return@execute
+
         ntpBackgroundColorFingerprint.method.addInstructions(
             0,
-            surfaceSmali(browserTheme ?: "device"),
+            surfaceSmali(selectedTheme),
         )
     }
 }
