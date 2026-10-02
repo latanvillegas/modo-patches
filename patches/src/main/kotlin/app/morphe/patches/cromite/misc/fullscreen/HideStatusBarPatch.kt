@@ -3,7 +3,7 @@ package app.morphe.patches.cromite.misc.fullscreen
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.methodCall
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
-import app.morphe.patcher.extensions.InstructionExtensions.indexOfFirstInstructionReversedOrThrow
+import app.morphe.util.indexOfFirstInstructionReversedOrThrow
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.resourcePatch
 import org.w3c.dom.Element
