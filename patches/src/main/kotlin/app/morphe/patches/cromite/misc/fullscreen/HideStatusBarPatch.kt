@@ -6,16 +6,13 @@ import app.morphe.patcher.methodCall
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
-import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod.Companion.toMutable
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.resourcePatch
 import app.morphe.patcher.util.smali.ExternalLabel
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
-import com.android.tools.smali.dexlib2.builder.MutableMethodImplementation
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
-import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
 import org.w3c.dom.Element
 
 private const val CROMITE_VERSION = "153.0.8010.37"
@@ -227,84 +224,56 @@ val hideStatusBarPatch = bytecodePatch(
         }
 
         val authorityClass = authorityCallback.definingClass
-        val helperName = "morpheApplyTabletStatusBarPolicy"
 
-        // One policy implementation, physically owned by FullscreenHtmlApiHandlerCompat.
-        // Both Chromium's own callback and the compositor callback call this helper.
-        authorityCallback.classDef.methods.add(
-            ImmutableMethod(
-                authorityClass,
-                helperName,
-                listOf("Landroid/view/View;"),
-                "V",
-                AccessFlags.PUBLIC.value or AccessFlags.FINAL.value,
-                authorityCallback.annotations,
-                null,
-                MutableMethodImplementation(4),
-            ).toMutable().apply {
-                addInstructions(
-                    0,
-                    """
-                        invoke-virtual {p0}, Lmg5;->h()Z
-                        move-result v0
-                        if-eqz v0, :morphe_status_not_persistent
-                        const-string v0, "MorpheStatusBar"
-                        const-string v1, "persistent=1 action=skip"
-                        invoke-static {v0, v1}, Landroid/util/Log;->d(Ljava/lang/String;Ljava/lang/String;)I
-                        return-void
-
-                        :morphe_status_not_persistent
-                        invoke-virtual {p1}, Landroid/view/View;->getContext()Landroid/content/Context;
-                        move-result-object v0
-                        const-string v1, "$DEFAULT_PREFERENCES"
-                        const/4 v2, 0x0
-                        invoke-virtual {v0, v1, v2}, Landroid/content/Context;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
-                        move-result-object v0
-                        const-string v1, "$HIDE_STATUS_BAR_PREF"
-                        invoke-interface {v0, v1, v2}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
-                        move-result v0
-                        if-eqz v0, :morphe_status_show_pref
-
-                        sget-boolean v0, Lorg/chromium/ui/base/DeviceFormFactor;->a:Z
-                        if-eqz v0, :morphe_status_show_phone
-
-                        const-string v0, "MorpheStatusBar"
-                        const-string v1, "persistent=0 tablet=1 pref=1 action=hide statusBars"
-                        invoke-static {v0, v1}, Landroid/util/Log;->d(Ljava/lang/String;Ljava/lang/String;)I
-                        invoke-virtual {p0}, $authorityClass->E()Llng;
-                        move-result-object v0
-                        const/4 v1, 0x1
-                        invoke-virtual {v0, v1}, Llng;->hide(I)V
-                        return-void
-
-                        :morphe_status_show_pref
-                        const-string v0, "MorpheStatusBar"
-                        const-string v1, "persistent=0 pref=0 action=show statusBars"
-                        invoke-static {v0, v1}, Landroid/util/Log;->d(Ljava/lang/String;Ljava/lang/String;)I
-                        goto :morphe_status_show
-
-                        :morphe_status_show_phone
-                        const-string v0, "MorpheStatusBar"
-                        const-string v1, "persistent=0 tablet=0 action=show statusBars"
-                        invoke-static {v0, v1}, Landroid/util/Log;->d(Ljava/lang/String;Ljava/lang/String;)I
-
-                        :morphe_status_show
-                        invoke-virtual {p0}, $authorityClass->E()Llng;
-                        move-result-object v0
-                        const/4 v1, 0x1
-                        invoke-virtual {v0, v1}, Llng;->show(I)V
-                        return-void
-                    """
-                )
-            }
-        )
-
-        // Chromium's own FullscreenHtmlApiHandlerCompat callback also uses the
-        // same helper. The original callback remains intact after this call.
+        // The policy stays physically in FullscreenHtmlApiHandlerCompat.
+        // The compositor trigger jumps into this callback using the structurally
+        // discovered authority object, so nt2/CVH never become visibility writers.
+        // The original callback then continues normally and returns its WindowInsets.
         authorityCallback.addInstructions(
             0,
             """
-                invoke-virtual {p0, p1}, $authorityClass->$helperName(Landroid/view/View;)V
+                invoke-virtual {p0}, Lmg5;->h()Z
+                move-result v0
+                if-eqz v0, :morphe_status_not_persistent
+                const-string v0, "MorpheStatusBar"
+                const-string v1, "persistent=1 action=skip"
+                invoke-static {v0, v1}, Landroid/util/Log;->d(Ljava/lang/String;Ljava/lang/String;)I
+                goto :morphe_status_policy_done
+
+                :morphe_status_not_persistent
+                invoke-virtual {p1}, Landroid/view/View;->getContext()Landroid/content/Context;
+                move-result-object v0
+                const-string v1, "$DEFAULT_PREFERENCES"
+                const/4 v2, 0x0
+                invoke-virtual {v0, v1, v2}, Landroid/content/Context;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
+                move-result-object v0
+                const-string v1, "$HIDE_STATUS_BAR_PREF"
+                invoke-interface {v0, v1, v2}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
+                move-result v0
+                if-eqz v0, :morphe_status_show
+
+                sget-boolean v0, Lorg/chromium/ui/base/DeviceFormFactor;->a:Z
+                if-eqz v0, :morphe_status_show
+
+                const-string v0, "MorpheStatusBar"
+                const-string v1, "persistent=0 tablet=1 pref=1 action=hide statusBars"
+                invoke-static {v0, v1}, Landroid/util/Log;->d(Ljava/lang/String;Ljava/lang/String;)I
+                invoke-virtual {p0}, $authorityClass->E()Llng;
+                move-result-object v0
+                const/4 v1, 0x1
+                invoke-virtual {v0, v1}, Llng;->hide(I)V
+                goto :morphe_status_policy_done
+
+                :morphe_status_show
+                const-string v0, "MorpheStatusBar"
+                const-string v1, "persistent=0 action=show statusBars"
+                invoke-static {v0, v1}, Landroid/util/Log;->d(Ljava/lang/String;Ljava/lang/String;)I
+                invoke-virtual {p0}, $authorityClass->E()Llng;
+                move-result-object v0
+                const/4 v1, 0x1
+                invoke-virtual {v0, v1}, Llng;->show(I)V
+
+                :morphe_status_policy_done
             """
         )
 
@@ -348,7 +317,8 @@ val hideStatusBarPatch = bytecodePatch(
                 iget-object p1, p1, ${fieldSmali(authorityField)}
                 if-eqz p1, :morphe_compositor_policy_done
                 check-cast p1, $authorityClass
-                invoke-virtual {p1, p0}, $authorityClass->$helperName(Landroid/view/View;)V
+                invoke-virtual {p1, p0, p2}, $authorityClass->onApplyWindowInsets(Landroid/view/View;Landroid/view/WindowInsets;)Landroid/view/WindowInsets;
+                move-result-object p2
                 :morphe_compositor_policy_done
             """,
         )
