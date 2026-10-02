@@ -314,9 +314,10 @@ val hideStatusBarPatch = bytecodePatch(
         fun fieldSmali(reference: com.android.tools.smali.dexlib2.iface.reference.FieldReference) =
             "${reference.definingClass}->${reference.name}:${reference.type}"
 
-        // nt2 is only a lifecycle trigger. It does not hide/show bars itself.
-        // It walks the structurally discovered CVH -> zl1 -> mg5 ownership chain,
-        // casts to the already verified compat authority and calls the single helper.
+        // nt2 is the compositor's proven insets lifecycle trigger. Route it through
+        // the single FullscreenHtmlApiHandlerCompat authority. Log before walking the
+        // ownership chain so a missing zl1/mg5 object is distinguishable from a callback
+        // that is never reached.
         val trigger = compositorInsetsListenerFingerprint.method
         val returnIndex = trigger.implementation?.instructions
             ?.indexOfFirst { it.opcode == Opcode.RETURN_OBJECT }
@@ -332,13 +333,29 @@ val hideStatusBarPatch = bytecodePatch(
         trigger.addInstructionsWithLabels(
             returnIndex,
             """
+                const-string p1, "MorpheStatusBar"
+                const-string p2, "trigger=nt2"
+                invoke-static {p1, p2}, Landroid/util/Log;->d(Ljava/lang/String;Ljava/lang/String;)I
                 iget-object p1, p0, ${fieldSmali(cvhField)}
-                if-eqz p1, :morphe_compositor_policy_done
+                if-eqz p1, :morphe_compositor_missing_zl1
                 iget-object p1, p1, ${fieldSmali(authorityField)}
-                if-eqz p1, :morphe_compositor_policy_done
+                if-eqz p1, :morphe_compositor_missing_authority
                 check-cast p1, $authorityClass
                 invoke-virtual {p1, p0, p2}, $authorityClass->onApplyWindowInsets(Landroid/view/View;Landroid/view/WindowInsets;)Landroid/view/WindowInsets;
                 move-result-object p2
+                goto :morphe_compositor_policy_done
+
+                :morphe_compositor_missing_zl1
+                const-string p1, "MorpheStatusBar"
+                const-string p2, "trigger=nt2 missing=zl1"
+                invoke-static {p1, p2}, Landroid/util/Log;->d(Ljava/lang/String;Ljava/lang/String;)I
+                goto :morphe_compositor_policy_done
+
+                :morphe_compositor_missing_authority
+                const-string p1, "MorpheStatusBar"
+                const-string p2, "trigger=nt2 missing=authority"
+                invoke-static {p1, p2}, Landroid/util/Log;->d(Ljava/lang/String;Ljava/lang/String;)I
+
                 :morphe_compositor_policy_done
                 nop
             """,
