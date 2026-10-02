@@ -80,15 +80,13 @@ private val pureAmoledResourcesPatch = resourcePatch(
     execute {
         val explicitColorFiles = setOf(
             "bottom_sheet_bg_color.xml", "context_menu_header_circle_bg_color.xml", "dialog_bg_color.xml",
-            "distilled_page_pref_background_color.xml", "fake_search_box_base_color.xml",
-            "home_surface_background_color.xml", "home_surface_ui_background_color.xml",
             "hub_search_box_bg_color.xml", "interactable_chip_bg_color.xml", "item_chooser_row_background.xml",
             "m3_list_item_background_color_selector.xml", "m3_segmented_list_item_background_color_selector.xml",
             "m3_textfield_filled_background_color.xml", "mtrl_filled_background_color.xml",
             "mtrl_popupmenu_overlay_color.xml", "message_bg_color.xml", "omnibox_popover_suggestion_bg_color.xml",
             "omnibox_suggestion_dropdown_bg.xml", "search_suggestion_bg_color.xml", "single_tab_favicon_bg_color.xml",
             "tab_group_dialog_bg_color.xml", "tab_hover_card_bg_color.xml", "tab_strip_ntb_bg_tint_list.xml",
-            "tile_view_icon_background_color.xml", "toast_color.xml", "toolbar_text_box_bg_color.xml",
+            "toast_color.xml", "toolbar_text_box_bg_color.xml",
             "widget_bg.xml", "widget_button_bg.xml", "widget_searchbox_bg.xml", "xr_toolbar_bg.xml",
             "menu_item_bg_color.xml", "menu_item_bg_color_baseline.xml", "menu_item_bg_color_dark_baseline.xml",
             "menu_bg_color.xml", "menu_bg_color_baseline.xml", "menu_bg_color_dark_baseline.xml",
@@ -150,7 +148,7 @@ private val pureAmoledResourcesPatch = resourcePatch(
             "mtrl_popupmenu_overlay_color", "mtrl_filled_background_color",
             "default_card_bg_color", "card_background_color",
             "omnibox_suggestion_bg_color", "omnibox_popover_suggestion_bg_color",
-            "fake_search_box_base_color", "hub_search_box_bg_color",
+            "hub_search_box_bg_color",
         )
 
         fun isMaterialSurfaceColorName(name: String): Boolean {
@@ -227,19 +225,17 @@ private val pureAmoledResourcesPatch = resourcePatch(
                 "sheet" in normalized ||
                 "card" in normalized ||
                 "tab_strip" in normalized ||
-                "ntp" in normalized ||
-                "home_surface" in normalized
         }
 
         val surfaceMacroNames = setOf(
             "default_bg_color", "default_bg_color_elev_0",
-            "toolbar_background_primary", "settings_bg_color", "settings_container_background_color",
+            "toolbar_background_primary",
             "sheet_bg_color", "sheet_container_bg_color", "sheet_chrome_icon_bg",
             "default_card_bg_color", "menu_bg_color", "history_chip_bg_color",
         )
 
         val surfaceThemeAttrs = setOf(
-            "android:colorBackground", "android:windowBackground", "android:navigationBarColor", "android:statusBarColor",
+            "android:colorBackground", "android:windowBackground",
             "colorBackground", "colorSurface", "colorSurfaceBright", "colorSurfaceDim", "colorSurfaceVariant",
             "colorSurfaceContainerLowest", "colorSurfaceContainerLow", "colorSurfaceContainer",
             "colorSurfaceContainerHigh", "colorSurfaceContainerHighest",
