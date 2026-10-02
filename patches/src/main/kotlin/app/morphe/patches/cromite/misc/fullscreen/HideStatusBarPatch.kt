@@ -329,19 +329,26 @@ val hideStatusBarPatch = bytecodePatch(
         // It walks the structurally discovered CVH -> zl1 -> mg5 ownership chain,
         // casts to the already verified compat authority and calls the single helper.
         val trigger = compositorInsetsListenerFingerprint.method
+        val returnIndex = trigger.implementation?.instructions
+            ?.indexOfFirst { it.opcode == Opcode.RETURN_OBJECT }
+            ?.takeIf { it >= 0 }
+            ?: throw IllegalStateException(
+                "Compositor OnApplyWindowInsetsListener has no RETURN_OBJECT"
+            )
+
+        // At this point the original listener has already converted p0 from nt2
+        // to CompositorViewHolder and called p(). p1 is dead (the original code
+        // overwrote it with CVH.A0), while p2 still holds the WindowInsets return
+        // value. Reuse p1 for the ownership walk and keep p0 as the View argument.
         trigger.addInstructionsWithLabels(
-            0,
+            returnIndex,
             """
-                iget-object p0, p0, ${fieldSmali(
-                    (compositorInsetsListenerFingerprint.instructionMatches.first().instruction as ReferenceInstruction)
-                        .reference as FieldReference
-                )}
-                iget-object p0, p0, ${fieldSmali(cvhField)}
-                if-eqz p0, :morphe_compositor_policy_done
-                iget-object p0, p0, ${fieldSmali(authorityField)}
-                if-eqz p0, :morphe_compositor_policy_done
-                check-cast p0, $authorityClass
-                invoke-virtual {p0, p1}, $authorityClass->$helperName(Landroid/view/View;)V
+                iget-object p1, p0, ${fieldSmali(cvhField)}
+                if-eqz p1, :morphe_compositor_policy_done
+                iget-object p1, p1, ${fieldSmali(authorityField)}
+                if-eqz p1, :morphe_compositor_policy_done
+                check-cast p1, $authorityClass
+                invoke-virtual {p1, p0}, $authorityClass->$helperName(Landroid/view/View;)V
                 :morphe_compositor_policy_done
             """,
         )
