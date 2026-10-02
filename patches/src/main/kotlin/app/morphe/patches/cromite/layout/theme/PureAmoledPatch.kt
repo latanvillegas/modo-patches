@@ -89,14 +89,12 @@ private val pureAmoledResourcesPatch = resourcePatch(
             
 
             // Desktop-Android/Cromite toolbar and tab-strip surfaces. Missing files are intentionally ignored.
-            "toolbar_background_primary.xml", "toolbar_background_primary_incognito.xml",
-            "toolbar_background_color.xml", "top_toolbar_background_color.xml",
             "primary_background_color.xml", "default_bg_color.xml",
         )
 
         val surfaceDrawableFiles = setOf(
 
-            "toolbar_background.xml",
+
         )
 
         // Chromium resources are compiled into qualifier sets that can change between
@@ -125,7 +123,6 @@ private val pureAmoledResourcesPatch = resourcePatch(
         val surfaceColorNames = setOf(
             "default_bg_color", "default_bg_color_dark",
             "primary_background_color", "primary_background_color_dark",
-            "toolbar_background_primary", "toolbar_background_primary_incognito", "toolbar_background_color",
             
             "color_surface", "color_surface_dark", "color_surface_bright", "color_surface_bright_dark",
             "color_surface_dim", "color_surface_dim_dark", "color_surface_container_lowest",
@@ -254,7 +251,8 @@ private val pureAmoledResourcesPatch = resourcePatch(
                 "dialog" in name || "sheet" in name || "card" in name || "snackbar" in name ||
                 "message_bg" in name || "toast_color" in name || "widget" in name || "xr_" in name ||
                 "omnibox" in name || "search_box" in name || "search_suggestion" in name || "toolbar_text_box" in name ||
-                "tab_strip" in name || "single_tab" in name
+                "tab_strip" in name || "single_tab" in name ||
+                "toolbar_background" in name || "top_toolbar" in name
             if (isolatedDomain) return false
 
             // Structural boundary first: Material/Chromium themes and overlays,
@@ -448,6 +446,7 @@ private val pureAmoledResourcesPatch = resourcePatch(
                                     "omnibox" in name.lowercase() || "search_box" in name.lowercase() ||
                                     "search_suggestion" in name.lowercase() || "toolbar_text_box" in name.lowercase() ||
                                     "tab_strip" in name.lowercase() || "single_tab" in name.lowercase() ||
+                                    "toolbar_background" in name.lowercase() || "top_toolbar" in name.lowercase() ||
                                     "fake_search_box" in name.lowercase() ||
                                     "tile_view" in name.lowercase()
                                 val isNamedSurface = !isolatedResource && (
