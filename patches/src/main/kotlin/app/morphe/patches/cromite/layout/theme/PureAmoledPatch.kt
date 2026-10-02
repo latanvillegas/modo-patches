@@ -132,7 +132,6 @@ private val pureAmoledResourcesPatch = resourcePatch(
 
         val surfaceColorNames = setOf(
             "default_bg_color", "default_bg_color_dark",
-            "settings_background_color", "settings_background_color_dark",
             "primary_background_color", "primary_background_color_dark",
             "toolbar_background_primary", "toolbar_background_primary_incognito", "toolbar_background_color",
             "top_toolbar_background_color", "tab_strip_background_color", "tab_strip_bg_color",
@@ -149,9 +148,7 @@ private val pureAmoledResourcesPatch = resourcePatch(
             "menu_item_bg_color", "menu_item_bg_color_baseline", "menu_item_bg_color_dark_baseline",
             "list_menu_background_color", "list_menu_background_tint",
             "mtrl_popupmenu_overlay_color", "mtrl_filled_background_color",
-            "settings_container_background_color", "settings_bg_color",
             "default_card_bg_color", "card_background_color",
-            "home_surface_ui_background_color", "home_surface_background_color",
             "omnibox_suggestion_bg_color", "omnibox_popover_suggestion_bg_color",
             "fake_search_box_base_color", "hub_search_box_bg_color",
         )
@@ -190,13 +187,10 @@ private val pureAmoledResourcesPatch = resourcePatch(
                 normalized.startsWith("popup_bg") ||
                 normalized.contains("container") && (
                     normalized.contains("card") ||
-                    normalized.contains("settings") ||
                     normalized.contains("menu") ||
                     normalized.contains("toolbar") ||
                     normalized.contains("omnibox") ||
                     normalized.contains("tab") ||
-                    normalized.contains("ntp") ||
-                    normalized.contains("home")
                 )
         }
 
@@ -281,7 +275,7 @@ private val pureAmoledResourcesPatch = resourcePatch(
                 "appmenu" in name || "menu" in name || "toolbar" in name ||
                 "omnibox" in name || "tab" in name || "settings" in name ||
                 "dialog" in name || "sheet" in name || "card" in name ||
-                "snackbar" in name || "ntp" in name || "home" in name
+                "snackbar" in name
 
             var declaresSurfaceRole = false
             val children = style.childNodes
