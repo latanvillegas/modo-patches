@@ -267,23 +267,34 @@ val hideStatusBarPatch = bytecodePatch(
             """
         )
 
-        val cvhClass = compositorInsetsListenerFingerprint.method
-            .let { listener ->
-                compositorInsetsListenerFingerprint.instructionMatches
-                    .first { match ->
-                        val reference =
-                            (match.instruction as? ReferenceInstruction)?.reference as? FieldReference
-                        reference?.type == COMPOSITOR_VIEW_HOLDER
-                    }
-                    .let { (it.instruction as ReferenceInstruction).reference as FieldReference }
+        // The listener class is nt2, so classDef.fields here would inspect nt2,
+        // not CompositorViewHolder. Recover the actual CVH class from the listener's
+        // field reference and resolve it through the patch context.
+        val cvhReference = compositorInsetsListenerFingerprint.instructionMatches
+            .first { match ->
+                val reference =
+                    (match.instruction as? ReferenceInstruction)?.reference as? FieldReference
+                reference?.type == COMPOSITOR_VIEW_HOLDER
             }
+            .let { (it.instruction as ReferenceInstruction).reference as FieldReference }
 
-        // Resolve CVH -> zl1 by type at class level. This is the stable structural
-        // relation shown by the target APK; do not require p() to read the field.
-        val cvhField = compositorInsetsListenerFingerprint.classDef.fields
-            .singleOrNull { it.type == "Lzl1;" }
+        // Resolve CVH -> zl1 from a real CVH method match instead of nt2.classDef.
+        // A CVH method that consumes Lzl1 is intentionally broad; the field reference
+        // itself is the structural datum we need and its defining class must be CVH.
+        val cvhOwnerFieldFingerprint = Fingerprint(
+            definingClass = COMPOSITOR_VIEW_HOLDER,
+            filters = listOf(fieldAccess(opcode = Opcode.IGET_OBJECT, type = "Lzl1;")),
+        )
+        cvhOwnerFieldFingerprint.match(context)
+        val cvhField = cvhOwnerFieldFingerprint.instructionMatches
+            .mapNotNull { match ->
+                (match.instruction as? ReferenceInstruction)?.reference as? FieldReference
+            }
+            .firstOrNull {
+                it.definingClass == cvhReference.type && it.type == "Lzl1;"
+            }
             ?: throw IllegalStateException(
-                "Expected exactly one CompositorViewHolder field of type Lzl1;"
+                "CompositorViewHolder -> Lzl1 field access was not found"
             )
 
         val authorityField = fullscreenAuthorityOwnerFingerprint.instructionMatches
