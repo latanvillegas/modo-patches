@@ -92,10 +92,7 @@ private val pureAmoledResourcesPatch = resourcePatch(
             "primary_background_color.xml", "default_bg_color.xml",
         )
 
-        val surfaceDrawableFiles = setOf(
-
-
-        )
+        val surfaceDrawableFiles = emptySet<String>()
 
         // Chromium resources are compiled into qualifier sets that can change between
         // releases (values-v34, values-sw600dp, color-night-vXX, etc.). Discover the
