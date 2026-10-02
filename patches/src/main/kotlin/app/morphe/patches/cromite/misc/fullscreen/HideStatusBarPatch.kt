@@ -1,25 +1,9 @@
 package app.morphe.patches.cromite.misc.fullscreen
 
 import app.morphe.patcher.Fingerprint
-import app.morphe.patcher.fieldAccess
-import app.morphe.patcher.methodCall
-import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
-import app.morphe.patcher.extensions.InstructionExtensions.addInstruction
-import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
-import app.morphe.patcher.util.smali.toInstructions
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.resourcePatch
-import app.morphe.patcher.util.smali.ExternalLabel
-import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod.Companion.toMutable
-import com.android.tools.smali.dexlib2.AccessFlags
-import com.android.tools.smali.dexlib2.builder.MutableMethodImplementation
-import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
-import com.android.tools.smali.dexlib2.immutable.ImmutableMethodImplementation
-import com.android.tools.smali.dexlib2.immutable.ImmutableMethodParameter
-import com.android.tools.smali.dexlib2.Opcode
-import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
-import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import org.w3c.dom.Element
 
 private const val CROMITE_VERSION = "153.0.8010.37"
@@ -44,81 +28,6 @@ private val windowInsetsPolicyFingerprint = Fingerprint(
     name = "onApplyWindowInsets",
     returnType = "Landroid/view/WindowInsets;",
     parameters = listOf("Landroid/view/View;", "Landroid/view/WindowInsets;"),
-)
-
-private const val COMPOSITOR_VIEW_HOLDER =
-    "Lorg/chromium/chrome/browser/compositor/CompositorViewHolder;"
-
-private const val CHROME_TABBED_ACTIVITY =
-    "Lorg/chromium/chrome/browser/ChromeTabbedActivity;"
-
-/**
- * Stable main-window lifecycle. The target APK exposes ChromeTabbedActivity.onResume()
- * directly and it calls the d52 browser-activity base. Unlike the compositor listener,
- * this lifecycle is exercised whenever the real tabbed Activity returns to foreground.
- */
-private val chromeTabbedActivityResumeFingerprint = Fingerprint(
-    definingClass = CHROME_TABBED_ACTIVITY,
-    name = "onResume",
-    returnType = "V",
-    parameters = listOf(),
-    filters = listOf(
-        methodCall(definingClass = "Ld52;", name = "onResume", returnType = "V", parameters = listOf()),
-    ),
-)
-
-/**
- * The compositor's Lzl1 field is discovered from the concrete insets listener
- * callback itself, rather than from p(). The installed Cromite bytecode proves
- * nt2 reads CVH and immediately invokes the no-arg reconciliation method, while
- * p() is free to evolve/in-line its Window/Insets implementation.
- */
-/**
- * Any CompositorViewHolder method that reads its browser-controls Lzl1 owner.
- * The matched FieldReference is used to recover CVH -> zl1 without relying on
- * the obfuscated field name.
- */
-private val compositorOwnerFieldFingerprint = Fingerprint(
-    definingClass = COMPOSITOR_VIEW_HOLDER,
-    filters = listOf(
-        fieldAccess(opcode = Opcode.IGET_OBJECT, type = "Lzl1;"),
-    ),
-)
-
-/**
- * The real View.OnApplyWindowInsetsListener installed by CompositorViewHolder.
- * No obfuscated class/method name is used: the callback is matched by its
- * signature, its CVH field and the CVH no-arg reconciliation call.
- */
-private val compositorInsetsListenerFingerprint = Fingerprint(
-    returnType = "Landroid/view/WindowInsets;",
-    parameters = listOf("Landroid/view/View;", "Landroid/view/WindowInsets;"),
-    filters = listOf(
-        fieldAccess(opcode = Opcode.IGET_OBJECT, type = COMPOSITOR_VIEW_HOLDER),
-        methodCall(definingClass = COMPOSITOR_VIEW_HOLDER, returnType = "V", parameters = listOf()),
-    ),
-)
-
-/**
- * Finds zl1.w(...) structurally and, from it, the field that owns the
- * FullscreenHtmlApiHandlerBase instance. This deliberately avoids field O.
- */
-private val fullscreenAuthorityOwnerFingerprint = Fingerprint(
-    returnType = "V",
-    parameters = listOf(
-        "Lorg/chromium/chrome/browser/toolbar/top/ToolbarControlContainer;",
-        "Lorg/chromium/chrome/browser/ActivityTabProvider;",
-        "Lwde;",
-        "I",
-    ),
-    filters = listOf(
-        fieldAccess(opcode = Opcode.IGET_OBJECT, type = "Lmg5;"),
-        methodCall(
-            definingClass = "Lorg/chromium/base/ApplicationStatus;",
-            name = "h",
-            returnType = "V",
-        ),
-    ),
 )
 
 private val hideStatusBarPreferenceResourcesPatch = resourcePatch(
@@ -237,58 +146,9 @@ val hideStatusBarPatch = bytecodePatch(
     dependsOn(hideStatusBarPreferenceResourcesPatch)
 
     execute {
-        // Register-safe lifecycle bridge. onResume itself only forwards p0, so its
-        // original register frame is never modified. The helper owns an independent
-        // register frame (v0-v2 + p0) and can safely evaluate the persisted policy.
-        val activityResume = chromeTabbedActivityResumeFingerprint.method
-        val activityClass = chromeTabbedActivityResumeFingerprint.classDef
-        val helperName = "morpheApplyStatusBarPolicy"
-        if (activityClass.methods.none { it.name == helperName }) {
-            activityClass.methods.add(
-                ImmutableMethod(
-                    activityClass.type,
-                    helperName,
-                    listOf(ImmutableMethodParameter("Landroid/app/Activity;", null, null)),
-                    "V",
-                    AccessFlags.PRIVATE.value or AccessFlags.STATIC.value,
-                    null,
-                    null,
-                    ImmutableMethodImplementation(
-                        4,
-                        """
-                            const-string v0, "$DEFAULT_PREFERENCES"
-                            const/4 v1, 0x0
-                            invoke-virtual {p0, v0, v1}, Landroid/content/Context;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
-                            move-result-object v0
-                            const-string v2, "$HIDE_STATUS_BAR_PREF"
-                            invoke-interface {v0, v2, v1}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
-                            move-result v0
-                            if-eqz v0, :morphe_activity_policy_done
-                            sget-boolean v0, Lorg/chromium/ui/base/DeviceFormFactor;->a:Z
-                            if-eqz v0, :morphe_activity_policy_done
-                            invoke-virtual {p0}, Landroid/app/Activity;->getWindow()Landroid/view/Window;
-                            move-result-object v0
-                            invoke-virtual {v0}, Landroid/view/Window;->getInsetsController()Landroid/view/WindowInsetsController;
-                            move-result-object v0
-                            if-eqz v0, :morphe_activity_policy_done
-                            const/4 v1, 0x1
-                            invoke-interface {v0, v1}, Landroid/view/WindowInsetsController;->hide(I)V
-                            const-string v0, "MorpheStatusBar"
-                            const-string v1, "trigger=ChromeTabbedActivity.onResume action=hide statusBars"
-                            invoke-static {v0, v1}, Landroid/util/Log;->d(Ljava/lang/String;Ljava/lang/String;)I
-                            :morphe_activity_policy_done
-                            return-void
-                        """.toInstructions(),
-                        null,
-                        null
-                    )
-                ).toMutable()
-            )
-        }
-        activityResume.addInstruction(
-            0,
-            "invoke-static {p0}, $CHROME_TABBED_ACTIVITY->$helperName(Landroid/app/Activity;)V"
-        )
+        // Keep Chromium's FullscreenHtmlApiHandlerCompat as the single visibility
+        // authority. Do not inject synthetic Activity lifecycle methods: those proved
+        // unsafe on the target DEX and duplicate Chromium's fullscreen ownership.
         val authorityCallback = windowInsetsPolicyFingerprint.method
         val implementation = authorityCallback.implementation
             ?: throw IllegalStateException(
@@ -296,9 +156,9 @@ val hideStatusBarPatch = bytecodePatch(
             )
 
         val localRegisters = implementation.registerCount - 3
-        if (localRegisters < 2) {
+        if (localRegisters < 3) {
             throw IllegalStateException(
-                "FullscreenHtmlApiHandlerCompat.onApplyWindowInsets requires 2 local registers; found $localRegisters"
+                "FullscreenHtmlApiHandlerCompat.onApplyWindowInsets requires 3 local registers; found $localRegisters"
             )
         }
 
@@ -326,13 +186,17 @@ val hideStatusBarPatch = bytecodePatch(
                 const/4 v2, 0x0
                 invoke-virtual {v0, v1, v2}, Landroid/content/Context;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
                 move-result-object v0
+                move-object v2, v0
                 const-string v1, "$HIDE_STATUS_BAR_PREF"
-                invoke-interface {v0, v1, v2}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
-                move-result v0
-                if-eqz v0, :morphe_status_show
+                const/4 v0, 0x0
+                invoke-interface {v2, v1, v0}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
+                move-result v1
+                if-eqz v1, :morphe_status_show
 
-                sget-boolean v0, Lorg/chromium/ui/base/DeviceFormFactor;->a:Z
-                if-eqz v0, :morphe_status_show
+                const-string v1, "force_tablet_ui"
+                invoke-interface {v2, v1, v0}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
+                move-result v1
+                if-eqz v1, :morphe_status_show
 
                 const-string v0, "MorpheStatusBar"
                 const-string v1, "persistent=0 tablet=1 pref=1 action=hide statusBars"
@@ -356,85 +220,7 @@ val hideStatusBarPatch = bytecodePatch(
             """
         )
 
-        // The listener class is nt2, so classDef.fields here would inspect nt2,
-        // not CompositorViewHolder. Recover the actual CVH class from the listener's
-        // field reference and resolve it through the patch context.
-        val cvhReference = compositorInsetsListenerFingerprint.instructionMatches
-            .first { match ->
-                val reference =
-                    (match.instruction as? ReferenceInstruction)?.reference as? FieldReference
-                reference?.type == COMPOSITOR_VIEW_HOLDER
-            }
-            .let { (it.instruction as ReferenceInstruction).reference as FieldReference }
-
-        // Resolve CVH -> zl1 from a real CVH method match instead of nt2.classDef.
-        // The fingerprint is declared at patch scope so the patcher resolves it
-        // normally before execute; no manual context/match invocation is required.
-        val cvhField = compositorOwnerFieldFingerprint.instructionMatches
-            .mapNotNull { match ->
-                (match.instruction as? ReferenceInstruction)?.reference as? FieldReference
-            }
-            .firstOrNull {
-                it.definingClass == cvhReference.type && it.type == "Lzl1;"
-            }
-            ?: throw IllegalStateException(
-                "CompositorViewHolder -> Lzl1 field access was not found"
-            )
-
-        val authorityField = fullscreenAuthorityOwnerFingerprint.instructionMatches
-            .first { match ->
-                val reference = (match.instruction as? ReferenceInstruction)?.reference as? FieldReference
-                reference?.type == "Lmg5;"
-            }
-            .let { (it.instruction as ReferenceInstruction).reference as FieldReference }
-
-        fun fieldSmali(reference: com.android.tools.smali.dexlib2.iface.reference.FieldReference) =
-            "${reference.definingClass}->${reference.name}:${reference.type}"
-
-        // nt2 is the compositor's proven insets lifecycle trigger. Route it through
-        // the single FullscreenHtmlApiHandlerCompat authority. Log before walking the
-        // ownership chain so a missing zl1/mg5 object is distinguishable from a callback
-        // that is never reached.
-        val trigger = compositorInsetsListenerFingerprint.method
-        val returnIndex = trigger.implementation?.instructions
-            ?.indexOfFirst { it.opcode == Opcode.RETURN_OBJECT }
-            ?.takeIf { it >= 0 }
-            ?: throw IllegalStateException(
-                "Compositor OnApplyWindowInsetsListener has no RETURN_OBJECT"
-            )
-
-        // At this point the original listener has already converted p0 from nt2
-        // to CompositorViewHolder and called p(). p1 is dead (the original code
-        // overwrote it with CVH.A0), while p2 still holds the WindowInsets return
-        // value. Reuse p1 for the ownership walk and keep p0 as the View argument.
-        trigger.addInstructionsWithLabels(
-            returnIndex,
-            """
-                const-string p1, "MorpheStatusBar"
-                const-string p2, "trigger=nt2"
-                invoke-static {p1, p2}, Landroid/util/Log;->d(Ljava/lang/String;Ljava/lang/String;)I
-                iget-object p1, p0, ${fieldSmali(cvhField)}
-                if-eqz p1, :morphe_compositor_missing_zl1
-                iget-object p1, p1, ${fieldSmali(authorityField)}
-                if-eqz p1, :morphe_compositor_missing_authority
-                check-cast p1, $authorityClass
-                invoke-virtual {p1, p0, p2}, $authorityClass->onApplyWindowInsets(Landroid/view/View;Landroid/view/WindowInsets;)Landroid/view/WindowInsets;
-                move-result-object p2
-                goto :morphe_compositor_policy_done
-
-                :morphe_compositor_missing_zl1
-                const-string p1, "MorpheStatusBar"
-                const-string p2, "trigger=nt2 missing=zl1"
-                invoke-static {p1, p2}, Landroid/util/Log;->d(Ljava/lang/String;Ljava/lang/String;)I
-                goto :morphe_compositor_policy_done
-
-                :morphe_compositor_missing_authority
-                const-string p1, "MorpheStatusBar"
-                const-string p2, "trigger=nt2 missing=authority"
-                invoke-static {p1, p2}, Landroid/util/Log;->d(Ljava/lang/String;Ljava/lang/String;)I
-
-                :morphe_compositor_policy_done
-                nop
-            """,
-        )
+        // No CompositorViewHolder/nt2 visibility writer is installed. Insets are
+        // returned untouched by those consumers; the fullscreen authority above owns
+        // status-bar hide/show decisions.
     }}
