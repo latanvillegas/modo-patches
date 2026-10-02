@@ -4,14 +4,18 @@ import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.fieldAccess
 import app.morphe.patcher.methodCall
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
+import app.morphe.patcher.extensions.InstructionExtensions.addInstruction
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.resourcePatch
 import app.morphe.patcher.util.smali.ExternalLabel
+import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod.Companion.toMutable
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.builder.MutableMethodImplementation
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
+import com.android.tools.smali.dexlib2.immutable.ImmutableMethodImplementation
+import com.android.tools.smali.dexlib2.immutable.ImmutableMethodParameter
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
@@ -243,12 +247,12 @@ val hideStatusBarPatch = bytecodePatch(
                 ImmutableMethod(
                     activityClass.type,
                     helperName,
-                    listOf("Landroid/app/Activity;"),
+                    listOf(ImmutableMethodParameter("Landroid/app/Activity;", null, null)),
                     "V",
                     AccessFlags.PRIVATE.value or AccessFlags.STATIC.value,
                     null,
                     null,
-                    MutableMethodImplementation(4),
+                    ImmutableMethodImplementation(emptyList(), null, null, 4),
                 ).toMutable().apply {
                     addInstructionsWithLabels(
                         0,
