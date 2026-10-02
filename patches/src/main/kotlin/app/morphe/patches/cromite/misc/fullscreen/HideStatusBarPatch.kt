@@ -226,9 +226,9 @@ val hideStatusBarPatch = bytecodePatch(
             ?: throw IllegalStateException("pc0.onWindowFocusChanged has no implementation")
         val activityFocusLocals =
             activityFocusImplementation.registerCount - activityFocus.parameters.size - 1
-        if (activityFocusLocals < 2) {
+        if (activityFocusLocals < 1) {
             throw IllegalStateException(
-                "pc0.onWindowFocusChanged requires 2 local registers; found " +
+                "pc0.onWindowFocusChanged requires 1 local register; found " +
                     activityFocusLocals
             )
         }
@@ -238,25 +238,44 @@ val hideStatusBarPatch = bytecodePatch(
             """
                 if-eqz p1, :morphe_activity_status_done
                 const-string v0, "$DEFAULT_PREFERENCES"
-                const/4 v1, 0x0
-                invoke-virtual {p0, v0, v1}, Landroid/content/Context;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
-                move-result-object v0
-                const-string v1, "$HIDE_STATUS_BAR_PREF"
                 const/4 p1, 0x0
-                invoke-interface {v0, v1, p1}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
-                move-result v1
-                if-eqz v1, :morphe_activity_status_done
-                const-string v1, "force_tablet_ui"
-                invoke-interface {v0, v1, p1}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
-                move-result v1
-                if-eqz v1, :morphe_activity_status_done
+                invoke-virtual {p0, v0, p1}, Landroid/content/Context;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
+                move-result-object v0
+                invoke-interface {v0}, Landroid/content/SharedPreferences;->getAll()Ljava/util/Map;
+                move-result-object v0
+                const-string p1, "$HIDE_STATUS_BAR_PREF"
+                invoke-interface {v0, p1}, Ljava/util/Map;->get(Ljava/lang/Object;)Ljava/lang/Object;
+                move-result-object v0
+                instance-of p1, v0, Ljava/lang/Boolean;
+                if-eqz p1, :morphe_activity_status_done
+                check-cast v0, Ljava/lang/Boolean;
+                invoke-virtual {v0}, Ljava/lang/Boolean;->booleanValue()Z
+                move-result p1
+                if-eqz p1, :morphe_activity_status_done
+
+                const-string v0, "$DEFAULT_PREFERENCES"
+                const/4 p1, 0x0
+                invoke-virtual {p0, v0, p1}, Landroid/content/Context;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
+                move-result-object v0
+                invoke-interface {v0}, Landroid/content/SharedPreferences;->getAll()Ljava/util/Map;
+                move-result-object v0
+                const-string p1, "force_tablet_ui"
+                invoke-interface {v0, p1}, Ljava/util/Map;->get(Ljava/lang/Object;)Ljava/lang/Object;
+                move-result-object v0
+                instance-of p1, v0, Ljava/lang/Boolean;
+                if-eqz p1, :morphe_activity_status_done
+                check-cast v0, Ljava/lang/Boolean;
+                invoke-virtual {v0}, Ljava/lang/Boolean;->booleanValue()Z
+                move-result p1
+                if-eqz p1, :morphe_activity_status_done
+
                 invoke-virtual {p0}, Landroid/app/Activity;->getWindow()Landroid/view/Window;
                 move-result-object v0
                 invoke-virtual {v0}, Landroid/view/Window;->getInsetsController()Landroid/view/WindowInsetsController;
                 move-result-object v0
                 if-eqz v0, :morphe_activity_status_done
-                const/4 v1, 0x1
-                invoke-interface {v0, v1}, Landroid/view/WindowInsetsController;->hide(I)V
+                const/4 p1, 0x1
+                invoke-interface {v0, p1}, Landroid/view/WindowInsetsController;->hide(I)V
                 :morphe_activity_status_done
                 nop
             """
