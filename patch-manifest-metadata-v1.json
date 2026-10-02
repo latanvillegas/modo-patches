@@ -122,6 +122,36 @@
       "documentation": [
         "docs/cromite-153-binary-mapping-analysis.md"
       ]
+    },
+    {
+      "id": "cromite.amoled-new-tab-page",
+      "name": "AMOLED - New Tab Page",
+      "applications": [
+        "cromite"
+      ],
+      "abis": [
+        "arm64-v8a"
+      ],
+      "versionCodes": [
+        801003702
+      ],
+      "inputTypes": [
+        "APK",
+        "UNIVERSAL_APK"
+      ],
+      "mutations": [
+        "BYTECODE"
+      ],
+      "signatureImpact": "RESIGN_REQUIRED",
+      "risk": "HIGH",
+      "reversible": true,
+      "tests": [
+        "cromite-153-ntp-theme-bytecode",
+        "cromite-153-ntp-theme-visual"
+      ],
+      "documentation": [
+        "docs/cromite-153-binary-mapping-analysis.md"
+      ]
     }
   ]
 }
