@@ -148,8 +148,8 @@ private val hideStatusBarPreferenceResourcesPatch = resourcePatch(
  */
 @Suppress("unused")
 val hideStatusBarPatch = bytecodePatch(
-    name = "Hide status bar information in tablet mode",
-    description = "Adds a persisted Accessibility option that hides the complete Android status bar only while Force Tablet Mode is active.",
+    name = "Hide status bar in main browser (tablet mode)",
+    description = "Independent main-browser patch. Hides only the Android status bar in the main Chromium activity while Force Tablet Mode and its persisted option are enabled. Does not patch SettingsActivity.",
     default = false,
 ) {
     compatibleWith("org.cromite.cromite"(CROMITE_VERSION))
