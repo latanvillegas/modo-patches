@@ -48,4 +48,4 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           archive: false
-          path: patches/build/libs
+          path: patches/build/libs/*.mpp
