@@ -44,11 +44,21 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./gradlew :patches:buildAndroid --no-daemon
 
+      - name: Select runtime patch bundle
+        id: runtime-bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t bundles < <(find patches/build/libs -maxdepth 1 -type f -name '*.mpp' ! -name '*-sources.mpp' ! -name '*-javadoc.mpp' -print)
+          if [ "${#bundles[@]}" -ne 1 ]; then
+            printf 'Expected exactly one runtime .mpp bundle, found %s:\n' "${#bundles[@]}" >&2
+            printf '  %s\n' "${bundles[@]}" >&2
+            exit 1
+          fi
+          echo "path=${bundles[0]}" >> "$GITHUB_OUTPUT"
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
         with:
           archive: false
-          path: patches/build/libs/patches-*.mpp
-          exclude: |
-            patches/build/libs/*-sources.mpp
-            patches/build/libs/*-javadoc.mpp
+          path: ${{ steps.runtime-bundle.outputs.path }}
