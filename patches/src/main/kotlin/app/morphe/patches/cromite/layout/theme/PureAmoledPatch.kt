@@ -78,6 +78,8 @@ private val pureAmoledResourcesPatch = resourcePatch(
     compatibleWith("org.cromite.cromite"(CROMITE_VERSION))
 
     execute {
+        if (browserThemeOption.value == THEME_DEVICE) return@execute
+
         val explicitColorFiles = setOf(
             "bottom_sheet_bg_color.xml", "context_menu_header_circle_bg_color.xml", "dialog_bg_color.xml",
             "hub_search_box_bg_color.xml", "interactable_chip_bg_color.xml", "item_chooser_row_background.xml",
@@ -596,13 +598,16 @@ val pureAmoledPatch = bytecodePatch(
     dependsOn(pureAmoledResourcesPatch)
 
     execute {
+        val selectedTheme = browserTheme ?: THEME_DEVICE
+        if (selectedTheme == THEME_DEVICE) return@execute
+
         val systemSurfaceTargets = listOf(
             colorSurfaceFingerprint, colorSurfaceBrightFingerprint, colorSurfaceContainerFingerprint,
             colorSurfaceContainerHighestFingerprint, colorSurfaceContainerLowFingerprint,
             defaultBgColorFingerprint, primaryBackgroundColorFingerprint,
         )
         systemSurfaceTargets.forEach { fingerprint ->
-            fingerprint.method.addInstructions(0, surfaceSmali(browserTheme ?: THEME_DEVICE))
+            fingerprint.method.addInstructions(0, surfaceSmali(selectedTheme))
         }
 
         // TabUiThemeUtil.getTabStripBackgroundColorDefault(Context, boolean) survives R8
@@ -610,14 +615,14 @@ val pureAmoledPatch = bytecodePatch(
         // patch it explicitly; this is native tab-strip UI only, never WebContents.
         tabStripBackgroundDefaultFingerprint.method.addInstructions(
             0,
-            surfaceSmali(browserTheme ?: THEME_DEVICE),
+            surfaceSmali(selectedTheme),
         )
 
         // These two SemanticColorUtils methods survive R8 in Cromite 153 as pac.i/pac.j.
         // Patch them independently from surfaces so Pure Black never leaves black
         // primary text/icons on a black browser surface (and vice versa for Pure White).
         listOf(defaultIconColorFingerprint, defaultTextColorFingerprint).forEach { fingerprint ->
-            fingerprint.method.addInstructions(0, foregroundSmali(browserTheme ?: THEME_DEVICE))
+            fingerprint.method.addInstructions(0, foregroundSmali(selectedTheme))
         }
 
         // Dynamic Material colors would re-introduce tinted gray/colored surfaces.
