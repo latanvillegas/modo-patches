@@ -190,7 +190,7 @@ private val pureAmoledResourcesPatch = resourcePatch(
                     normalized.contains("menu") ||
                     normalized.contains("toolbar") ||
                     normalized.contains("omnibox") ||
-                    normalized.contains("tab") ||
+                    normalized.contains("tab")
                 )
         }
 
