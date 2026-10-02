@@ -13,6 +13,7 @@ private const val SEMANTIC_COLOR_UTILS = "Lpac;"
 private const val CHROME_COLORS = "Lq72;"
 private const val DYNAMIC_COLORS = "Lqb4;"
 private const val DYNAMIC_COLORS_OPTIONS = "Ltb4;"
+private const val TAB_UI_THEME_UTILS = "Laqe;"
 private const val CONTEXT = "Landroid/content/Context;"
 private const val ACTIVITY = "Landroid/app/Activity;"
 private const val PURE_BLACK = "#FF000000"
@@ -53,6 +54,13 @@ private val settingsBackgroundColorFingerprint = semanticSurfaceFingerprint("l")
 private val primaryBackgroundColorFingerprint = Fingerprint(
     definingClass = CHROME_COLORS,
     name = "b",
+    returnType = "I",
+    parameters = listOf(CONTEXT, "Z"),
+)
+
+private val tabStripBackgroundDefaultFingerprint = Fingerprint(
+    definingClass = TAB_UI_THEME_UTILS,
+    name = "c",
     returnType = "I",
     parameters = listOf(CONTEXT, "Z"),
 )
@@ -585,6 +593,14 @@ val pureAmoledPatch = bytecodePatch(
         systemSurfaceTargets.forEach { fingerprint ->
             fingerprint.method.addInstructions(0, surfaceSmali(browserTheme ?: THEME_DEVICE))
         }
+
+        // TabUiThemeUtil.getTabStripBackgroundColorDefault(Context, boolean) survives R8
+        // as aqe.c. Its source path bypasses the surviving pac surface wrappers, so
+        // patch it explicitly; this is native tab-strip UI only, never WebContents.
+        tabStripBackgroundDefaultFingerprint.method.addInstructions(
+            0,
+            surfaceSmali(browserTheme ?: THEME_DEVICE),
+        )
 
         // These two SemanticColorUtils methods survive R8 in Cromite 153 as pac.i/pac.j.
         // Patch them independently from surfaces so Pure Black never leaves black
