@@ -80,10 +80,10 @@
         "UNIVERSAL_APK"
       ],
       "mutations": [
-        "RESOURCE"
+        "BYTECODE"
       ],
       "signatureImpact": "RESIGN_REQUIRED",
-      "risk": "MEDIUM",
+      "risk": "HIGH",
       "reversible": true,
       "tests": [
         "cromite-153-settings-status-bar-resource",
