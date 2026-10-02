@@ -49,6 +49,18 @@ private const val COMPOSITOR_VIEW_HOLDER =
  * p() is free to evolve/in-line its Window/Insets implementation.
  */
 /**
+ * Any CompositorViewHolder method that reads its browser-controls Lzl1 owner.
+ * The matched FieldReference is used to recover CVH -> zl1 without relying on
+ * the obfuscated field name.
+ */
+private val compositorOwnerFieldFingerprint = Fingerprint(
+    definingClass = COMPOSITOR_VIEW_HOLDER,
+    filters = listOf(
+        fieldAccess(opcode = Opcode.IGET_OBJECT, type = "Lzl1;"),
+    ),
+)
+
+/**
  * The real View.OnApplyWindowInsetsListener installed by CompositorViewHolder.
  * No obfuscated class/method name is used: the callback is matched by its
  * signature, its CVH field and the CVH no-arg reconciliation call.
@@ -279,14 +291,9 @@ val hideStatusBarPatch = bytecodePatch(
             .let { (it.instruction as ReferenceInstruction).reference as FieldReference }
 
         // Resolve CVH -> zl1 from a real CVH method match instead of nt2.classDef.
-        // A CVH method that consumes Lzl1 is intentionally broad; the field reference
-        // itself is the structural datum we need and its defining class must be CVH.
-        val cvhOwnerFieldFingerprint = Fingerprint(
-            definingClass = COMPOSITOR_VIEW_HOLDER,
-            filters = listOf(fieldAccess(opcode = Opcode.IGET_OBJECT, type = "Lzl1;")),
-        )
-        cvhOwnerFieldFingerprint.match(context)
-        val cvhField = cvhOwnerFieldFingerprint.instructionMatches
+        // The fingerprint is declared at patch scope so the patcher resolves it
+        // normally before execute; no manual context/match invocation is required.
+        val cvhField = compositorOwnerFieldFingerprint.instructionMatches
             .mapNotNull { match ->
                 (match.instruction as? ReferenceInstruction)?.reference as? FieldReference
             }
