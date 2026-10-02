@@ -289,8 +289,7 @@ private val pureAmoledResourcesPatch = resourcePatch(
             return materialOrBrowserParent || nativeUiName || declaresSurfaceRole
         }
 
-        fun setOrAppendThemeItem(
-            document: org.w3c.dom.Document,
+        fun setExistingThemeItem(
             style: Element,
             name: String,
             value: String,
@@ -303,11 +302,11 @@ private val pureAmoledResourcesPatch = resourcePatch(
                     return true
                 }
             }
-            val item = document.createElement("item")
-            item.setAttribute("name", name)
-            item.textContent = value
-            style.appendChild(item)
-            return true
+            // Arsclib can only re-encode attributes that exist in the target APK's
+            // resource table. Never synthesize arbitrary Material/Android attrs here:
+            // an unknown attr (for example unqualified colorBackground) makes the
+            // patched resources impossible to encode.
+            return false
         }
 
         val foregroundColorNames = setOf(
@@ -480,23 +479,22 @@ private val pureAmoledResourcesPatch = resourcePatch(
                                 }
                             }
 
-                            // Force the complete palette at native browser theme/overlay
-                            // boundaries. AppMenu and several toolbar/tab consumers use
-                            // ContextThemeWrapper + MaterialColors after R8 inlining, so
-                            // limiting this to Theme.Chromium leaves inherited gray roles.
+                            // Rewrite only roles already declared by the target theme.
+                            // Adding missing attr names is unsafe with arsclib because an
+                            // attr absent from resources.arsc cannot be encoded.
                             val styles = document.getElementsByTagName("style")
                             for (styleIndex in 0 until styles.length) {
                                 val style = styles.item(styleIndex) as? Element ?: continue
                                 if (!isNativeBrowserUiTheme(style)) continue
 
                                 surfaceThemeAttrs.forEach { attr ->
-                                    if (setOrAppendThemeItem(document, style, attr, target)) {
+                                    if (setExistingThemeItem(style, attr, target)) {
                                         localHits++
                                         valuesPatched++
                                     }
                                 }
                                 foregroundThemeAttrs.forEach { attr ->
-                                    if (setOrAppendThemeItem(document, style, attr, foreground)) {
+                                    if (setExistingThemeItem(style, attr, foreground)) {
                                         localHits++
                                         valuesPatched++
                                     }
