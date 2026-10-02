@@ -48,6 +48,49 @@
     },
     {
       "schemaVersion": 1,
+      "id": "cromite.amoled-new-tab-page",
+      "name": "AMOLED - New Tab Page",
+      "description": "Applies Device default / Pure Black / Pure White to the native Cromite New Tab Page background independently from toolbar, Settings, and WebContents.",
+      "applications": [
+        "cromite"
+      ],
+      "packageNames": [
+        "org.cromite.cromite"
+      ],
+      "versionRules": {
+        "exact": [
+          "153.0.8010.37"
+        ]
+      },
+      "versionCodes": [
+        801003702
+      ],
+      "abis": [
+        "arm64-v8a"
+      ],
+      "inputTypes": [
+        "APK",
+        "UNIVERSAL_APK"
+      ],
+      "dependencies": [],
+      "conflicts": [],
+      "minimumPatcherVersion": null,
+      "mutations": [
+        "BYTECODE"
+      ],
+      "signatureImpact": "RESIGN_REQUIRED",
+      "risk": "HIGH",
+      "reversible": true,
+      "tests": [
+        "cromite-153-ntp-theme-bytecode",
+        "cromite-153-ntp-theme-visual"
+      ],
+      "documentation": [
+        "docs/cromite-153-binary-mapping-analysis.md"
+      ]
+    },
+    {
+      "schemaVersion": 1,
       "id": "cromite.amoled-settings",
       "name": "AMOLED - Settings",
       "description": "Applies the selected Device default / Pure Black / Pure White palette to the native Cromite Settings background independently from the main browser UI.",
