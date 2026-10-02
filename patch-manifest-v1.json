@@ -76,7 +76,6 @@
       "conflicts": [],
       "minimumPatcherVersion": null,
       "mutations": [
-        "RESOURCE",
         "BYTECODE"
       ],
       "signatureImpact": "RESIGN_REQUIRED",
@@ -120,7 +119,6 @@
       "conflicts": [],
       "minimumPatcherVersion": null,
       "mutations": [
-        "RESOURCE",
         "BYTECODE"
       ],
       "signatureImpact": "RESIGN_REQUIRED",
