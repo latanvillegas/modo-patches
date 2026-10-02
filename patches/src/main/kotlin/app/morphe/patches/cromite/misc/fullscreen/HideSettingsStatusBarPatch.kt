@@ -1,13 +1,12 @@
 package app.morphe.patches.cromite.misc.fullscreen
 
 import app.morphe.patcher.Fingerprint
-import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod.Companion.toMutable
+import app.morphe.patcher.util.smali.toInstructions
 import com.android.tools.smali.dexlib2.AccessFlags
-import com.android.tools.smali.dexlib2.builder.MutableMethodImplementation
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
-import com.android.tools.smali.dexlib2.immutable.ImmutableMethodParameter
+import com.android.tools.smali.dexlib2.immutable.ImmutableMethodImplementation
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethodParameter
 
 private const val CROMITE_SETTINGS_VERSION = "153.0.8010.37"
@@ -59,11 +58,8 @@ val hideSettingsStatusBarPatch = bytecodePatch(
                     AccessFlags.PUBLIC.value or AccessFlags.FINAL.value,
                     null,
                     null,
-                    null,
-                ).toMutable().apply {
-                    implementation = MutableMethodImplementation(3)
-                    addInstructions(
-                        0,
+                    ImmutableMethodImplementation(
+                        3,
                         """
                             invoke-super {p0, p1}, Landroid/app/Activity;->onWindowFocusChanged(Z)V
                             if-eqz p1, :morphe_settings_status_done
@@ -76,9 +72,11 @@ val hideSettingsStatusBarPatch = bytecodePatch(
                             invoke-interface {v0, p1}, Landroid/view/WindowInsetsController;->hide(I)V
                             :morphe_settings_status_done
                             return-void
-                        """
-                    )
-                }
+                        """.toInstructions(),
+                        null,
+                        null,
+                    ),
+                ).toMutable()
             )
         }
     }
