@@ -81,7 +81,6 @@ private val pureAmoledResourcesPatch = resourcePatch(
         if (browserThemeOption.value == THEME_DEVICE) return@execute
 
         val explicitColorFiles = setOf(
-            "context_menu_header_circle_bg_color.xml",
             "interactable_chip_bg_color.xml", "item_chooser_row_background.xml",
             "m3_list_item_background_color_selector.xml", "m3_segmented_list_item_background_color_selector.xml",
             "m3_textfield_filled_background_color.xml", "mtrl_filled_background_color.xml",
@@ -249,7 +248,7 @@ private val pureAmoledResourcesPatch = resourcePatch(
                 "message_bg" in name || "toast_color" in name || "widget" in name || "xr_" in name ||
                 "omnibox" in name || "search_box" in name || "search_suggestion" in name || "toolbar_text_box" in name ||
                 "tab_strip" in name || "single_tab" in name ||
-                "toolbar_background" in name || "top_toolbar" in name
+                "toolbar_background" in name || "top_toolbar" in name || "context_menu" in name
             if (isolatedDomain) return false
 
             // Structural boundary first: Material/Chromium themes and overlays,
@@ -444,6 +443,7 @@ private val pureAmoledResourcesPatch = resourcePatch(
                                     "search_suggestion" in name.lowercase() || "toolbar_text_box" in name.lowercase() ||
                                     "tab_strip" in name.lowercase() || "single_tab" in name.lowercase() ||
                                     "toolbar_background" in name.lowercase() || "top_toolbar" in name.lowercase() ||
+                                    "context_menu" in name.lowercase() ||
                                     "fake_search_box" in name.lowercase() ||
                                     "tile_view" in name.lowercase()
                                 val isNamedSurface = !isolatedResource && (
