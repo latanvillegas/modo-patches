@@ -89,7 +89,7 @@ private val pureAmoledResourcesPatch = resourcePatch(
             "omnibox_suggestion_dropdown_bg.xml", "search_suggestion_bg_color.xml", "single_tab_favicon_bg_color.xml",
             "tab_strip_ntb_bg_tint_list.xml",
             "toolbar_text_box_bg_color.xml",
-            "xr_toolbar_bg.xml",
+            
 
             // Desktop-Android/Cromite toolbar and tab-strip surfaces. Missing files are intentionally ignored.
             "toolbar_background_primary.xml", "toolbar_background_primary_incognito.xml",
@@ -258,7 +258,7 @@ private val pureAmoledResourcesPatch = resourcePatch(
                 "appmenu" in name || "menu_" in name || "popup_" in name ||
                 "mtrl_popupmenu" in name ||
                 "dialog" in name || "sheet" in name || "card" in name || "snackbar" in name ||
-                "message_bg" in name || "toast_color" in name || "widget" in name
+                "message_bg" in name || "toast_color" in name || "widget" in name || "xr_" in name
             if (isolatedDomain) return false
 
             // Structural boundary first: Material/Chromium themes and overlays,
@@ -448,7 +448,7 @@ private val pureAmoledResourcesPatch = resourcePatch(
                                     "dialog" in name.lowercase() || "sheet" in name.lowercase() ||
                                     "card" in name.lowercase() || "snackbar" in name.lowercase() ||
                                     "message_bg" in name.lowercase() || "toast_color" in name.lowercase() ||
-                                    "widget" in name.lowercase() ||
+                                    "widget" in name.lowercase() || "xr_" in name.lowercase() ||
                                     "fake_search_box" in name.lowercase() ||
                                     "tile_view" in name.lowercase()
                                 val isNamedSurface = !isolatedResource && (
