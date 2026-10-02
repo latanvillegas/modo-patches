@@ -3,10 +3,8 @@ package app.morphe.patches.cromite.misc.fullscreen
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.methodCall
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
-import app.morphe.util.indexOfFirstInstructionReversedOrThrow
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.resourcePatch
-import com.android.tools.smali.dexlib2.Opcode
 import org.w3c.dom.Element
 
 private const val CROMITE_VERSION = "153.0.8010.37"
@@ -40,13 +38,6 @@ private val activityWindowFocusFingerprint = Fingerprint(
     name = "onWindowFocusChanged",
     returnType = "V",
     parameters = listOf("Z"),
-)
-
-private val settingsActivityResumeFingerprint = Fingerprint(
-    definingClass = "Lorg/chromium/chrome/browser/settings/SettingsActivity;",
-    name = "onResume",
-    returnType = "V",
-    parameters = listOf(),
 )
 
 private val hideStatusBarPreferenceResourcesPatch = resourcePatch(
@@ -286,35 +277,6 @@ val hideStatusBarPatch = bytecodePatch(
                 const/4 p1, 0x1
                 invoke-interface {v0, p1}, Landroid/view/WindowInsetsController;->hide(I)V
                 :morphe_activity_status_done
-                nop
-            """
-        )
-
-        // SettingsActivity is outside pc0. Its onResume() has only one local
-        // register, so keep p0 intact and use only v0. This hook is deliberately
-        // limited to statusBars and does not alter the already-working browser path.
-        val settingsResume = settingsActivityResumeFingerprint.method
-        val settingsImplementation = settingsResume.implementation
-            ?: throw IllegalStateException("SettingsActivity.onResume has no implementation")
-        val settingsLocals = settingsImplementation.registerCount - 1
-        if (settingsLocals < 1) {
-            throw IllegalStateException(
-                "SettingsActivity.onResume requires 1 local register; found " + settingsLocals
-            )
-        }
-
-        val settingsReturnIndex = settingsResume.indexOfFirstInstructionReversedOrThrow(Opcode.RETURN_VOID)
-        settingsResume.addInstructions(
-            settingsReturnIndex,
-            """
-                invoke-virtual {p0}, Landroid/app/Activity;->getWindow()Landroid/view/Window;
-                move-result-object v0
-                invoke-virtual {v0}, Landroid/view/Window;->getInsetsController()Landroid/view/WindowInsetsController;
-                move-result-object v0
-                if-eqz v0, :morphe_settings_status_done
-                const/4 p0, 0x1
-                invoke-interface {v0, p0}, Landroid/view/WindowInsetsController;->hide(I)V
-                :morphe_settings_status_done
                 nop
             """
         )
