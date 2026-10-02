@@ -7,6 +7,7 @@ import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLa
 import app.morphe.patcher.extensions.InstructionExtensions.addInstruction
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.util.smali.toInstructions
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.resourcePatch
 import app.morphe.patcher.util.smali.ExternalLabel
@@ -252,10 +253,8 @@ val hideStatusBarPatch = bytecodePatch(
                     AccessFlags.PRIVATE.value or AccessFlags.STATIC.value,
                     null,
                     null,
-                    ImmutableMethodImplementation(emptyList(), null, null, 4),
-                ).toMutable().apply {
-                    addInstructionsWithLabels(
-                        0,
+                    ImmutableMethodImplementation(
+                        4,
                         """
                             const-string v0, "$DEFAULT_PREFERENCES"
                             const/4 v1, 0x0
@@ -279,9 +278,11 @@ val hideStatusBarPatch = bytecodePatch(
                             invoke-static {v0, v1}, Landroid/util/Log;->d(Ljava/lang/String;Ljava/lang/String;)I
                             :morphe_activity_policy_done
                             return-void
-                        """
+                        """.toInstructions(),
+                        null,
+                        null
                     )
-                }
+                ).toMutable()
             )
         }
         activityResume.addInstruction(
