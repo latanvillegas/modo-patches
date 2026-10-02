@@ -237,9 +237,9 @@ val hideStatusBarPatch = bytecodePatch(
         val resumeImpl = activityResume.implementation
             ?: throw IllegalStateException("ChromeTabbedActivity.onResume has no implementation")
         val resumeLocals = resumeImpl.registerCount - 1
-        if (resumeLocals < 3) {
+        if (resumeLocals < 2) {
             throw IllegalStateException(
-                "ChromeTabbedActivity.onResume requires 3 local registers; found $resumeLocals"
+                "ChromeTabbedActivity.onResume requires 2 local registers; found $resumeLocals"
             )
         }
         activityResume.addInstructions(
@@ -252,8 +252,9 @@ val hideStatusBarPatch = bytecodePatch(
                 const/4 v1, 0x0
                 invoke-virtual {p0, v0, v1}, Landroid/content/Context;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
                 move-result-object v0
-                const-string v2, "$HIDE_STATUS_BAR_PREF"
-                invoke-interface {v0, v2, v1}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
+                const-string v1, "$HIDE_STATUS_BAR_PREF"
+                const/4 p0, 0x0
+                invoke-interface {v0, v1, p0}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
                 move-result v0
                 if-eqz v0, :morphe_activity_resume_done
                 sget-boolean v0, Lorg/chromium/ui/base/DeviceFormFactor;->a:Z
