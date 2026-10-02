@@ -4,93 +4,6 @@
   "patches": [
     {
       "schemaVersion": 1,
-      "id": "cromite.hide-status-bar-main-browser",
-      "name": "Hide status bar in main browser (tablet mode)",
-      "description": "Independent main-browser patch. Hides only the Android status bar in the main Chromium activity while Force Tablet Mode and its persisted option are enabled. Does not patch SettingsActivity.",
-      "applications": [
-        "cromite"
-      ],
-      "packageNames": [
-        "org.cromite.cromite"
-      ],
-      "versionRules": {
-        "exact": [
-          "153.0.8010.37"
-        ]
-      },
-      "versionCodes": [
-        801003702
-      ],
-      "abis": [
-        "arm64-v8a"
-      ],
-      "inputTypes": [
-        "APK",
-        "UNIVERSAL_APK"
-      ],
-      "dependencies": [],
-      "conflicts": [],
-      "minimumPatcherVersion": null,
-      "mutations": [
-        "RESOURCE",
-        "BYTECODE"
-      ],
-      "signatureImpact": "RESIGN_REQUIRED",
-      "risk": "HIGH",
-      "reversible": true,
-      "tests": [
-        "cromite-153-status-bar-bytecode",
-        "cromite-153-status-bar-device"
-      ],
-      "documentation": [
-        "docs/cromite-153-binary-mapping-analysis.md"
-      ]
-    },
-    {
-      "schemaVersion": 1,
-      "id": "cromite.hide-status-bar-settings",
-      "name": "Hide status bar in Settings",
-      "description": "Independent Cromite Settings patch. Hides the Android status bar only in SettingsActivity and does not modify the working main-browser status-bar patch.",
-      "applications": [
-        "cromite"
-      ],
-      "packageNames": [
-        "org.cromite.cromite"
-      ],
-      "versionRules": {
-        "exact": [
-          "153.0.8010.37"
-        ]
-      },
-      "versionCodes": [
-        801003702
-      ],
-      "abis": [
-        "arm64-v8a"
-      ],
-      "inputTypes": [
-        "APK",
-        "UNIVERSAL_APK"
-      ],
-      "dependencies": [],
-      "conflicts": [],
-      "minimumPatcherVersion": null,
-      "mutations": [
-        "BYTECODE"
-      ],
-      "signatureImpact": "RESIGN_REQUIRED",
-      "risk": "HIGH",
-      "reversible": true,
-      "tests": [
-        "cromite-153-settings-status-bar-resource",
-        "cromite-153-settings-status-bar-device"
-      ],
-      "documentation": [
-        "docs/cromite-153-binary-mapping-analysis.md"
-      ]
-    },
-    {
-      "schemaVersion": 1,
       "id": "cromite.amoled-main-browser-ui",
       "name": "AMOLED - Main browser UI",
       "description": "Main Cromite browser UI theme: toolbar/tab surfaces and shared native browser surfaces. Web content is not recolored.",
@@ -112,8 +25,7 @@
         "arm64-v8a"
       ],
       "inputTypes": [
-        "APK",
-        "UNIVERSAL_APK"
+        "APK"
       ],
       "dependencies": [],
       "conflicts": [],
@@ -156,8 +68,7 @@
         "arm64-v8a"
       ],
       "inputTypes": [
-        "APK",
-        "UNIVERSAL_APK"
+        "APK"
       ],
       "dependencies": [],
       "conflicts": [],
@@ -171,6 +82,91 @@
       "tests": [
         "cromite-153-settings-theme-bytecode",
         "cromite-153-settings-theme-visual"
+      ],
+      "documentation": [
+        "docs/cromite-153-binary-mapping-analysis.md"
+      ]
+    },
+    {
+      "schemaVersion": 1,
+      "id": "cromite.hide-status-bar-main-browser",
+      "name": "Hide status bar in main browser (tablet mode)",
+      "description": "Independent main-browser patch. Hides only the Android status bar in the main Chromium activity while Force Tablet Mode and its persisted option are enabled. Does not patch SettingsActivity.",
+      "applications": [
+        "cromite"
+      ],
+      "packageNames": [
+        "org.cromite.cromite"
+      ],
+      "versionRules": {
+        "exact": [
+          "153.0.8010.37"
+        ]
+      },
+      "versionCodes": [
+        801003702
+      ],
+      "abis": [
+        "arm64-v8a"
+      ],
+      "inputTypes": [
+        "APK"
+      ],
+      "dependencies": [],
+      "conflicts": [],
+      "minimumPatcherVersion": null,
+      "mutations": [
+        "RESOURCE",
+        "BYTECODE"
+      ],
+      "signatureImpact": "RESIGN_REQUIRED",
+      "risk": "HIGH",
+      "reversible": true,
+      "tests": [
+        "cromite-153-status-bar-bytecode",
+        "cromite-153-status-bar-device"
+      ],
+      "documentation": [
+        "docs/cromite-153-binary-mapping-analysis.md"
+      ]
+    },
+    {
+      "schemaVersion": 1,
+      "id": "cromite.hide-status-bar-settings",
+      "name": "Hide status bar in Settings",
+      "description": "Independent Cromite Settings patch. Hides the Android status bar only in SettingsActivity and does not modify the working main-browser status-bar patch.",
+      "applications": [
+        "cromite"
+      ],
+      "packageNames": [
+        "org.cromite.cromite"
+      ],
+      "versionRules": {
+        "exact": [
+          "153.0.8010.37"
+        ]
+      },
+      "versionCodes": [
+        801003702
+      ],
+      "abis": [
+        "arm64-v8a"
+      ],
+      "inputTypes": [
+        "APK"
+      ],
+      "dependencies": [],
+      "conflicts": [],
+      "minimumPatcherVersion": null,
+      "mutations": [
+        "BYTECODE"
+      ],
+      "signatureImpact": "RESIGN_REQUIRED",
+      "risk": "HIGH",
+      "reversible": true,
+      "tests": [
+        "cromite-153-settings-status-bar-resource",
+        "cromite-153-settings-status-bar-device"
       ],
       "documentation": [
         "docs/cromite-153-binary-mapping-analysis.md"
