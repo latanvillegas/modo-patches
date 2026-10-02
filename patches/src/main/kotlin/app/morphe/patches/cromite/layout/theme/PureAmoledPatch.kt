@@ -444,15 +444,27 @@ private val pureAmoledResourcesPatch = resourcePatch(
                                 val name = element.getAttribute("name")
                                 val type = element.getAttribute("type")
 
-                                val isNamedSurface =
+                                val isolatedResource =
+                                    "settings" in name.lowercase() ||
+                                    "preference" in name.lowercase() ||
+                                    "newtab" in name.lowercase() ||
+                                    "new_tab" in name.lowercase() ||
+                                    "ntp" in name.lowercase() ||
+                                    "home_surface" in name.lowercase() ||
+                                    "fake_search_box" in name.lowercase() ||
+                                    "tile_view" in name.lowercase()
+                                val isNamedSurface = !isolatedResource && (
                                     name in surfaceColorNames ||
                                     name in surfaceMacroNames ||
                                     isMaterialSurfaceColorName(name) ||
                                     isUiSurfaceResourceName(name)
-                                val isNamedForeground =
+                                )
+                                val isNamedForeground = !isolatedResource && (
                                     name in foregroundColorNames ||
                                     isMaterialForegroundColorName(name)
+                                )
                                 val isDarkGrayUiBackground =
+                                    !isolatedResource &&
                                     isSafeUiBackgroundName(name) &&
                                     isGrayUiColorLiteral(element.textContent)
 
