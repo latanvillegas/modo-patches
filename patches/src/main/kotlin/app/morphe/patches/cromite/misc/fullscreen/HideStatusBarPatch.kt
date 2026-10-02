@@ -1,7 +1,9 @@
 package app.morphe.patches.cromite.misc.fullscreen
 
 import app.morphe.patcher.Fingerprint
+import app.morphe.patcher.methodCall
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.resourcePatch
 import org.w3c.dom.Element
@@ -28,6 +30,21 @@ private val windowInsetsPolicyFingerprint = Fingerprint(
     name = "onApplyWindowInsets",
     returnType = "Landroid/view/WindowInsets;",
     parameters = listOf("Landroid/view/View;", "Landroid/view/WindowInsets;"),
+)
+
+// FullscreenHtmlApiHandlerBase participates in Chromium's existing window-focus
+// dispatch. The target method is identified structurally by its forwarding call
+// to rh5.onWindowFocusChanged(boolean), avoiding an obfuscated method-name guess.
+private val fullscreenWindowFocusFingerprint = Fingerprint(
+    definingClass = "Lmg5;",
+    filters = listOf(
+        methodCall(
+            definingClass = "Lrh5;",
+            name = "onWindowFocusChanged",
+            returnType = "V",
+            parameters = listOf("Z"),
+        )
+    ),
 )
 
 private val hideStatusBarPreferenceResourcesPatch = resourcePatch(
@@ -208,7 +225,39 @@ val hideStatusBarPatch = bytecodePatch(
             """
         )
 
-        // No CompositorViewHolder/nt2 visibility writer is installed. Insets are
-        // returned untouched by those consumers; the fullscreen authority above owns
-        // status-bar hide/show decisions.
+        // Reapply through Chromium's existing focus lifecycle instead of becoming a
+        // second status-bar writer. On focus gain this only asks Android to dispatch
+        // insets again; ng5.onApplyWindowInsets remains the sole hide/show authority.
+        val focusMethod = fullscreenWindowFocusFingerprint.method
+        val focusImplementation = focusMethod.implementation
+            ?: throw IllegalStateException(
+                "FullscreenHtmlApiHandlerBase window-focus method has no implementation"
+            )
+        val focusLocalRegisters =
+            focusImplementation.registerCount - focusMethod.parameters.size - 1
+        if (focusMethod.parameters.lastOrNull() != "Z" || focusLocalRegisters < 1) {
+            throw IllegalStateException(
+                "Fullscreen window-focus bridge shape changed: params=" +
+                    focusMethod.parameters + ", locals=" + focusLocalRegisters
+            )
+        }
+
+        focusMethod.addInstructionsWithLabels(
+            0,
+            """
+                if-eqz p2, :morphe_focus_reapply_done
+                iget-object v0, p0, Lmg5;->r:Ld52;
+                invoke-virtual {v0}, Landroid/app/Activity;->getWindow()Landroid/view/Window;
+                move-result-object v0
+                if-eqz v0, :morphe_focus_reapply_done
+                invoke-virtual {v0}, Landroid/view/Window;->getDecorView()Landroid/view/View;
+                move-result-object v0
+                if-eqz v0, :morphe_focus_reapply_done
+                invoke-virtual {v0}, Landroid/view/View;->requestApplyInsets()V
+                :morphe_focus_reapply_done
+                nop
+            """
+        )
+
+        // CompositorViewHolder/nt2 remains untouched and never writes visibility.
     }}
