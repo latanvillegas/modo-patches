@@ -43,21 +43,11 @@ private const val COMPOSITOR_VIEW_HOLDER =
     "Lorg/chromium/chrome/browser/compositor/CompositorViewHolder;"
 
 /**
- * Stable compositor callback. It is identified by behavior, not by the R8
- * method name: it reads the browser-controls object, inspects DecorView insets
- * and schedules its reconciliation with View.postDelayed().
+ * The compositor's Lzl1 field is discovered from the concrete insets listener
+ * callback itself, rather than from p(). The installed Cromite bytecode proves
+ * nt2 reads CVH and immediately invokes the no-arg reconciliation method, while
+ * p() is free to evolve/in-line its Window/Insets implementation.
  */
-private val compositorInsetsReconcileFingerprint = Fingerprint(
-    definingClass = COMPOSITOR_VIEW_HOLDER,
-    returnType = "V",
-    parameters = listOf(),
-    filters = listOf(
-        fieldAccess(opcode = Opcode.IGET_OBJECT, type = "Lzl1;"),
-        methodCall(smali = "Landroid/view/Window;->getDecorView()Landroid/view/View;"),
-        methodCall(smali = "Landroid/view/View;->postDelayed(Ljava/lang/Runnable;J)Z"),
-    ),
-)
-
 /**
  * The real View.OnApplyWindowInsetsListener installed by CompositorViewHolder.
  * No obfuscated class/method name is used: the callback is matched by its
@@ -277,12 +267,24 @@ val hideStatusBarPatch = bytecodePatch(
             """
         )
 
-        val cvhField = compositorInsetsReconcileFingerprint.instructionMatches
-            .first { match ->
-                val reference = (match.instruction as? ReferenceInstruction)?.reference as? FieldReference
-                reference?.type == "Lzl1;"
+        val cvhClass = compositorInsetsListenerFingerprint.method
+            .let { listener ->
+                compositorInsetsListenerFingerprint.instructionMatches
+                    .first { match ->
+                        val reference =
+                            (match.instruction as? ReferenceInstruction)?.reference as? FieldReference
+                        reference?.type == COMPOSITOR_VIEW_HOLDER
+                    }
+                    .let { (it.instruction as ReferenceInstruction).reference as FieldReference }
             }
-            .let { (it.instruction as ReferenceInstruction).reference as FieldReference }
+
+        // Resolve CVH -> zl1 by type at class level. This is the stable structural
+        // relation shown by the target APK; do not require p() to read the field.
+        val cvhField = compositorInsetsListenerFingerprint.classDef.fields
+            .singleOrNull { it.type == "Lzl1;" }
+            ?: throw IllegalStateException(
+                "Expected exactly one CompositorViewHolder field of type Lzl1;"
+            )
 
         val authorityField = fullscreenAuthorityOwnerFingerprint.instructionMatches
             .first { match ->
@@ -291,7 +293,7 @@ val hideStatusBarPatch = bytecodePatch(
             }
             .let { (it.instruction as ReferenceInstruction).reference as FieldReference }
 
-        fun fieldSmali(reference: FieldReference) =
+        fun fieldSmali(reference: com.android.tools.smali.dexlib2.iface.reference.FieldReference) =
             "${reference.definingClass}->${reference.name}:${reference.type}"
 
         // nt2 is only a lifecycle trigger. It does not hide/show bars itself.
