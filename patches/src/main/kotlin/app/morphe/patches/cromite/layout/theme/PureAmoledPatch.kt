@@ -201,7 +201,6 @@ private val pureAmoledResourcesPatch = resourcePatch(
 
         val surfaceMacroNames = setOf(
             "default_bg_color", "default_bg_color_elev_0",
-            "toolbar_background_primary",
             "history_chip_bg_color",
         )
 
