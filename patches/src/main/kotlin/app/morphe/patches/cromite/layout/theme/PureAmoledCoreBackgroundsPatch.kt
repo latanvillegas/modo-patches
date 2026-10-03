@@ -26,7 +26,7 @@ val pureAmoledCoreBackgroundsPatch = resourcePatch(
 
         val exactFiles = setOf("default_bg_color.xml", "primary_background_color.xml")
         val exactNames = setOf(
-            "default_bg_color", "default_bg_color_dark",
+            "default_bg_color", "default_bg_color_dark", "default_bg_color_elev_0",
             "primary_background_color", "primary_background_color_dark",
         )
         val directories = get("res").listFiles()?.filter { it.isDirectory }.orEmpty()
