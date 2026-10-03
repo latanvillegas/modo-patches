@@ -4,37 +4,56 @@ import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.bytecodePatch
 
-private const val NTP_CHROME_COLORS_PROPERTIES = "Lm19;"
+private const val NTP_LAYOUT = "Lorg/chromium/chrome/browser/ntp/NewTabPageLayout;"
 private const val NTP_VERSION = "153.0.8010.37"
-private const val NTP_BLACK = "#FF000000"
-private const val NTP_WHITE = "#FFFFFFFF"
 
-/**
- * New Tab Page is intentionally isolated from the main browser UI patch.
- *
- * Cromite 153 / R8 maps NtpChromeColorsProperties to m19. Its method c is
- * getBackgroundColorFromNtpBackgroundData(...), where the NTP surface roles
- * are resolved after SemanticColorUtils has been inlined.
- */
-private val ntpBackgroundColorFingerprint = Fingerprint(
-    definingClass = NTP_CHROME_COLORS_PROPERTIES,
-    name = "c",
-    returnType = "I",
+private val ntpLayoutInflateFingerprint = Fingerprint(
+    definingClass = NTP_LAYOUT,
+    name = "onFinishInflate",
+    returnType = "V",
+    parameters = emptyList(),
 )
+
+private fun ntpBackgroundSmali(theme: String): String = when (theme) {
+    "black" -> """
+        const v0, -0x1000000
+        invoke-virtual {p0, v0}, Landroid/view/View;->setBackgroundColor(I)V
+    """
+    "white" -> """
+        const v0, -0x1
+        invoke-virtual {p0, v0}, Landroid/view/View;->setBackgroundColor(I)V
+    """
+    else -> """
+        invoke-virtual {p0}, Landroid/view/View;->getResources()Landroid/content/res/Resources;
+        move-result-object v0
+        invoke-virtual {v0}, Landroid/content/res/Resources;->getConfiguration()Landroid/content/res/Configuration;
+        move-result-object v0
+        iget v0, v0, Landroid/content/res/Configuration;->uiMode:I
+        and-int/lit8 v0, v0, 0x30
+        xor-int/lit8 v0, v0, 0x20
+        if-nez v0, :pure_ntp_light
+        const v0, -0x1000000
+        goto :pure_ntp_apply
+        :pure_ntp_light
+        const v0, -0x1
+        :pure_ntp_apply
+        invoke-virtual {p0, v0}, Landroid/view/View;->setBackgroundColor(I)V
+    """
+}
 
 @Suppress("unused")
 val pureAmoledNtpPatch = bytecodePatch(
     name = "AMOLED - New Tab Page",
-    description = "Applies Device default / Pure Black / Pure White to native Cromite New Tab Page surfaces independently from toolbar, Settings, system bars, and WebContents.",
+    description = "Applies Device default / Pure Black / Pure White directly to Cromite NewTabPageLayout without recoloring WebContents, toolbar, Settings, or system bars.",
 ) {
     compatibleWith("org.cromite.cromite"(NTP_VERSION))
     val browserTheme by browserThemeOption()
 
     execute {
         val selectedTheme = browserTheme ?: "device"
-        ntpBackgroundColorFingerprint.method.addInstructions(
+        ntpLayoutInflateFingerprint.method.addInstructions(
             0,
-            surfaceSmali(selectedTheme),
+            ntpBackgroundSmali(selectedTheme),
         )
     }
 }
