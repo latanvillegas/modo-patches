@@ -1,7 +1,9 @@
 package app.morphe.patches.cromite.layout.theme
 
 import app.morphe.patcher.Fingerprint
+import app.morphe.patcher.checkCast
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.methodCall
 import app.morphe.patcher.patch.PatchException
@@ -11,8 +13,12 @@ import org.w3c.dom.Element
 import org.w3c.dom.Node
 import app.morphe.util.findInstructionIndicesReversedOrThrow
 import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 
 private const val NTP_LAYOUT = "Lorg/chromium/chrome/browser/ntp/NewTabPageLayout;"
+private const val NTP_TILE_FACTORY = "Lc7f;"
+private const val SUGGESTIONS_TILE_VIEW =
+    "Lorg/chromium/chrome/browser/suggestions/tile/SuggestionsTileView;"
 private const val NTP_VERSION = "153.0.8010.37"
 
 private val pureAmoledNtpTileResourcesPatch = resourcePatch(
@@ -88,6 +94,70 @@ private val setBackgroundColorCall = methodCall(
     parameters = listOf("I"),
 )
 
+private val tileInflateVisibilityFingerprint = Fingerprint(
+    definingClass = NTP_TILE_FACTORY,
+    filters = listOf(
+        checkCast(SUGGESTIONS_TILE_VIEW),
+        methodCall(
+            definingClass = "Landroid/widget/ImageView;",
+            name = "setVisibility",
+            returnType = "V",
+            parameters = listOf("I"),
+        ),
+    ),
+)
+
+private val tileInflateSuggestionFingerprint = Fingerprint(
+    definingClass = NTP_TILE_FACTORY,
+    filters = listOf(
+        checkCast(SUGGESTIONS_TILE_VIEW),
+        methodCall(
+            definingClass = "Ljava/lang/Object;",
+            name = "getClass",
+            returnType = "Ljava/lang/Class;",
+            parameters = emptyList(),
+        ),
+    ),
+)
+
+private fun tileSurfaceTintSmali(
+    theme: String,
+    viewRegister: Int,
+    scratchRegister: Int,
+): String {
+    val view = "v$viewRegister"
+    val scratch = "v$scratchRegister"
+
+    val colorSmali = when (theme) {
+        "black" -> "const $scratch, -0x1000000"
+        "white" -> "const $scratch, -0x1"
+        else -> """
+            invoke-virtual {$view}, Landroid/view/View;->getResources()Landroid/content/res/Resources;
+            move-result-object $scratch
+            invoke-virtual {$scratch}, Landroid/content/res/Resources;->getConfiguration()Landroid/content/res/Configuration;
+            move-result-object $scratch
+            iget $scratch, $scratch, Landroid/content/res/Configuration;->uiMode:I
+            and-int/lit8 $scratch, $scratch, 0x20
+            ushr-int/lit8 $scratch, $scratch, 0x5
+            neg-int $scratch, $scratch
+            ushr-int/lit8 $scratch, $scratch, 0x8
+            not-int $scratch, $scratch
+        """.trimIndent()
+    }
+
+    return """
+        invoke-virtual {$view}, Landroid/view/View;->getBackground()Landroid/graphics/drawable/Drawable;
+        move-result-object $scratch
+        if-eqz $scratch, :amoled_ntp_tile_skip
+        $colorSmali
+        invoke-static {$scratch}, Landroid/content/res/ColorStateList;->valueOf(I)Landroid/content/res/ColorStateList;
+        move-result-object $scratch
+        invoke-virtual {$view, $scratch}, Landroid/view/View;->setBackgroundTintList(Landroid/content/res/ColorStateList;)V
+        :amoled_ntp_tile_skip
+        nop
+    """
+}
+
 private fun linearNtpBackgroundSmali(
     theme: String,
     viewRegister: Int,
@@ -145,6 +215,35 @@ val pureAmoledNtpPatch = bytecodePatch(
                 addInstructions(
                     index + 1,
                     linearNtpBackgroundSmali(selectedTheme, viewRegister, colorRegister),
+                )
+            }
+        }
+
+        // c7f->j resolves to 0x7f0e03aa (-y.xml) or 0x7f0e03ab (d3.xml).
+        // Only -y.xml declares android:background (0x7f09069e -> res/9G.xml).
+        // At the post-inflate point the first c7f path has already reused p0,
+        // so background presence is the runtime structural discriminator:
+        // -y.xml has the verified selector background; d3.xml has none.
+        // Tinting preserves the selector, hover/focus states, shape and 8dp corners.
+        listOf(
+            tileInflateVisibilityFingerprint,
+            tileInflateSuggestionFingerprint,
+        ).forEach { fingerprint ->
+            fingerprint.method.apply {
+                val castIndex = findInstructionIndicesReversedOrThrow(
+                    checkCast(SUGGESTIONS_TILE_VIEW),
+                ).single()
+                val viewRegister =
+                    getInstruction<OneRegisterInstruction>(castIndex).registerA
+                val scratchRegister = findFreeRegister(castIndex + 1, viewRegister)
+
+                addInstructionsWithLabels(
+                    castIndex + 1,
+                    tileSurfaceTintSmali(
+                        selectedTheme,
+                        viewRegister,
+                        scratchRegister,
+                    ),
                 )
             }
         }
