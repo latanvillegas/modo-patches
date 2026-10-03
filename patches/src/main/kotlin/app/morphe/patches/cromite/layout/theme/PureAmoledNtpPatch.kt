@@ -19,7 +19,6 @@ private val pureAmoledNtpTileResourcesPatch = resourcePatch(
     description = "Internal resources for the New Tab Page tile icon background only.",
 ) {
     compatibleWith("org.cromite.cromite"(NTP_VERSION))
-    dependsOn(pureAmoledNtpTileResourcesPatch)
     val browserTheme by browserThemeOption()
 
     execute {
@@ -128,6 +127,7 @@ val pureAmoledNtpPatch = bytecodePatch(
     description = "Applies Device default / Pure Black / Pure White to the verified NewTabPageLayout background and NTP tile icon background without recoloring favicons, WebContents, toolbar, Settings, or system bars.",
 ) {
     compatibleWith("org.cromite.cromite"(NTP_VERSION))
+    dependsOn(pureAmoledNtpTileResourcesPatch)
     val browserTheme by browserThemeOption()
 
     execute {
