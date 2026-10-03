@@ -3,6 +3,8 @@ package app.morphe.patches.cromite.layout.theme
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.bytecodePatch
+import app.morphe.util.indexOfFirstInstructionOrThrow
+import com.android.tools.smali.dexlib2.Opcode
 
 private const val OMNIBOX_VERSION = "153.0.8010.37"
 private const val LOCATION_BAR_TABLET = "Lorg/chromium/chrome/browser/omnibox/LocationBarTablet;"
@@ -63,16 +65,16 @@ val pureAmoledOmniboxPatch = bytecodePatch(
         // Q() reapplies Chromium's default tablet omnibox drawables. Appending our
         // targeted background after the method's original logic prevents those
         // dynamic state/theme refreshes from restoring a gray surface.
-        locationBarTabletRefreshFingerprint.method.addInstructions(
-            locationBarTabletRefreshFingerprint.method.instructions.size,
-            smali,
-        )
+        locationBarTabletRefreshFingerprint.method.apply {
+            val returnIndex = indexOfFirstInstructionOrThrow(Opcode.RETURN_VOID)
+            addInstructions(returnIndex, smali)
+        }
 
         // onFinishInflate() establishes the initial LocationBarTablet background.
         // Reapply the selected AMOLED surface after Chromium finishes inflation.
-        locationBarTabletInflateFingerprint.method.addInstructions(
-            locationBarTabletInflateFingerprint.method.instructions.size,
-            smali,
-        )
+        locationBarTabletInflateFingerprint.method.apply {
+            val returnIndex = indexOfFirstInstructionOrThrow(Opcode.RETURN_VOID)
+            addInstructions(returnIndex, smali)
+        }
     }
 }
