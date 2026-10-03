@@ -17,11 +17,10 @@ val pureAmoledToolbarPatch = resourcePatch(
 
     execute {
         val selectedTheme = browserTheme ?: "device"
-        if (selectedTheme == "device") return@execute
-        val target = when (selectedTheme) {
+        fun target(directory: java.io.File) = when (selectedTheme) {
             "black" -> TOOLBAR_BLACK
             "white" -> TOOLBAR_WHITE
-            else -> return@execute
+            else -> if (directory.name.contains("night")) TOOLBAR_BLACK else TOOLBAR_WHITE
         }
 
         val exactColorFiles = setOf(
@@ -34,7 +33,7 @@ val pureAmoledToolbarPatch = resourcePatch(
         val directories = get("res").listFiles()?.filter { it.isDirectory }.orEmpty()
         var hits = 0
 
-        fun recolorFile(file: java.io.File) {
+        fun recolorFile(file: java.io.File, target: String) {
             document(file.absolutePath).use { document ->
                 val nodes = document.getElementsByTagName("*")
                 for (index in 0 until nodes.length) {
@@ -60,13 +59,13 @@ val pureAmoledToolbarPatch = resourcePatch(
         directories.filter { it.name.startsWith("color") }.forEach { directory ->
             exactColorFiles.forEach files@{ fileName ->
                 val file = java.io.File(directory, fileName)
-                if (file.isFile) recolorFile(file)
+                if (file.isFile) recolorFile(file, target(directory))
             }
         }
 
         directories.filter { it.name.startsWith("drawable") }.forEach { directory ->
             val file = java.io.File(directory, "toolbar_background.xml")
-            if (file.isFile) recolorFile(file)
+            if (file.isFile) recolorFile(file, target(directory))
         }
 
         directories.filter { it.name.startsWith("values") }.forEach { directory ->
@@ -81,7 +80,7 @@ val pureAmoledToolbarPatch = resourcePatch(
                                 (element.tagName == "color" ||
                                  element.tagName == "macro" ||
                                  (element.tagName == "item" && type == "color"))) {
-                                element.textContent = target
+                                element.textContent = target(directory)
                                 hits++
                             }
                         }
