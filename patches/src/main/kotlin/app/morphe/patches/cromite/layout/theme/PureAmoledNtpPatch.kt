@@ -29,14 +29,11 @@ private fun ntpBackgroundSmali(theme: String): String = when (theme) {
         invoke-virtual {v0}, Landroid/content/res/Resources;->getConfiguration()Landroid/content/res/Configuration;
         move-result-object v0
         iget v0, v0, Landroid/content/res/Configuration;->uiMode:I
-        and-int/lit8 v0, v0, 0x30
-        xor-int/lit8 v0, v0, 0x20
-        if-nez v0, :pure_ntp_light
-        const v0, -0x1000000
-        goto :pure_ntp_apply
-        :pure_ntp_light
-        const v0, -0x1
-        :pure_ntp_apply
+        and-int/lit8 v0, v0, 0x20
+        ushr-int/lit8 v0, v0, 0x5
+        neg-int v0, v0
+        ushr-int/lit8 v0, v0, 0x8
+        not-int v0, v0
         invoke-virtual {p0, v0}, Landroid/view/View;->setBackgroundColor(I)V
     """
 }
