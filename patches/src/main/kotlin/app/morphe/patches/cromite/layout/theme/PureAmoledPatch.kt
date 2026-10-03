@@ -143,94 +143,6 @@ private val pureAmoledResourcesPatch = resourcePatch(
             "history_chip_bg_color",
         )
 
-        val surfaceThemeAttrs = setOf(
-            "android:colorBackground", "android:windowBackground",
-            "colorBackground", "colorSurface", "colorSurfaceBright", "colorSurfaceDim", "colorSurfaceVariant",
-            "colorSurfaceContainerLowest", "colorSurfaceContainerLow", "colorSurfaceContainer",
-            "colorSurfaceContainerHigh", "colorSurfaceContainerHighest",
-        )
-
-        val foregroundThemeAttrs = setOf(
-            "android:textColorPrimary", "android:textColorSecondary",
-            "colorOnBackground", "colorOnSurface", "colorOnSurfaceVariant",
-        )
-
-        // Material 3 inherits most surface roles from parent themes. Merely replacing
-        // <item> nodes that already exist leaves those inherited gray roles untouched.
-        // Restrict injected roles to the main Chrome UI theme boundary so
-        // MaterialColors resolves the selected palette without coupling Settings or system bars.
-        // AppMenu, omnibox and tab surfaces can be inflated through ContextThemeWrapper
-        // using Material/BrowserUI overlays rather than a Theme.Chromium root. R8 mapping
-        // for Cromite 153 confirms those consumers resolve surface-container roles after
-        // inlining SemanticColorUtils. Cover the native Android theme boundary, not only
-        // Theme.Chromium, while leaving WebContents completely untouched.
-        fun isNativeBrowserUiTheme(style: Element): Boolean {
-            val name = style.getAttribute("name").lowercase()
-            val parent = style.getAttribute("parent").lowercase()
-            if (name.isBlank()) return false
-
-            // Main-browser themes must not absorb independently selectable domains.
-            // Parent inheritance alone is insufficient because Settings/NTP overlays
-            // commonly inherit Material/Chromium parents as well.
-            val isolatedDomain =
-                "settings" in name || "preference" in name ||
-                "newtab" in name || "new_tab" in name || "ntp" in name ||
-                "home_surface" in name ||
-                "appmenu" in name || "menu_" in name || "popup_" in name ||
-                "mtrl_popupmenu" in name ||
-                "dialog" in name || "sheet" in name || "card" in name || "snackbar" in name ||
-                "message_bg" in name || "toast_color" in name || "widget" in name || "xr_" in name ||
-                "omnibox" in name || "search_box" in name || "search_suggestion" in name || "toolbar_text_box" in name ||
-                "tab_strip" in name || "single_tab" in name ||
-                "toolbar_background" in name || "top_toolbar" in name || "context_menu" in name || "item_chooser" in name || "interactable_chip" in name || "m3_list_item" in name || "m3_segmented_list_item" in name || "m3_textfield_filled" in name || "mtrl_filled_background" in name || "default_bg_color" in name || "primary_background_color" in name
-            if (isolatedDomain) return false
-
-            // Structural boundary first: Material/Chromium themes and overlays,
-            // plus any style that already declares a whitelisted surface role.
-            // This catches anonymous/specialized ContextThemeWrapper overlays whose
-            // names do not contain "theme", without touching WebContents/media.
-            val materialOrBrowserParent =
-                "material" in parent || "chromium" in parent || "browser" in parent
-            val nativeUiName =
-                "chromium" in name || "browser" in name || "material" in name ||
-                "appmenu" in name || "menu" in name || "toolbar" in name ||
-                "omnibox" in name || "tab" in name ||
-                false
-
-            var declaresSurfaceRole = false
-            val children = style.childNodes
-            for (index in 0 until children.length) {
-                val child = children.item(index) as? Element ?: continue
-                if (child.tagName == "item" &&
-                    child.getAttribute("name") in surfaceThemeAttrs) {
-                    declaresSurfaceRole = true
-                    break
-                }
-            }
-
-            return materialOrBrowserParent || nativeUiName || declaresSurfaceRole
-        }
-
-        fun setExistingThemeItem(
-            style: Element,
-            name: String,
-            value: String,
-        ): Boolean {
-            val children = style.childNodes
-            for (index in 0 until children.length) {
-                val child = children.item(index) as? Element ?: continue
-                if (child.tagName == "item" && child.getAttribute("name") == name) {
-                    child.textContent = value
-                    return true
-                }
-            }
-            // Arsclib can only re-encode attributes that exist in the target APK's
-            // resource table. Never synthesize arbitrary Material/Android attrs here:
-            // an unknown attr (for example unqualified colorBackground) makes the
-            // patched resources impossible to encode.
-            return false
-        }
-
         val foregroundColorNames = setOf(
             "default_text_color", "default_icon_color",
             "color_on_background", "color_on_surface", "color_on_surface_variant",
@@ -412,38 +324,6 @@ private val pureAmoledResourcesPatch = resourcePatch(
                                         (element.tagName == "color" ||
                                          (element.tagName == "item" && type == "color")) -> {
                                         element.textContent = foreground
-                                        localHits++
-                                        valuesPatched++
-                                    }
-                                    element.tagName == "item" && name in surfaceThemeAttrs -> {
-                                        element.textContent = target
-                                        localHits++
-                                        valuesPatched++
-                                    }
-                                    element.tagName == "item" && name in foregroundThemeAttrs -> {
-                                        element.textContent = foreground
-                                        localHits++
-                                        valuesPatched++
-                                    }
-                                }
-                            }
-
-                            // Rewrite only roles already declared by the target theme.
-                            // Adding missing attr names is unsafe with arsclib because an
-                            // attr absent from resources.arsc cannot be encoded.
-                            val styles = document.getElementsByTagName("style")
-                            for (styleIndex in 0 until styles.length) {
-                                val style = styles.item(styleIndex) as? Element ?: continue
-                                if (!isNativeBrowserUiTheme(style)) continue
-
-                                surfaceThemeAttrs.forEach { attr ->
-                                    if (setExistingThemeItem(style, attr, target)) {
-                                        localHits++
-                                        valuesPatched++
-                                    }
-                                }
-                                foregroundThemeAttrs.forEach { attr ->
-                                    if (setExistingThemeItem(style, attr, foreground)) {
                                         localHits++
                                         valuesPatched++
                                     }
