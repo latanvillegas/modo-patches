@@ -80,12 +80,7 @@ private val pureAmoledResourcesPatch = resourcePatch(
     execute {
         if (browserThemeOption.value == THEME_DEVICE) return@execute
 
-        val explicitColorFiles = setOf(
-                        
-            
-
-            // Desktop-Android/Cromite toolbar and tab-strip surfaces. Missing files are intentionally ignored.
-        )
+        val explicitColorFiles = emptySet<String>()
 
         val surfaceDrawableFiles = emptySet<String>()
 
