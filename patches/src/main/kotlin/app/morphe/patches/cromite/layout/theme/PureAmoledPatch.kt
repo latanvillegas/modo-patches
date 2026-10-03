@@ -388,12 +388,8 @@ private val pureAmoledResourcesPatch = resourcePatch(
                                     ("material_dynamic_neutral" in name.lowercase() && "surface" in name.lowercase()) ||
                                     "fake_search_box" in name.lowercase() ||
                                     "tile_view" in name.lowercase()
-                                val isNamedSurface = !isolatedResource && (
-                                    name in surfaceColorNames ||
-                                    name in surfaceMacroNames ||
-                                    isMaterialSurfaceColorName(name) ||
-                                    isUiSurfaceResourceName(name)
-                                )
+                                val isNamedSurface =
+                                    !isolatedResource && name in surfaceMacroNames
                                 val isNamedForeground = !isolatedResource && (
                                     name in foregroundColorNames ||
                                     isMaterialForegroundColorName(name)
