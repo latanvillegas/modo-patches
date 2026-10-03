@@ -50,7 +50,7 @@
       "schemaVersion": 1,
       "id": "cromite.amoled-new-tab-page",
       "name": "AMOLED - New Tab Page",
-      "description": "Applies Device default / Pure Black / Pure White to native Cromite New Tab Page surfaces independently from toolbar, Settings, system bars, and WebContents.",
+      "description": "Applies Device default / Pure Black / Pure White directly to Cromite NewTabPageLayout without recoloring WebContents, toolbar, Settings, or system bars.",
       "applications": [
         "cromite"
       ],
