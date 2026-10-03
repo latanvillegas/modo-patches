@@ -107,58 +107,6 @@ private val pureAmoledResourcesPatch = resourcePatch(
             else -> if (isNight(directory)) PURE_BLACK else PURE_WHITE
         }
 
-        val surfaceColorNames = setOf(
-            
-            "color_surface", "color_surface_dark", "color_surface_bright", "color_surface_bright_dark",
-            "color_surface_dim", "color_surface_dim_dark", "color_surface_container_lowest",
-            "color_surface_container_lowest_dark", "color_surface_container_low", "color_surface_container_low_dark",
-            "color_surface_container", "color_surface_container_dark", "color_surface_container_high",
-            "color_surface_container_high_dark", "color_surface_container_highest", "color_surface_container_highest_dark",
-            "gm3_baseline_surface_dark", "gm3_baseline_surface_bright_dark", "gm3_baseline_surface_dim_dark",
-            "gm3_baseline_surface_container_lowest_dark", "gm3_baseline_surface_container_low_dark",
-            "gm3_baseline_surface_container_dark", "gm3_baseline_surface_container_high_dark",
-            "gm3_baseline_surface_container_highest_dark",
-        )
-
-        fun isMaterialSurfaceColorName(name: String): Boolean {
-            val normalized = name.lowercase()
-            if ("on_surface" in normalized || "onsurface" in normalized) return false
-            return normalized.startsWith("gm3_baseline_surface") ||
-                normalized.startsWith("m3_sys_color_light_surface") ||
-                normalized.startsWith("m3_sys_color_dark_surface") ||
-                normalized.startsWith("m3_sys_color_dynamic_light_surface") ||
-                normalized.startsWith("m3_sys_color_dynamic_dark_surface") ||
-                normalized.startsWith("material_dynamic_neutral") && "surface" in normalized
-        }
-
-        // R8 in Cromite 153 inlines SemanticColorUtils.getSettingsBackgroundColor()
-        // and several other surface getters into their consumers. Consequently a
-        // bytecode hook on SemanticColorUtils alone cannot cover Settings. Match
-        // decoded resources by semantic surface/background naming as well, while
-        // deliberately excluding foreground, media and state/accent resources.
-        fun isUiSurfaceResourceName(name: String): Boolean {
-            val normalized = name.lowercase()
-            if (normalized.isBlank()) return false
-            if ("on_surface" in normalized || "onsurface" in normalized) return false
-            if ("foreground" in normalized || "text" in normalized || "icon" in normalized) return false
-            if ("ripple" in normalized || "divider" in normalized || "stroke" in normalized) return false
-            if ("accent" in normalized || "primary" in normalized && "background" !in normalized) return false
-            return "surface" in normalized ||
-                "background" in normalized ||
-                normalized.endsWith("_bg") ||
-                "_bg_" in normalized ||
-                normalized.endsWith("_bg_color") ||
-                normalized.startsWith("menu_bg") ||
-                normalized.startsWith("popup_bg") ||
-                normalized.contains("container") && (
-                    normalized.contains("card") ||
-                    normalized.contains("menu") ||
-                    normalized.contains("toolbar") ||
-                    normalized.contains("omnibox") ||
-                    normalized.contains("tab")
-                )
-        }
-
         fun isGrayUiColorLiteral(value: String): Boolean {
             if (browserThemeOption.value != THEME_BLACK) return false
             val hex = value.trim().removePrefix("#")
@@ -434,6 +382,10 @@ private val pureAmoledResourcesPatch = resourcePatch(
                                     "m3_segmented_list_item" in name.lowercase() || "m3_textfield_filled" in name.lowercase() ||
                                     "mtrl_filled_background" in name.lowercase() || "default_bg_color" in name.lowercase() ||
                                     "primary_background_color" in name.lowercase() ||
+                                    "color_surface" in name.lowercase() || "gm3_baseline_surface" in name.lowercase() ||
+                                    "m3_sys_color_light_surface" in name.lowercase() || "m3_sys_color_dark_surface" in name.lowercase() ||
+                                    "m3_sys_color_dynamic_light_surface" in name.lowercase() || "m3_sys_color_dynamic_dark_surface" in name.lowercase() ||
+                                    ("material_dynamic_neutral" in name.lowercase() && "surface" in name.lowercase()) ||
                                     "fake_search_box" in name.lowercase() ||
                                     "tile_view" in name.lowercase()
                                 val isNamedSurface = !isolatedResource && (
