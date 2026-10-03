@@ -3,10 +3,7 @@ package app.morphe.patches.cromite.layout.theme
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.bytecodePatch
-import app.morphe.patcher.patch.resourcePatch
 import app.morphe.patcher.patch.stringOption
-import org.w3c.dom.Element
-import org.w3c.dom.Node
 
 private const val CROMITE_VERSION = "153.0.8010.37"
 private const val SEMANTIC_COLOR_UTILS = "Lpac;"
@@ -131,7 +128,6 @@ val pureAmoledPatch = bytecodePatch(
 ) {
     compatibleWith("org.cromite.cromite"(CROMITE_VERSION))
     val browserTheme by browserThemeOption()
-    dependsOn(pureAmoledResourcesPatch)
 
     execute {
         val selectedTheme = browserTheme ?: THEME_DEVICE
