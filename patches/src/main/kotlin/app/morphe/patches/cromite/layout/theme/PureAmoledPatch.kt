@@ -69,6 +69,11 @@ private val dynamicColorsApplyFingerprint = Fingerprint(
     parameters = listOf(ACTIVITY, DYNAMIC_COLORS_OPTIONS),
 )
 
+// Device default intentionally consumes Chromium's effective UI Configuration.
+// ThemeSettingsFragment persists ui_theme_setting as 0=system, 1=light, 2=dark;
+// Chromium resolves that preference before these native color hooks run. Reading
+// Configuration.uiMode here therefore follows both the browser selector and system
+// night-mode changes without coupling this patch to SharedPreferences or WebContents.
 internal fun foregroundSmali(theme: String): String = when (theme) {
     THEME_BLACK -> """
         const v0, -0x1
@@ -124,19 +129,19 @@ internal fun surfaceSmali(theme: String): String = when (theme) {
 @Suppress("unused")
 val pureAmoledPatch = bytecodePatch(
     name = "AMOLED - Main browser UI",
-    description = "Main Cromite browser UI theme: toolbar/tab surfaces and shared native browser surfaces. Web content is not recolored.",
+    description = "Main Cromite browser UI theme. Device default follows Cromite/System light-dark state; manual Pure Black/Pure White override it. Web content is not recolored.",
 ) {
     compatibleWith("org.cromite.cromite"(CROMITE_VERSION))
     val browserTheme by browserThemeOption()
 
     execute {
         val selectedTheme = browserTheme ?: THEME_DEVICE
-        val systemSurfaceTargets = listOf(
+        val nativeSurfaceTargets = listOf(
             colorSurfaceFingerprint, colorSurfaceBrightFingerprint, colorSurfaceContainerFingerprint,
             colorSurfaceContainerHighestFingerprint, colorSurfaceContainerLowFingerprint,
             defaultBgColorFingerprint, primaryBackgroundColorFingerprint,
         )
-        systemSurfaceTargets.forEach { fingerprint ->
+        nativeSurfaceTargets.forEach { fingerprint ->
             fingerprint.method.addInstructions(0, surfaceSmali(selectedTheme))
         }
 
