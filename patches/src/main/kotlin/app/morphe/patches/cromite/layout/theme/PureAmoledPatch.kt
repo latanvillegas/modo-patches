@@ -81,7 +81,6 @@ private val pureAmoledResourcesPatch = resourcePatch(
         if (browserThemeOption.value == THEME_DEVICE) return@execute
 
         val explicitColorFiles = setOf(
-            "m3_textfield_filled_background_color.xml", "mtrl_filled_background_color.xml",
                         
             
 
@@ -127,7 +126,6 @@ private val pureAmoledResourcesPatch = resourcePatch(
             "gm3_baseline_surface_container_lowest_dark", "gm3_baseline_surface_container_low_dark",
             "gm3_baseline_surface_container_dark", "gm3_baseline_surface_container_high_dark",
             "gm3_baseline_surface_container_highest_dark",
-            "mtrl_filled_background_color",
         )
 
         fun isMaterialSurfaceColorName(name: String): Boolean {
@@ -246,7 +244,7 @@ private val pureAmoledResourcesPatch = resourcePatch(
                 "message_bg" in name || "toast_color" in name || "widget" in name || "xr_" in name ||
                 "omnibox" in name || "search_box" in name || "search_suggestion" in name || "toolbar_text_box" in name ||
                 "tab_strip" in name || "single_tab" in name ||
-                "toolbar_background" in name || "top_toolbar" in name || "context_menu" in name || "item_chooser" in name || "interactable_chip" in name || "m3_list_item" in name || "m3_segmented_list_item" in name
+                "toolbar_background" in name || "top_toolbar" in name || "context_menu" in name || "item_chooser" in name || "interactable_chip" in name || "m3_list_item" in name || "m3_segmented_list_item" in name || "m3_textfield_filled" in name || "mtrl_filled_background" in name
             if (isolatedDomain) return false
 
             // Structural boundary first: Material/Chromium themes and overlays,
@@ -442,7 +440,8 @@ private val pureAmoledResourcesPatch = resourcePatch(
                                     "tab_strip" in name.lowercase() || "single_tab" in name.lowercase() ||
                                     "toolbar_background" in name.lowercase() || "top_toolbar" in name.lowercase() ||
                                     "context_menu" in name.lowercase() || "item_chooser" in name.lowercase() || "interactable_chip" in name.lowercase() || "m3_list_item" in name.lowercase() ||
-                                    "m3_segmented_list_item" in name.lowercase() ||
+                                    "m3_segmented_list_item" in name.lowercase() || "m3_textfield_filled" in name.lowercase() ||
+                                    "mtrl_filled_background" in name.lowercase() ||
                                     "fake_search_box" in name.lowercase() ||
                                     "tile_view" in name.lowercase()
                                 val isNamedSurface = !isolatedResource && (
