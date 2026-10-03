@@ -1,113 +1,80 @@
 package app.morphe.patches.cromite.layout.theme
 
-import app.morphe.patcher.patch.resourcePatch
-import org.w3c.dom.Element
+import app.morphe.patcher.Fingerprint
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.patch.bytecodePatch
+import app.morphe.util.indexOfFirstInstructionOrThrow
+import com.android.tools.smali.dexlib2.Opcode
 
 private const val TABS_VERSION = "153.0.8010.37"
-private const val TABS_BLACK = "#FF000000"
-private const val TABS_WHITE = "#FFFFFFFF"
+private const val TAB_GRID_VIEW = "Lorg/chromium/chrome/browser/tasks/tab_management/TabGridView;"
+private const val TAB_GRID_DIALOG_VIEW = "Lorg/chromium/chrome/browser/tasks/tab_management/TabGridDialogView;"
+
+private val tabGridViewRefreshFingerprint = Fingerprint(
+    definingClass = TAB_GRID_VIEW,
+    name = "s",
+    returnType = "V",
+    parameters = emptyList(),
+)
+
+private val tabGridDialogBackgroundFingerprint = Fingerprint(
+    definingClass = TAB_GRID_DIALOG_VIEW,
+    name = "b",
+    returnType = "V",
+    parameters = listOf("Landroid/view/View;"),
+)
+
+private fun tabsBackgroundSmali(theme: String): String = when (theme) {
+    "black" -> """
+        const v0, -0x1000000
+        invoke-virtual {p0, v0}, Landroid/view/View;->setBackgroundColor(I)V
+    """
+    "white" -> """
+        const v0, -0x1
+        invoke-virtual {p0, v0}, Landroid/view/View;->setBackgroundColor(I)V
+    """
+    else -> """
+        invoke-virtual {p0}, Landroid/view/View;->getResources()Landroid/content/res/Resources;
+        move-result-object v0
+        invoke-virtual {v0}, Landroid/content/res/Resources;->getConfiguration()Landroid/content/res/Configuration;
+        move-result-object v0
+        iget v0, v0, Landroid/content/res/Configuration;->uiMode:I
+        and-int/lit8 v0, v0, 0x30
+        xor-int/lit8 v0, v0, 0x20
+        if-nez v0, :pure_tabs_light
+        const v0, -0x1000000
+        goto :pure_tabs_apply
+        :pure_tabs_light
+        const v0, -0x1
+        :pure_tabs_apply
+        invoke-virtual {p0, v0}, Landroid/view/View;->setBackgroundColor(I)V
+    """
+}
 
 @Suppress("unused")
-val pureAmoledTabsPatch = resourcePatch(
+val pureAmoledTabsPatch = bytecodePatch(
     name = "AMOLED - Tabs and tab strip",
-    description = "Applies Device default / Pure Black / Pure White only to verified Cromite tab and tab-strip backgrounds.",
+    description = "Applies Device default / Pure Black / Pure White directly to verified Cromite TabGridView and TabGridDialogView backgrounds.",
 ) {
     compatibleWith("org.cromite.cromite"(TABS_VERSION))
     val browserTheme by browserThemeOption()
 
     execute {
         val selectedTheme = browserTheme ?: "device"
-        fun target(directory: java.io.File) = when (selectedTheme) {
-            "black" -> TABS_BLACK
-            "white" -> TABS_WHITE
-            else -> if (directory.name.contains("night")) TABS_BLACK else TABS_WHITE
+        val smali = tabsBackgroundSmali(selectedTheme)
+
+        // TabGridView.s() owns the card background refresh path. Apply the
+        // selected surface after Chromium finishes its resource/drawable updates.
+        tabGridViewRefreshFingerprint.method.apply {
+            val returnIndex = indexOfFirstInstructionOrThrow(Opcode.RETURN_VOID)
+            addInstructions(returnIndex, smali)
         }
 
-        val exactColorFiles = setOf(
-            "single_tab_favicon_bg_color.xml",
-            "tab_strip_ntb_bg_tint_list.xml",
-            "tab_strip_background_color.xml",
-            "tab_strip_bg_color.xml",
-            "tab_strip_background.xml",
-        )
-        val exactNames = exactColorFiles.map { it.removeSuffix(".xml") }.toSet()
-        val exactDrawableFiles = setOf("tab_strip_background.xml")
-        val directories = get("res").listFiles()?.filter { it.isDirectory }.orEmpty()
-        var hits = 0
-
-        directories.filter { it.name.startsWith("color") }.forEach { directory ->
-            exactColorFiles.forEach files@{ fileName ->
-                val file = java.io.File(directory, fileName)
-                if (!file.isFile) return@files
-                document(file.absolutePath).use { document ->
-                    val nodes = document.getElementsByTagName("*")
-                    for (index in 0 until nodes.length) {
-                        val element = nodes.item(index) as? Element ?: continue
-                        val attrs = element.attributes
-                        for (attributeIndex in 0 until attrs.length) {
-                            val attribute = attrs.item(attributeIndex)
-                            if (attribute.nodeName.endsWith(":color") || attribute.nodeName == "color") {
-                                attribute.nodeValue = target(directory)
-                                hits++
-                            }
-                        }
-                        if (element.childNodes.length == 1 &&
-                            element.firstChild?.nodeType == org.w3c.dom.Node.TEXT_NODE &&
-                            element.textContent.trim().startsWith("#")) {
-                            element.textContent = target(directory)
-                            hits++
-                        }
-                    }
-                }
-            }
-        }
-
-        directories.filter { it.name.startsWith("drawable") }.forEach { directory ->
-            exactDrawableFiles.forEach files@{ fileName ->
-                val file = java.io.File(directory, fileName)
-                if (!file.isFile) return@files
-                document(file.absolutePath).use { document ->
-                    val nodes = document.getElementsByTagName("*")
-                    for (index in 0 until nodes.length) {
-                        val element = nodes.item(index) as? Element ?: continue
-                        val attrs = element.attributes
-                        for (attributeIndex in 0 until attrs.length) {
-                            val attribute = attrs.item(attributeIndex)
-                            if (attribute.nodeName.endsWith(":color") || attribute.nodeName == "color") {
-                                attribute.nodeValue = target(directory)
-                                hits++
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        directories.filter { it.name.startsWith("values") }.forEach { directory ->
-            directory.listFiles()?.filter { it.isFile && it.extension == "xml" }.orEmpty().forEach { file ->
-                runCatching {
-                    document(file.absolutePath).use { document ->
-                        val nodes = document.getElementsByTagName("*")
-                        for (index in 0 until nodes.length) {
-                            val element = nodes.item(index) as? Element ?: continue
-                            val type = element.getAttribute("type")
-                            if (element.getAttribute("name") in exactNames &&
-                                (element.tagName == "color" ||
-                                 element.tagName == "macro" ||
-                                 (element.tagName == "item" && type == "color"))) {
-                                element.textContent = target(directory)
-                                hits++
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        if (hits == 0) {
-            throw IllegalStateException(
-                "AMOLED Tabs verification failed for Cromite $TABS_VERSION: no whitelisted tab resources were found."
-            )
+        // TabGridDialogView.b(View) reapplies the group-dialog background.
+        // Keep the hook local to this concrete native container.
+        tabGridDialogBackgroundFingerprint.method.apply {
+            val returnIndex = indexOfFirstInstructionOrThrow(Opcode.RETURN_VOID)
+            addInstructions(returnIndex, smali)
         }
     }
 }
