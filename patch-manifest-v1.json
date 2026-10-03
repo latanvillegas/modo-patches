@@ -50,7 +50,7 @@
       "schemaVersion": 1,
       "id": "cromite.amoled-new-tab-page",
       "name": "AMOLED - New Tab Page",
-      "description": "Applies Device default / Pure Black / Pure White to the verified NewTabPageLayout background and NTP tile icon background without recoloring favicons, WebContents, toolbar, Settings, or system bars.",
+      "description": "Applies Device default / Pure Black / Pure White to the verified NewTabPageLayout, NTP tile icon, and Most Visited card backgrounds without recoloring favicons, WebContents, toolbar, Settings, or system bars.",
       "applications": [
         "cromite"
       ],
