@@ -85,7 +85,6 @@ private val pureAmoledResourcesPatch = resourcePatch(
             
 
             // Desktop-Android/Cromite toolbar and tab-strip surfaces. Missing files are intentionally ignored.
-            "primary_background_color.xml", "default_bg_color.xml",
         )
 
         val surfaceDrawableFiles = emptySet<String>()
@@ -114,8 +113,6 @@ private val pureAmoledResourcesPatch = resourcePatch(
         }
 
         val surfaceColorNames = setOf(
-            "default_bg_color", "default_bg_color_dark",
-            "primary_background_color", "primary_background_color_dark",
             
             "color_surface", "color_surface_dark", "color_surface_bright", "color_surface_bright_dark",
             "color_surface_dim", "color_surface_dim_dark", "color_surface_container_lowest",
@@ -243,7 +240,7 @@ private val pureAmoledResourcesPatch = resourcePatch(
                 "message_bg" in name || "toast_color" in name || "widget" in name || "xr_" in name ||
                 "omnibox" in name || "search_box" in name || "search_suggestion" in name || "toolbar_text_box" in name ||
                 "tab_strip" in name || "single_tab" in name ||
-                "toolbar_background" in name || "top_toolbar" in name || "context_menu" in name || "item_chooser" in name || "interactable_chip" in name || "m3_list_item" in name || "m3_segmented_list_item" in name || "m3_textfield_filled" in name || "mtrl_filled_background" in name
+                "toolbar_background" in name || "top_toolbar" in name || "context_menu" in name || "item_chooser" in name || "interactable_chip" in name || "m3_list_item" in name || "m3_segmented_list_item" in name || "m3_textfield_filled" in name || "mtrl_filled_background" in name || "default_bg_color" in name || "primary_background_color" in name
             if (isolatedDomain) return false
 
             // Structural boundary first: Material/Chromium themes and overlays,
@@ -440,7 +437,8 @@ private val pureAmoledResourcesPatch = resourcePatch(
                                     "toolbar_background" in name.lowercase() || "top_toolbar" in name.lowercase() ||
                                     "context_menu" in name.lowercase() || "item_chooser" in name.lowercase() || "interactable_chip" in name.lowercase() || "m3_list_item" in name.lowercase() ||
                                     "m3_segmented_list_item" in name.lowercase() || "m3_textfield_filled" in name.lowercase() ||
-                                    "mtrl_filled_background" in name.lowercase() ||
+                                    "mtrl_filled_background" in name.lowercase() || "default_bg_color" in name.lowercase() ||
+                                    "primary_background_color" in name.lowercase() ||
                                     "fake_search_box" in name.lowercase() ||
                                     "tile_view" in name.lowercase()
                                 val isNamedSurface = !isolatedResource && (
