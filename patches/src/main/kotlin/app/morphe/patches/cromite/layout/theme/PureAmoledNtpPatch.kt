@@ -4,12 +4,76 @@ import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.methodCall
+import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.bytecodePatch
+import app.morphe.patcher.patch.resourcePatch
+import org.w3c.dom.Element
+import org.w3c.dom.Node
 import app.morphe.util.findInstructionIndicesReversedOrThrow
 import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
 
 private const val NTP_LAYOUT = "Lorg/chromium/chrome/browser/ntp/NewTabPageLayout;"
 private const val NTP_VERSION = "153.0.8010.37"
+
+private val pureAmoledNtpTileResourcesPatch = resourcePatch(
+    description = "Internal resources for the New Tab Page tile icon background only.",
+) {
+    compatibleWith("org.cromite.cromite"(NTP_VERSION))
+    dependsOn(pureAmoledNtpTileResourcesPatch)
+    val browserTheme by browserThemeOption()
+
+    execute {
+        val selectedTheme = browserTheme ?: "device"
+        val targets = listOf(
+            "res/color/tile_view_icon_background_color.xml" to
+                if (selectedTheme == "black") "#FF000000" else "#FFFFFFFF",
+            "res/color-night-v8/tile_view_icon_background_color.xml" to
+                if (selectedTheme == "white") "#FFFFFFFF" else "#FF000000",
+        )
+
+        var verifiedHits = 0
+
+        fun recolor(element: Element, color: String) {
+            val attributes = element.attributes
+            for (i in 0 until attributes.length) {
+                val attribute = attributes.item(i)
+                if (attribute.nodeName.endsWith(":color") || attribute.nodeName == "color") {
+                    attribute.nodeValue = color
+                }
+            }
+
+            val children = element.childNodes
+            var hasElementChildren = false
+            for (i in 0 until children.length) {
+                val child = children.item(i)
+                if (child.nodeType == Node.ELEMENT_NODE) {
+                    hasElementChildren = true
+                    recolor(child as Element, color)
+                }
+            }
+
+            if (!hasElementChildren) {
+                element.textContent = color
+            }
+        }
+
+        targets.forEach { (path, color) ->
+            runCatching {
+                document(path).use { document ->
+                    recolor(document.documentElement, color)
+                    verifiedHits++
+                }
+            }
+        }
+
+        if (verifiedHits == 0) {
+            throw PatchException(
+                "AMOLED NTP tile resource verification failed for Cromite $NTP_VERSION: " +
+                    "tile_view_icon_background_color.xml was not found.",
+            )
+        }
+    }
+}
 
 private val ntpLayoutInflateFingerprint = Fingerprint(
     definingClass = NTP_LAYOUT,
@@ -61,7 +125,7 @@ private fun linearNtpBackgroundSmali(
 @Suppress("unused")
 val pureAmoledNtpPatch = bytecodePatch(
     name = "AMOLED - New Tab Page",
-    description = "Applies Device default / Pure Black / Pure White after the verified NewTabPageLayout background setter without recoloring tiles, WebContents, toolbar, Settings, or system bars.",
+    description = "Applies Device default / Pure Black / Pure White to the verified NewTabPageLayout background and NTP tile icon background without recoloring favicons, WebContents, toolbar, Settings, or system bars.",
 ) {
     compatibleWith("org.cromite.cromite"(NTP_VERSION))
     val browserTheme by browserThemeOption()
