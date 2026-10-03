@@ -143,26 +143,6 @@ private val pureAmoledResourcesPatch = resourcePatch(
             "history_chip_bg_color",
         )
 
-        val foregroundColorNames = setOf(
-            "default_text_color", "default_icon_color",
-            "color_on_background", "color_on_surface", "color_on_surface_variant",
-            "gm3_baseline_on_surface", "gm3_baseline_on_surface_variant",
-        )
-
-        fun isMaterialForegroundColorName(name: String): Boolean {
-            val normalized = name.lowercase()
-            return "on_surface" in normalized ||
-                "onsurface" in normalized ||
-                "on_background" in normalized ||
-                "onbackground" in normalized
-        }
-
-        fun pureForeground(directory: String) = when (browserThemeOption.value) {
-            THEME_BLACK -> PURE_WHITE
-            THEME_WHITE -> PURE_BLACK
-            else -> if (isNight(directory)) PURE_WHITE else PURE_BLACK
-        }
-
         val pureSurfaceResource = "morphe_pure_browser_surface"
 
         // Macros in semantic_colors_dynamic.xml are compiled aliases to Material surface
@@ -257,7 +237,6 @@ private val pureAmoledResourcesPatch = resourcePatch(
         // This reaches direct XML references used by Settings containment and the NTP.
         valueDirectories.forEach { directory ->
             val target = pureSurface(directory)
-            val foreground = pureForeground(directory)
             java.io.File(directory).listFiles()
                 ?.filter { it.isFile && it.extension == "xml" }
                 .orEmpty()
@@ -301,10 +280,6 @@ private val pureAmoledResourcesPatch = resourcePatch(
                                     "tile_view" in name.lowercase()
                                 val isNamedSurface =
                                     !isolatedResource && name in surfaceMacroNames
-                                val isNamedForeground = !isolatedResource && (
-                                    name in foregroundColorNames ||
-                                    isMaterialForegroundColorName(name)
-                                )
                                 val isDarkGrayUiBackground =
                                     !isolatedResource &&
                                     isSafeUiBackgroundName(name) &&
@@ -317,13 +292,6 @@ private val pureAmoledResourcesPatch = resourcePatch(
                                          (element.tagName == "item" && type == "color")) -> {
                                         element.textContent =
                                             if (element.tagName == "macro") "@color/$pureSurfaceResource" else target
-                                        localHits++
-                                        valuesPatched++
-                                    }
-                                    isNamedForeground &&
-                                        (element.tagName == "color" ||
-                                         (element.tagName == "item" && type == "color")) -> {
-                                        element.textContent = foreground
                                         localHits++
                                         valuesPatched++
                                     }
