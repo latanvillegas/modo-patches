@@ -131,8 +131,6 @@ val pureAmoledPatch = bytecodePatch(
 
     execute {
         val selectedTheme = browserTheme ?: THEME_DEVICE
-        if (selectedTheme == THEME_DEVICE) return@execute
-
         val systemSurfaceTargets = listOf(
             colorSurfaceFingerprint, colorSurfaceBrightFingerprint, colorSurfaceContainerFingerprint,
             colorSurfaceContainerHighestFingerprint, colorSurfaceContainerLowFingerprint,
