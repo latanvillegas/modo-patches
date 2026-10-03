@@ -210,6 +210,39 @@ private fun tileSurfaceTintSmali(
     """
 }
 
+private fun ntpMostVisitedCardTintSmali(
+    theme: String,
+    viewRegister: Int,
+    scratchRegister: Int,
+): String {
+    val view = "v$viewRegister"
+    val scratch = "v$scratchRegister"
+
+    val colorSmali = when (theme) {
+        "black" -> "const $scratch, -0x1000000"
+        "white" -> "const $scratch, -0x1"
+        else -> """
+            invoke-virtual {$view}, Landroid/view/View;->getResources()Landroid/content/res/Resources;
+            move-result-object $scratch
+            invoke-virtual {$scratch}, Landroid/content/res/Resources;->getConfiguration()Landroid/content/res/Configuration;
+            move-result-object $scratch
+            iget $scratch, $scratch, Landroid/content/res/Configuration;->uiMode:I
+            and-int/lit8 $scratch, $scratch, 0x20
+            ushr-int/lit8 $scratch, $scratch, 0x5
+            neg-int $scratch, $scratch
+            ushr-int/lit8 $scratch, $scratch, 0x8
+            not-int $scratch, $scratch
+        """.trimIndent()
+    }
+
+    return """
+        $colorSmali
+        invoke-static {$scratch}, Landroid/content/res/ColorStateList;->valueOf(I)Landroid/content/res/ColorStateList;
+        move-result-object $scratch
+        invoke-virtual {$view, $scratch}, Landroid/view/View;->setBackgroundTintList(Landroid/content/res/ColorStateList;)V
+    """
+}
+
 private fun linearNtpBackgroundSmali(
     theme: String,
     viewRegister: Int,
@@ -256,6 +289,26 @@ val pureAmoledNtpPatch = bytecodePatch(
         val selectedTheme = browserTheme ?: "device"
 
         ntpLayoutInflateFingerprint.method.apply {
+            // ViewStub 0x7f010811 inflates K-.xml. Its returned ViewGroup is the
+            // verified Most Visited card root. Tint that final runtime drawable
+            // immediately after the cast, preserving its rounded shape/corners.
+            val cardCastIndex = findInstructionIndicesReversedOrThrow(
+                checkCast("Landroid/view/ViewGroup;"),
+            ).single()
+            val cardViewRegister =
+                getInstruction<OneRegisterInstruction>(cardCastIndex).registerA
+            val cardScratchRegister =
+                findFreeRegister(cardCastIndex + 1, cardViewRegister)
+
+            addInstructions(
+                cardCastIndex + 1,
+                ntpMostVisitedCardTintSmali(
+                    selectedTheme,
+                    cardViewRegister,
+                    cardScratchRegister,
+                ),
+            )
+
             findInstructionIndicesReversedOrThrow(setBackgroundColorCall).forEach { index ->
                 val invoke = getInstruction<FiveRegisterInstruction>(index)
                 val viewRegister = invoke.registerC
