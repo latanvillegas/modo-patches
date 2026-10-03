@@ -6,7 +6,7 @@
       "schemaVersion": 1,
       "id": "cromite.amoled-main-browser-ui",
       "name": "AMOLED - Main browser UI",
-      "description": "Main Cromite browser UI theme: toolbar/tab surfaces and shared native browser surfaces. Web content is not recolored.",
+      "description": "Main Cromite browser UI theme. Device default follows Cromite/System light-dark state; manual Pure Black/Pure White override it. Web content is not recolored.",
       "applications": [
         "cromite"
       ],
