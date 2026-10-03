@@ -23,7 +23,7 @@ private const val SUGGESTIONS_TILE_VIEW =
 private const val NTP_VERSION = "153.0.8010.37"
 
 private val pureAmoledNtpTileResourcesPatch = resourcePatch(
-    description = "Internal resources for the New Tab Page tile icon background only.",
+    description = "Internal resources for the New Tab Page tile icon and Most Visited card backgrounds.",
 ) {
     compatibleWith("org.cromite.cromite"(NTP_VERSION))
     val browserTheme by browserThemeOption()
@@ -76,6 +76,57 @@ private val pureAmoledNtpTileResourcesPatch = resourcePatch(
             throw PatchException(
                 "AMOLED NTP tile resource verification failed for Cromite $NTP_VERSION: " +
                     "tile_view_icon_background_color.xml was not found.",
+            )
+        }
+
+        // K-.xml is the verified Most Visited container:
+        // HorizontalScrollView android:background=0x7f090264.
+        // ARSC resolves that drawable to res/cs.xml (default) and res/Ko.xml (night).
+        // Both are simple shape -> solid + corners drawables. Recolor only the solid
+        // color and preserve the original corner radius/geometry.
+        val cardTargets = listOf(
+            "res/cs.xml" to
+                if (selectedTheme == "black") "#FF000000" else "#FFFFFFFF",
+            "res/Ko.xml" to
+                if (selectedTheme == "white") "#FFFFFFFF" else "#FF000000",
+        )
+        var verifiedCardHits = 0
+
+        cardTargets.forEach { (path, color) ->
+            runCatching {
+                document(path).use { document ->
+                    val solids = document.getElementsByTagName("solid")
+                    if (solids.length != 1) {
+                        throw PatchException(
+                            "AMOLED NTP card verification failed for $path: " +
+                                "expected exactly one <solid>, found ${solids.length}.",
+                        )
+                    }
+
+                    val solid = solids.item(0) as Element
+                    val colorAttribute = solid.attributes.item(0)
+                    if (colorAttribute == null ||
+                        !(colorAttribute.nodeName.endsWith(":color") ||
+                            colorAttribute.nodeName == "color")
+                    ) {
+                        throw PatchException(
+                            "AMOLED NTP card verification failed for $path: " +
+                                "the verified <solid> color attribute was not found.",
+                        )
+                    }
+
+                    colorAttribute.nodeValue = color
+                    verifiedCardHits++
+                }
+            }.getOrElse { error ->
+                if (error is PatchException) throw error
+            }
+        }
+
+        if (verifiedCardHits != cardTargets.size) {
+            throw PatchException(
+                "AMOLED NTP card resource verification failed for Cromite $NTP_VERSION: " +
+                    "expected res/cs.xml and res/Ko.xml.",
             )
         }
     }
@@ -195,7 +246,7 @@ private fun linearNtpBackgroundSmali(
 @Suppress("unused")
 val pureAmoledNtpPatch = bytecodePatch(
     name = "AMOLED - New Tab Page",
-    description = "Applies Device default / Pure Black / Pure White to the verified NewTabPageLayout background and NTP tile icon background without recoloring favicons, WebContents, toolbar, Settings, or system bars.",
+    description = "Applies Device default / Pure Black / Pure White to the verified NewTabPageLayout, NTP tile icon, and Most Visited card backgrounds without recoloring favicons, WebContents, toolbar, Settings, or system bars.",
 ) {
     compatibleWith("org.cromite.cromite"(NTP_VERSION))
     dependsOn(pureAmoledNtpTileResourcesPatch)
