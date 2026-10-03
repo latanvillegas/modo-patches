@@ -17,11 +17,10 @@ val pureAmoledTabsPatch = resourcePatch(
 
     execute {
         val selectedTheme = browserTheme ?: "device"
-        if (selectedTheme == "device") return@execute
-        val target = when (selectedTheme) {
+        fun target(directory: java.io.File) = when (selectedTheme) {
             "black" -> TABS_BLACK
             "white" -> TABS_WHITE
-            else -> return@execute
+            else -> if (directory.name.contains("night")) TABS_BLACK else TABS_WHITE
         }
 
         val exactColorFiles = setOf(
@@ -48,14 +47,14 @@ val pureAmoledTabsPatch = resourcePatch(
                         for (attributeIndex in 0 until attrs.length) {
                             val attribute = attrs.item(attributeIndex)
                             if (attribute.nodeName.endsWith(":color") || attribute.nodeName == "color") {
-                                attribute.nodeValue = target
+                                attribute.nodeValue = target(directory)
                                 hits++
                             }
                         }
                         if (element.childNodes.length == 1 &&
                             element.firstChild?.nodeType == org.w3c.dom.Node.TEXT_NODE &&
                             element.textContent.trim().startsWith("#")) {
-                            element.textContent = target
+                            element.textContent = target(directory)
                             hits++
                         }
                     }
@@ -75,7 +74,7 @@ val pureAmoledTabsPatch = resourcePatch(
                         for (attributeIndex in 0 until attrs.length) {
                             val attribute = attrs.item(attributeIndex)
                             if (attribute.nodeName.endsWith(":color") || attribute.nodeName == "color") {
-                                attribute.nodeValue = target
+                                attribute.nodeValue = target(directory)
                                 hits++
                             }
                         }
@@ -96,7 +95,7 @@ val pureAmoledTabsPatch = resourcePatch(
                                 (element.tagName == "color" ||
                                  element.tagName == "macro" ||
                                  (element.tagName == "item" && type == "color"))) {
-                                element.textContent = target
+                                element.textContent = target(directory)
                                 hits++
                             }
                         }
