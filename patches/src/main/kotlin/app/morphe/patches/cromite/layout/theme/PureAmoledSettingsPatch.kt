@@ -45,6 +45,39 @@ private val settingsSetBackgroundColorCall = methodCall(
     parameters = listOf("I"),
 )
 
+private fun settingsBackgroundSmali(
+    theme: String,
+    viewRegister: Int,
+    scratchRegister: Int,
+): String {
+    val view = "v$viewRegister"
+    val scratch = "v$scratchRegister"
+
+    return when (theme) {
+        "black" -> """
+            const $scratch, -0x1000000
+            invoke-virtual {$view, $scratch}, Landroid/view/View;->setBackgroundColor(I)V
+        """
+        "white" -> """
+            const $scratch, -0x1
+            invoke-virtual {$view, $scratch}, Landroid/view/View;->setBackgroundColor(I)V
+        """
+        else -> """
+            invoke-virtual {$view}, Landroid/view/View;->getResources()Landroid/content/res/Resources;
+            move-result-object $scratch
+            invoke-virtual {$scratch}, Landroid/content/res/Resources;->getConfiguration()Landroid/content/res/Configuration;
+            move-result-object $scratch
+            iget $scratch, $scratch, Landroid/content/res/Configuration;->uiMode:I
+            and-int/lit8 $scratch, $scratch, 0x20
+            ushr-int/lit8 $scratch, $scratch, 0x5
+            neg-int $scratch, $scratch
+            ushr-int/lit8 $scratch, $scratch, 0x8
+            not-int $scratch, $scratch
+            invoke-virtual {$view, $scratch}, Landroid/view/View;->setBackgroundColor(I)V
+        """
+    }
+}
+
 /**
  * Settings is intentionally a separate selectable patch.
  *
@@ -85,7 +118,7 @@ val pureAmoledSettingsPatch = bytecodePatch(
                 val colorRegister = invoke.registerD
                 addInstructions(
                     index + 1,
-                    linearNtpBackgroundSmali(selectedTheme, viewRegister, colorRegister),
+                    settingsBackgroundSmali(selectedTheme, viewRegister, colorRegister),
                 )
             }
         }
