@@ -9,8 +9,6 @@ import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.util.findInstructionIndicesReversedOrThrow
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
-import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
-import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 
 private const val SETTINGS_VERSION = "153.0.8010.37"
@@ -178,53 +176,21 @@ val pureAmoledSettingsPatch = bytecodePatch(
             )
         }
 
-        // r2c.getView() already resolves the visible SearchEngine row container:
-        // const v3, 0x7f0102e3; v2.findViewById(v3); move-result-object v3.
-        // Patch that existing result only. No RETURN_OBJECT interception and no
-        // additional findViewById are needed.
+        // r2c.getView() owns the SearchEngine row views. Keep the previously
+        // runtime-stable outer-row override while the verified child hook is
+        // redesigned to avoid clobbering live registers.
         searchEngineAdapterViewFingerprint.method.apply {
-            val childIdIndex = implementation!!.instructions.indexOfFirst { instruction ->
-                instruction.opcode == Opcode.CONST &&
-                    (instruction as? com.android.tools.smali.dexlib2.iface.instruction.WideLiteralInstruction)
-                        ?.wideLiteral == 0x7f0102e3L
-            }
-            if (childIdIndex < 0) {
-                throw PatchException(
-                    "AMOLED Settings verification failed for r2c.getView: " +
-                        "SearchEngine row child id 0x7f0102e3 was not found.",
+            findInstructionIndicesReversedOrThrow(Opcode.RETURN_OBJECT).forEach { index ->
+                val returnRegister =
+                    getInstruction<OneRegisterInstruction>(index).registerA
+                addInstructions(
+                    index,
+                    """
+                        move-object/from16 v14, v$returnRegister
+                        ${settingsBackgroundSmali(selectedTheme, 14, 15)}
+                    """,
                 )
             }
-
-            val findViewIndex = (childIdIndex + 1 until implementation!!.instructions.size)
-                .firstOrNull { index ->
-                    val instruction = getInstruction(index)
-                    if (instruction.opcode != Opcode.INVOKE_VIRTUAL) return@firstOrNull false
-                    val reference = (instruction as? ReferenceInstruction)?.reference as? MethodReference
-                    reference?.definingClass == "Landroid/view/View;" &&
-                        reference.name == "findViewById" &&
-                        reference.returnType == "Landroid/view/View;"
-                }
-                ?: throw PatchException(
-                    "AMOLED Settings verification failed for r2c.getView: " +
-                        "findViewById after child id 0x7f0102e3 was not found.",
-                )
-
-            val moveResultIndex = findViewIndex + 1
-            val moveResult = getInstruction<OneRegisterInstruction>(moveResultIndex)
-            if (moveResult.opcode != Opcode.MOVE_RESULT_OBJECT) {
-                throw PatchException(
-                    "AMOLED Settings verification failed for r2c.getView: " +
-                        "expected move-result-object after SearchEngine child findViewById.",
-                )
-            }
-
-            val childRegister = moveResult.registerA
-            // v8 is only the item-view-type constant before this convergence point
-            // and is not consumed again in the verified post-inflate sequence.
-            addInstructions(
-                moveResultIndex + 1,
-                settingsBackgroundSmali(selectedTheme, childRegister, 8),
-            )
         }
 
         // SearchView remains intentionally untouched until its visible rounded
