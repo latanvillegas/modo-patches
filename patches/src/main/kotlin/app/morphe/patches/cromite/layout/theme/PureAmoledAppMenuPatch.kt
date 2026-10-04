@@ -208,39 +208,32 @@ val pureAmoledAppMenuPatch = bytecodePatch(
                 )
             }
 
-            val rootResult = method.getInstruction<OneRegisterInstruction>(inflateIndex + 1)
-            if (rootResult.opcode != Opcode.MOVE_RESULT_OBJECT) {
+            val semanticResult = method.getInstruction<OneRegisterInstruction>(semanticIndex + 2)
+            if (semanticResult.opcode != Opcode.MOVE_RESULT) {
                 throw IllegalStateException(
                     "AMOLED AppMenu bytecode verification failed for Cromite $APP_MENU_VERSION: " +
-                        "f50.b() is not followed by move-result-object."
+                        "Lis7.f() is not followed by move-result."
                 )
             }
 
+            val colorRegister = semanticResult.registerA
             val targetColorSmali = when (selectedTheme) {
-                "black" -> "const p0, -0x1000000"
-                "white" -> "const p0, -0x1"
+                "black" -> "const v$colorRegister, -0x1000000"
+                "white" -> "const v$colorRegister, -0x1"
                 else -> """
-                    invoke-virtual {v${rootResult.registerA}}, Landroid/view/View;->getResources()Landroid/content/res/Resources;
-                    move-result-object p0
-                    invoke-virtual {p0}, Landroid/content/res/Resources;->getConfiguration()Landroid/content/res/Configuration;
-                    move-result-object p0
-                    iget p0, p0, Landroid/content/res/Configuration;->uiMode:I
-                    and-int/lit8 p0, p0, 0x20
-                    ushr-int/lit8 p0, p0, 0x5
-                    neg-int p0, p0
-                    ushr-int/lit8 p0, p0, 0x8
-                    not-int p0, p0
+                    and-int/lit32 v$colorRegister, v$colorRegister, 0x00ffffff
+                    ushr-int/lit8 v$colorRegister, v$colorRegister, 0x17
+                    neg-int v$colorRegister, v$colorRegister
+                    or-int/lit32 v$colorRegister, v$colorRegister, 0xff000000
                 """.trimIndent()
             }
 
-            // The pre/post anchors select the second f50.b() in x50: the ViewGroup
-            // that is actually installed into the AppMenu PopupWindow.
+            // Reuse the semantic color register already produced by Lis7.f().
+            // This avoids introducing any move-result or object scratch register into
+            // x50.l(), while preserving the original Drawable/tint/background chain.
             method.addInstructions(
-                inflateIndex + 2,
-                """
-                    $targetColorSmali
-                    invoke-virtual {v${rootResult.registerA}, p0}, Landroid/view/View;->setBackgroundColor(I)V
-                """.trimIndent(),
+                semanticIndex + 3,
+                targetColorSmali,
             )
         }
     }
