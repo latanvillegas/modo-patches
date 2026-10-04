@@ -139,6 +139,13 @@ private val ntpLayoutInflateFingerprint = Fingerprint(
     parameters = emptyList(),
 )
 
+private val ntpCanvasColorFingerprint = Fingerprint(
+    definingClass = "Ldz4;",
+    name = "d",
+    returnType = "V",
+    parameters = listOf("I"),
+)
+
 private val setBackgroundColorCall = methodCall(
     definingClass = "Landroid/view/View;",
     name = "setBackgroundColor",
@@ -243,6 +250,28 @@ private fun ntpMostVisitedCardTintSmali(
     """
 }
 
+private fun ntpCanvasColorSmali(theme: String, scratchRegister: Int): String {
+    val scratch = "v$scratchRegister"
+
+    return when (theme) {
+        "black" -> "const p1, -0x1000000"
+        "white" -> "const p1, -0x1"
+        else -> """
+            iget-object $scratch, p0, Ldz4;->u:Landroidx/recyclerview/widget/RecyclerView;
+            invoke-virtual {$scratch}, Landroid/view/View;->getResources()Landroid/content/res/Resources;
+            move-result-object $scratch
+            invoke-virtual {$scratch}, Landroid/content/res/Resources;->getConfiguration()Landroid/content/res/Configuration;
+            move-result-object $scratch
+            iget p1, $scratch, Landroid/content/res/Configuration;->uiMode:I
+            and-int/lit8 p1, p1, 0x20
+            ushr-int/lit8 p1, p1, 0x5
+            neg-int p1, p1
+            ushr-int/lit8 p1, p1, 0x8
+            not-int p1, p1
+        """.trimIndent()
+    }
+}
+
 private fun linearNtpBackgroundSmali(
     theme: String,
     viewRegister: Int,
@@ -287,6 +316,15 @@ val pureAmoledNtpPatch = bytecodePatch(
 
     execute {
         val selectedTheme = browserTheme ?: "device"
+
+        // dz4.d(I) is the verified normal-NTP canvas color coordinator.
+        // Normalize its incoming color before Chromium applies it to RecyclerView u
+        // and coordinates the NewTabPageLayout background. xy4 is intentionally
+        // untouched so custom NTP bitmap/background transparency remains native.
+        ntpCanvasColorFingerprint.method.apply {
+            val scratchRegister = findFreeRegister(0)
+            addInstructions(0, ntpCanvasColorSmali(selectedTheme, scratchRegister))
+        }
 
         ntpLayoutInflateFingerprint.method.apply {
             // ViewStub 0x7f010811 inflates K-.xml. Its returned ViewGroup is the
