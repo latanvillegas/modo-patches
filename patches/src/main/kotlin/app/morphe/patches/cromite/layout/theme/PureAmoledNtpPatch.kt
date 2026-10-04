@@ -146,6 +146,13 @@ private val ntpCanvasColorFingerprint = Fingerprint(
     parameters = listOf("I"),
 )
 
+private val ntpMonogramTintFingerprint = Fingerprint(
+    definingClass = "Lj6f;",
+    name = "run",
+    returnType = "V",
+    parameters = emptyList(),
+)
+
 private val setBackgroundColorCall = methodCall(
     definingClass = "Landroid/view/View;",
     name = "setBackgroundColor",
@@ -250,6 +257,34 @@ private fun ntpMostVisitedCardTintSmali(
     """
 }
 
+private fun ntpMonogramTintSmali(theme: String): String {
+    val colorSmali = when (theme) {
+        "black" -> "const v1, -0x1000000"
+        "white" -> "const v1, -0x1"
+        else -> """
+            invoke-virtual {v3}, Landroid/view/View;->getResources()Landroid/content/res/Resources;
+            move-result-object v1
+            invoke-virtual {v1}, Landroid/content/res/Resources;->getConfiguration()Landroid/content/res/Configuration;
+            move-result-object v1
+            iget v1, v1, Landroid/content/res/Configuration;->uiMode:I
+            and-int/lit8 v1, v1, 0x20
+            ushr-int/lit8 v1, v1, 0x5
+            neg-int v1, v1
+            ushr-int/lit8 v1, v1, 0x8
+            not-int v1, v1
+        """.trimIndent()
+    }
+
+    return """
+        if-eqz v1, :amoled_ntp_monogram_keep_native
+        $colorSmali
+        invoke-static {v1}, Landroid/content/res/ColorStateList;->valueOf(I)Landroid/content/res/ColorStateList;
+        move-result-object v1
+        :amoled_ntp_monogram_keep_native
+        nop
+    """
+}
+
 private fun ntpCanvasColorSmali(theme: String, scratchRegister: Int): String {
     val scratch = "v$scratchRegister"
 
@@ -324,6 +359,24 @@ val pureAmoledNtpPatch = bytecodePatch(
         ntpCanvasColorFingerprint.method.apply {
             val scratchRegister = findFreeRegister(0)
             addInstructions(0, ntpCanvasColorSmali(selectedTheme, scratchRegister))
+        }
+
+        // j6f.run() is the verified late icon writer. La6f.f is the optional
+        // ColorStateList consumed by SuggestionsTileView.w.setImageTintList().
+        // Preserve null (untinted real favicons); normalize only non-null tint
+        // payloads used by the fallback/monogram route.
+        ntpMonogramTintFingerprint.method.apply {
+            val tintCall = methodCall(
+                definingClass = "Landroid/widget/ImageView;",
+                name = "setImageTintList",
+                returnType = "V",
+                parameters = listOf("Landroid/content/res/ColorStateList;"),
+            )
+            val tintIndex = findInstructionIndicesReversedOrThrow(tintCall).single()
+            addInstructionsWithLabels(
+                tintIndex,
+                ntpMonogramTintSmali(selectedTheme),
+            )
         }
 
         ntpLayoutInflateFingerprint.method.apply {
