@@ -8,6 +8,7 @@ import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.resourcePatch
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import org.w3c.dom.Element
 import org.w3c.dom.Node
 
@@ -24,6 +25,7 @@ private const val APP_MENU_WHITE = "#FFFFFFFF"
  */
 private val appMenuVisibleSurfaceFingerprint = Fingerprint(
     filters = listOf(
+        methodCall(opcode = Opcode.INVOKE_STATIC, smali = "Lorg/chromium/base/SysUtils;->b()Z"),
         methodCall(opcode = Opcode.INVOKE_STATIC, smali = "Ldr7;->e(Landroid/content/Context;ILjava/lang/String;)Landroid/util/TypedValue;"),
         methodCall(opcode = Opcode.INVOKE_STATIC, smali = "Lis7;->f(Landroid/content/Context;Landroid/util/TypedValue;)I"),
         methodCall(opcode = Opcode.INVOKE_VIRTUAL, smali = "Landroid/graphics/drawable/Drawable;->setTint(I)V"),
@@ -188,16 +190,25 @@ val pureAmoledAppMenuPatch = bytecodePatch(
         }
 
         appMenuVisibleSurfaceFingerprint.apply {
-            val tintIndex = instructionMatches[2].index
+            val sysUtilsIndex = instructionMatches[0].index
+            val tintIndex = instructionMatches[3].index
             val tintCall = method.getInstruction<FiveRegisterInstruction>(tintIndex)
 
             // Override the exact integer argument consumed by Drawable.setTint(I).
-            // Inserting immediately before setTint avoids depending on the instruction
-            // width/index of the preceding Lis7.f() result sequence.
             method.addInstructions(
                 tintIndex,
                 "const v${tintCall.registerD}, $targetColor",
             )
+
+            if (selectedTheme == "black") {
+                // On this device SysUtils.b() can bypass the entire native Nine-Patch
+                // tint/background path. Force only Pure Black through that existing path.
+                val sysUtilsResult = method.getInstruction<OneRegisterInstruction>(sysUtilsIndex + 1)
+                method.addInstructions(
+                    sysUtilsIndex + 2,
+                    "const/4 v${sysUtilsResult.registerA}, 0x1",
+                )
+            }
         }
     }
 }
