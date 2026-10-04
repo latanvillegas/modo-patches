@@ -9,6 +9,7 @@ import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.util.findInstructionIndicesReversedOrThrow
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.WideLiteralInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 
 private const val SETTINGS_VERSION = "153.0.8010.37"
@@ -176,21 +177,39 @@ val pureAmoledSettingsPatch = bytecodePatch(
             )
         }
 
-        // r2c.getView() owns the SearchEngine row views. Keep the previously
-        // runtime-stable outer-row override while the verified child hook is
-        // redesigned to avoid clobbering live registers.
+        // r2c.getView() already resolves the visible row container with
+        // const v3, 0x7f0102e3 -> findViewById -> move-result-object v3.
+        // Reuse v8 only as a temporary for the AMOLED resolver and restore its
+        // verified original value (0x2) immediately, before Chromium continues.
         searchEngineAdapterViewFingerprint.method.apply {
-            findInstructionIndicesReversedOrThrow(Opcode.RETURN_OBJECT).forEach { index ->
-                val returnRegister =
-                    getInstruction<OneRegisterInstruction>(index).registerA
-                addInstructions(
-                    index,
-                    """
-                        move-object/from16 v14, v$returnRegister
-                        ${settingsBackgroundSmali(selectedTheme, 14, 15)}
-                    """,
+            val childIdIndex = implementation!!.instructions.indexOfFirst { instruction ->
+                instruction.opcode == Opcode.CONST &&
+                    (instruction as? WideLiteralInstruction)?.wideLiteral == 0x7f0102e3L
+            }
+            if (childIdIndex < 0) {
+                throw PatchException(
+                    "AMOLED Settings verification failed for r2c.getView: " +
+                        "SearchEngine row child id 0x7f0102e3 was not found.",
                 )
             }
+
+            val moveResultIndex = (childIdIndex + 1 until implementation!!.instructions.size)
+                .firstOrNull { index ->
+                    getInstruction(index).opcode == Opcode.MOVE_RESULT_OBJECT &&
+                        getInstruction<OneRegisterInstruction>(index).registerA == 3
+                }
+                ?: throw PatchException(
+                    "AMOLED Settings verification failed for r2c.getView: " +
+                        "verified SearchEngine child move-result-object v3 was not found.",
+                )
+
+            addInstructions(
+                moveResultIndex + 1,
+                """
+                    ${settingsBackgroundSmali(selectedTheme, 3, 8)}
+                    const/4 v8, 0x2
+                """,
+            )
         }
 
         // SearchView remains intentionally untouched until its visible rounded
