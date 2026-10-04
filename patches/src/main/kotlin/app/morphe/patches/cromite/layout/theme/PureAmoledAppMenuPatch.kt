@@ -37,32 +37,21 @@ private val appMenuPopupContentFingerprint = Fingerprint(
     ),
 )
 
-private fun appMenuSurfaceSmali(theme: String, viewRegister: Int, scratchRegister: Int): String = when (theme) {
-    "black" -> """
-        const v$scratchRegister, -0x1000000
-        invoke-virtual { v$viewRegister, v$scratchRegister }, Landroid/view/View;->setBackgroundColor(I)V
-    """
-    "white" -> """
-        const v$scratchRegister, -0x1
-        invoke-virtual { v$viewRegister, v$scratchRegister }, Landroid/view/View;->setBackgroundColor(I)V
-    """
-    else -> """
-        invoke-virtual { v$viewRegister }, Landroid/view/View;->getContext()Landroid/content/Context;
-        move-result-object v$scratchRegister
-        invoke-virtual { v$scratchRegister }, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
-        move-result-object v$scratchRegister
-        invoke-virtual { v$scratchRegister }, Landroid/content/res/Resources;->getConfiguration()Landroid/content/res/Configuration;
-        move-result-object v$scratchRegister
-        iget v$scratchRegister, v$scratchRegister, Landroid/content/res/Configuration;->uiMode:I
-        and-int/lit8 v$scratchRegister, v$scratchRegister, 0x30
-        xor-int/lit8 v$scratchRegister, v$scratchRegister, 0x20
-        if-nez v$scratchRegister, :amoled_app_menu_light
-        const v$scratchRegister, -0x1000000
-        goto :amoled_app_menu_apply
-        :amoled_app_menu_light
-        const v$scratchRegister, -0x1
-        :amoled_app_menu_apply
-        invoke-virtual { v$viewRegister, v$scratchRegister }, Landroid/view/View;->setBackgroundColor(I)V
+private fun appMenuContentSurfaceSmali(theme: String, rootRegister: Int, childRegister: Int): String {
+    val color = when (theme) {
+        "black" -> "-0x1000000"
+        "white" -> "-0x1"
+        else -> error("AppMenu runtime hook must be a no-op for Device default")
+    }
+
+    return """
+        const v$childRegister, 0x7f010101
+        invoke-virtual { v$rootRegister, v$childRegister }, Landroid/view/View;->findViewById(I)Landroid/view/View;
+        move-result-object v$childRegister
+        if-eqz v$childRegister, :amoled_app_menu_content_done
+        const v$rootRegister, $color
+        invoke-virtual { v$childRegister, v$rootRegister }, Landroid/view/View;->setBackgroundColor(I)V
+        :amoled_app_menu_content_done
     """
 }
 
@@ -213,6 +202,7 @@ val pureAmoledAppMenuPatch = bytecodePatch(
 
     execute {
         val selectedTheme = browserTheme ?: "device"
+        if (selectedTheme == "device") return@execute
 
         appMenuPopupContentFingerprint.apply {
             val backgroundIndex = instructionMatches[0].index
@@ -226,9 +216,12 @@ val pureAmoledAppMenuPatch = bytecodePatch(
             val scratchRegister = backgroundCall.registerD
             val contentViewRegister = contentCall.registerD
 
+            // The visible rounded panel is app_menu_content_container (0x7f010101),
+            // not the PopupWindow root. Run after setContentView(), then reuse the root
+            // register as the color temporary because the framework call has consumed it.
             method.addInstructions(
-                contentIndex,
-                appMenuSurfaceSmali(selectedTheme, contentViewRegister, scratchRegister),
+                contentIndex + 1,
+                appMenuContentSurfaceSmali(selectedTheme, contentViewRegister, scratchRegister),
             )
         }
     }
