@@ -276,7 +276,7 @@ val pureAmoledSettingsPatch = bytecodePatch(
             ) {
                 throw PatchException(
                     "AMOLED Settings verification failed for Lvo7.b: expected " +
-                        "Lfic.d(p0, v0, p1) physical registers v2/v0/v3, found " +
+                        "Lfic.d(p0, v0, p1) physical registers v3/v0/v4, found " +
                         "v${factoryInvoke.registerC}/v${factoryInvoke.registerD}/" +
                         "v${factoryInvoke.registerE}.",
                 )
@@ -284,7 +284,7 @@ val pureAmoledSettingsPatch = bytecodePatch(
 
             val resultIndex = factoryIndex + 1
             if (getInstruction(resultIndex).opcode != Opcode.MOVE_RESULT_OBJECT ||
-                getInstruction<OneRegisterInstruction>(resultIndex).registerA != 2
+                getInstruction<OneRegisterInstruction>(resultIndex).registerA != 3
             ) {
                 throw PatchException(
                     "AMOLED Settings verification failed for Lvo7.b: expected " +
@@ -293,7 +293,7 @@ val pureAmoledSettingsPatch = bytecodePatch(
             }
 
             // Physical registers for .locals 3 + two parameters:
-            // v1 = 1 (dead scratch), p0 = 3 before the call, result p0 = 3.
+            // v1 = 1 (dead scratch), p0 = v3 before the call, result p0 = v3.
             addInstructions(
                 resultIndex + 1,
                 """
