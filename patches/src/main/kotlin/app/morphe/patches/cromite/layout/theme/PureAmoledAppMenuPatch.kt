@@ -7,7 +7,6 @@ import app.morphe.patcher.methodCall
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.resourcePatch
 import com.android.tools.smali.dexlib2.Opcode
-import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import org.w3c.dom.Element
 import org.w3c.dom.Node
@@ -25,12 +24,10 @@ private const val APP_MENU_WHITE = "#FFFFFFFF"
  */
 private val appMenuVisibleSurfaceFingerprint = Fingerprint(
     filters = listOf(
-        methodCall(opcode = Opcode.INVOKE_STATIC, smali = "Lorg/chromium/base/SysUtils;->b()Z"),
-        methodCall(opcode = Opcode.INVOKE_STATIC, smali = "Ldr7;->e(Landroid/content/Context;ILjava/lang/String;)Landroid/util/TypedValue;"),
-        methodCall(opcode = Opcode.INVOKE_STATIC, smali = "Lis7;->f(Landroid/content/Context;Landroid/util/TypedValue;)I"),
-        methodCall(opcode = Opcode.INVOKE_VIRTUAL, smali = "Landroid/graphics/drawable/Drawable;->setTint(I)V"),
-        methodCall(opcode = Opcode.INVOKE_VIRTUAL, smali = "Landroid/graphics/drawable/Drawable;->setTintMode(Landroid/graphics/PorterDuff\$Mode;)V"),
-        methodCall(opcode = Opcode.INVOKE_VIRTUAL, smali = "Landroid/view/View;->setBackground(Landroid/graphics/drawable/Drawable;)V"),
+        methodCall(opcode = Opcode.INVOKE_STATIC, smali = "Lf50;->b(Landroid/view/ContextThemeWrapper;Z)Landroid/view/ViewGroup;"),
+        methodCall(opcode = Opcode.INVOKE_VIRTUAL, smali = "Landroid/view/View;->findViewById(I)Landroid/view/View;"),
+        methodCall(opcode = Opcode.INVOKE_VIRTUAL, smali = "Landroid/widget/ListView;->setAdapter(Landroid/widget/ListAdapter;)V"),
+        methodCall(opcode = Opcode.INVOKE_VIRTUAL, smali = "Landroid/widget/PopupWindow;->setContentView(Landroid/view/View;)V"),
     ),
 )
 
@@ -190,25 +187,19 @@ val pureAmoledAppMenuPatch = bytecodePatch(
         }
 
         appMenuVisibleSurfaceFingerprint.apply {
-            val sysUtilsIndex = instructionMatches[0].index
-            val tintIndex = instructionMatches[3].index
-            val tintCall = method.getInstruction<FiveRegisterInstruction>(tintIndex)
+            val inflateIndex = instructionMatches[0].index
+            val rootResult = method.getInstruction<OneRegisterInstruction>(inflateIndex + 1)
 
-            // Override the exact integer argument consumed by Drawable.setTint(I).
+            // Paint the actual AppMenu root returned by f50.b(), independent of the
+            // optional Nine-Patch/SysUtils path. This is intentionally scoped to the
+            // AppMenu owner method selected by the fingerprint above.
             method.addInstructions(
-                tintIndex,
-                "const v${tintCall.registerD}, $targetColor",
+                inflateIndex + 2,
+                """
+                    const v${rootResult.registerA}, $targetColor
+                    invoke-virtual {v${rootResult.registerA}, v${rootResult.registerA}}, Landroid/view/View;->setBackgroundColor(I)V
+                """.trimIndent(),
             )
-
-            if (selectedTheme == "black") {
-                // On this device SysUtils.b() can bypass the entire native Nine-Patch
-                // tint/background path. Force only Pure Black through that existing path.
-                val sysUtilsResult = method.getInstruction<OneRegisterInstruction>(sysUtilsIndex + 1)
-                method.addInstructions(
-                    sysUtilsIndex + 2,
-                    "const/4 v${sysUtilsResult.registerA}, 0x1",
-                )
-            }
         }
     }
 }
