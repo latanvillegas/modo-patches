@@ -208,15 +208,16 @@ val pureAmoledAppMenuPatch = bytecodePatch(
                 )
             }
 
-            val semanticResult = method.getInstruction<OneRegisterInstruction>(semanticIndex + 2)
-            if (semanticResult.opcode != Opcode.MOVE_RESULT) {
+            val semanticResultInstruction = method.getInstruction(semanticIndex + 1)
+            if (semanticResultInstruction.opcode != Opcode.MOVE_RESULT ||
+                semanticResultInstruction !is OneRegisterInstruction) {
                 throw IllegalStateException(
                     "AMOLED AppMenu bytecode verification failed for Cromite $APP_MENU_VERSION: " +
-                        "Lis7.f() is not followed by move-result."
+                        "Lis7.f() is not immediately followed by a one-register move-result."
                 )
             }
 
-            val colorRegister = semanticResult.registerA
+            val colorRegister = semanticResultInstruction.registerA
             val targetColorSmali = when (selectedTheme) {
                 "black" -> "const v$colorRegister, -0x1000000"
                 "white" -> "const v$colorRegister, -0x1"
@@ -232,7 +233,7 @@ val pureAmoledAppMenuPatch = bytecodePatch(
             // This avoids introducing any move-result or object scratch register into
             // x50.l(), while preserving the original Drawable/tint/background chain.
             method.addInstructions(
-                semanticIndex + 3,
+                semanticIndex + 2,
                 targetColorSmali,
             )
         }
