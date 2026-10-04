@@ -9,8 +9,6 @@ import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.util.findInstructionIndicesReversedOrThrow
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
-import com.android.tools.smali.dexlib2.iface.instruction.WideLiteralInstruction
-import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 
 private const val SETTINGS_VERSION = "153.0.8010.37"
 private const val SETTINGS_ACTIVITY =
@@ -19,10 +17,7 @@ private const val CHROME_IMAGE_VIEW_PREFERENCE =
     "Lorg/chromium/components/browser_ui/settings/ChromeImageViewPreference;"
 private const val CHROME_SWITCH_PREFERENCE =
     "Lorg/chromium/components/browser_ui/settings/ChromeSwitchPreference;"
-private const val SEARCH_ENGINE_SETTINGS =
-    "Lorg/chromium/chrome/browser/search_engines/settings/SearchEngineSettings;"
-private const val SEARCH_ENGINE_ADAPTER = "Lr2c;"
-private const val SETTINGS_PREFERENCE_HELPER = "Lvo7;"
+private const val SETTINGS_CONTAINMENT_HELPER = "Lxx2;"
 
 private val settingsActivityBackgroundFingerprint = Fingerprint(
     definingClass = SETTINGS_ACTIVITY,
@@ -63,18 +58,22 @@ private val chromeSwitchPreferenceBindFingerprint = Fingerprint(
     parameters = listOf("Lepa;"),
 )
 
-private val searchEngineAdapterViewFingerprint = Fingerprint(
-    definingClass = SEARCH_ENGINE_ADAPTER,
-    name = "getView",
-    returnType = "Landroid/view/View;",
-    parameters = listOf("I", "Landroid/view/View;", "Landroid/view/ViewGroup;"),
-)
-
-private val settingsPreferenceDrawableFingerprint = Fingerprint(
-    definingClass = SETTINGS_PREFERENCE_HELPER,
-    name = "b",
-    returnType = "Landroid/graphics/drawable/Drawable;",
-    parameters = listOf("Lto7;", "Landroidx/preference/Preference;"),
+private val settingsContainmentDrawableFingerprint = Fingerprint(
+    definingClass = SETTINGS_CONTAINMENT_HELPER,
+    name = "d",
+    returnType = "Landroid/graphics/drawable/RippleDrawable;",
+    parameters = listOf("Landroid/content/Context;", "F", "F", "I"),
+    filters = listOf(
+        methodCall(
+            definingClass = "Lis7;",
+            name = "f",
+            returnType = "I",
+            parameters = listOf(
+                "Landroid/content/Context;",
+                "Landroid/util/TypedValue;",
+            ),
+        ),
+    ),
 )
 
 private val settingsSetBackgroundColorCall = methodCall(
@@ -147,14 +146,13 @@ private fun settingsContextColorSmali(
  * Settings is intentionally a separate selectable patch.
  *
  * Cromite 153 resolves the Settings root/AppBar background inside SettingsActivity
- * and also applies explicit row/container backgrounds in ChromeImageViewPreference
- * and ChromeSwitchPreference. Patch only those verified consumers; do not change
- * SemanticColorUtils or AppCompat SearchView globally.
+ * and applies containment-card backgrounds through Lxx2.d(). Patch only those verified
+ * consumers; do not change SemanticColorUtils or AppCompat SearchView globally.
  */
 @Suppress("unused")
 val pureAmoledSettingsPatch = bytecodePatch(
     name = "AMOLED - Settings",
-    description = "Applies Device default / Pure Black / Pure White to verified Cromite Settings root, AppBar and preference container backgrounds without recoloring global Material or SearchView surfaces.",
+    description = "Applies Device default / Pure Black / Pure White to verified Cromite Settings root, AppBar and containment-card backgrounds without recoloring global Material or SearchView surfaces.",
 ) {
     compatibleWith("org.cromite.cromite"(SETTINGS_VERSION))
     val browserTheme by browserThemeOption()
@@ -211,99 +209,45 @@ val pureAmoledSettingsPatch = bytecodePatch(
             )
         }
 
-        // r2c.getView() resolves the visible row container in v3, then Chromium
-        // applies its containment styling through Lxx2.a/b(v3, rx2). The latter
-        // overwrites an earlier setBackgroundColor(), so apply AMOLED only after
-        // the final Lxx2.b call. At that exact point v9 is dead and is redefined
-        // later before its next use, making it a safe scratch register.
-        searchEngineAdapterViewFingerprint.method.apply {
-            val containmentStyleIndices = findInstructionIndicesReversedOrThrow(
+        // Lxx2.d(Context, float, float, int) is the shared containment
+        // RippleDrawable factory. p3 is the default GradientDrawable surface
+        // color used by the empty ColorStateList state. Resolve only p3 to the
+        // selected AMOLED surface; keep Chromium's corner radii, pressed-state
+        // composition, ripple mask and framework ripple ColorStateList intact.
+        settingsContainmentDrawableFingerprint.method.apply {
+            val semanticColorIndices = findInstructionIndicesReversedOrThrow(
                 methodCall(
-                    definingClass = "Lxx2;",
-                    name = "b",
-                    returnType = "V",
-                    parameters = listOf("Landroid/view/View;", "Lrx2;"),
+                    definingClass = "Lis7;",
+                    name = "f",
+                    returnType = "I",
+                    parameters = listOf(
+                        "Landroid/content/Context;",
+                        "Landroid/util/TypedValue;",
+                    ),
                 ),
             )
-            if (containmentStyleIndices.size != 1) {
+            if (semanticColorIndices.size != 1) {
                 throw PatchException(
-                    "AMOLED Settings verification failed for r2c.getView: " +
-                        "expected exactly one Lxx2.b(View, rx2) containment style call, " +
-                        "found ${containmentStyleIndices.size}.",
+                    "AMOLED Settings verification failed for Lxx2.d: expected exactly " +
+                        "one Lis7.f(Context, TypedValue) semantic surface resolver, found " +
+                        "${semanticColorIndices.size}.",
                 )
             }
 
-            val styleIndex = containmentStyleIndices.single()
-            val invoke = getInstruction<FiveRegisterInstruction>(styleIndex)
-            if (invoke.registerC != 3 || invoke.registerD != 9) {
+            val semanticIndex = semanticColorIndices.single()
+            val resultIndex = semanticIndex + 1
+            if (getInstruction(resultIndex).opcode != Opcode.MOVE_RESULT) {
                 throw PatchException(
-                    "AMOLED Settings verification failed for r2c.getView: " +
-                        "expected containment style registers v3/v9, found " +
-                        "v${invoke.registerC}/v${invoke.registerD}.",
+                    "AMOLED Settings verification failed for Lxx2.d: expected " +
+                        "move-result immediately after Lis7.f.",
                 )
             }
 
-            addInstructions(
-                styleIndex + 1,
-                settingsBackgroundSmali(selectedTheme, 3, 9),
-            )
-        }
-
-        // Lvo7.b() is the shared Settings containment drawable factory. Only
-        // tint the drawable produced by Lfic.d(); the fallback Preference.C path
-        // remains native. v1 is dead on the cond_5 path and is safe for the
-        // resolved AMOLED color while p0 still contains Context.
-        settingsPreferenceDrawableFingerprint.method.apply {
-            val drawableFactoryIndices = findInstructionIndicesReversedOrThrow(
-                methodCall(
-                    definingClass = "Lfic;",
-                    name = "d",
-                    returnType = "Landroid/graphics/drawable/Drawable;",
-                    parameters = listOf("Landroid/content/Context;", "I", "I"),
-                ),
-            )
-            if (drawableFactoryIndices.size != 1) {
-                throw PatchException(
-                    "AMOLED Settings verification failed for Lvo7.b: expected exactly " +
-                        "one Lfic.d(Context, int, int) containment drawable call, found " +
-                        "${drawableFactoryIndices.size}.",
-                )
-            }
-
-            val factoryIndex = drawableFactoryIndices.single()
-            val factoryInvoke = getInstruction<FiveRegisterInstruction>(factoryIndex)
-            if (factoryInvoke.registerC != 3 || factoryInvoke.registerD != 0 ||
-                factoryInvoke.registerE != 4
-            ) {
-                throw PatchException(
-                    "AMOLED Settings verification failed for Lvo7.b: expected " +
-                        "Lfic.d(p0, v0, p1) physical registers v3/v0/v4, found " +
-                        "v${factoryInvoke.registerC}/v${factoryInvoke.registerD}/" +
-                        "v${factoryInvoke.registerE}.",
-                )
-            }
-
-            val resultIndex = factoryIndex + 1
-            if (getInstruction(resultIndex).opcode != Opcode.MOVE_RESULT_OBJECT ||
-                getInstruction<OneRegisterInstruction>(resultIndex).registerA != 3
-            ) {
-                throw PatchException(
-                    "AMOLED Settings verification failed for Lvo7.b: expected " +
-                        "move-result-object p0 immediately after Lfic.d.",
-                )
-            }
-
-            // Physical registers for .locals 3 + two parameters:
-            // v1 = 1 (dead scratch), p0 = v3 before the call, result p0 = v3.
+            // Lxx2.d has .locals 11 and four parameters, therefore physical
+            // p0 = v11 and p3 = v14. p3 is the default containment surface color.
             addInstructions(
                 resultIndex + 1,
-                """
-                    invoke-virtual {p0, v1}, Landroid/graphics/drawable/Drawable;->setTint(I)V
-                """,
-            )
-            addInstructions(
-                factoryIndex,
-                settingsContextColorSmali(selectedTheme, 3, 1),
+                settingsContextColorSmali(selectedTheme, 11, 14),
             )
         }
 
