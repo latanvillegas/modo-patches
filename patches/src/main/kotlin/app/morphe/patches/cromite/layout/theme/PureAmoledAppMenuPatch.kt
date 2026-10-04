@@ -24,10 +24,15 @@ private const val APP_MENU_WHITE = "#FFFFFFFF"
  */
 private val appMenuVisibleSurfaceFingerprint = Fingerprint(
     filters = listOf(
+        // Unique pre-anchor of the real AppMenu PopupWindow owner.
+        methodCall(opcode = Opcode.INVOKE_VIRTUAL, smali = "Landroid/widget/PopupWindow;->setBackgroundDrawable(Landroid/graphics/drawable/Drawable;)V"),
         methodCall(opcode = Opcode.INVOKE_STATIC, smali = "Lf50;->b(Landroid/view/ContextThemeWrapper;Z)Landroid/view/ViewGroup;"),
-        methodCall(opcode = Opcode.INVOKE_VIRTUAL, smali = "Landroid/view/View;->findViewById(I)Landroid/view/View;"),
-        methodCall(opcode = Opcode.INVOKE_VIRTUAL, smali = "Landroid/widget/ListView;->setAdapter(Landroid/widget/ListAdapter;)V"),
-        methodCall(opcode = Opcode.INVOKE_VIRTUAL, smali = "Landroid/widget/PopupWindow;->setContentView(Landroid/view/View;)V"),
+        // Unique post-anchor chain for the visible AppMenu Nine-Patch.
+        methodCall(opcode = Opcode.INVOKE_STATIC, smali = "Ldr7;->e(Landroid/content/Context;ILjava/lang/String;)Landroid/util/TypedValue;"),
+        methodCall(opcode = Opcode.INVOKE_STATIC, smali = "Lis7;->f(Landroid/content/Context;Landroid/util/TypedValue;)I"),
+        methodCall(opcode = Opcode.INVOKE_VIRTUAL, smali = "Landroid/graphics/drawable/Drawable;->setTint(I)V"),
+        methodCall(opcode = Opcode.INVOKE_VIRTUAL, smali = "Landroid/graphics/drawable/Drawable;->setTintMode(Landroid/graphics/PorterDuff\\$Mode;)V"),
+        methodCall(opcode = Opcode.INVOKE_VIRTUAL, smali = "Landroid/view/View;->setBackground(Landroid/graphics/drawable/Drawable;)V"),
     ),
 )
 
@@ -187,14 +192,39 @@ val pureAmoledAppMenuPatch = bytecodePatch(
         }
 
         appMenuVisibleSurfaceFingerprint.apply {
-            val inflateIndex = instructionMatches[0].index
-            val rootResult = method.getInstruction<OneRegisterInstruction>(inflateIndex + 1)
+            if (instructionMatches.size != 7) {
+                throw IllegalStateException(
+                    "AMOLED AppMenu bytecode verification failed for Cromite $APP_MENU_VERSION: " +
+                        "expected 7 structural anchors, found ${instructionMatches.size}."
+                )
+            }
 
-            // Paint the actual AppMenu root returned by f50.b(), independent of the
-            // optional Nine-Patch/SysUtils path. This is intentionally scoped to the
-            // AppMenu owner method selected by the fingerprint above.
-            // Keep the View reference intact. p0 is no longer live at this point in
-            // the owner method, so use it only as the temporary integer color register.
+            val preAnchorIndex = instructionMatches[0].index
+            val inflateIndex = instructionMatches[1].index
+            val semanticIndex = instructionMatches[2].index
+            val tintIndex = instructionMatches[4].index
+            val backgroundIndex = instructionMatches[6].index
+
+            if (!(preAnchorIndex < inflateIndex &&
+                    inflateIndex < semanticIndex &&
+                    semanticIndex < tintIndex &&
+                    tintIndex < backgroundIndex)) {
+                throw IllegalStateException(
+                    "AMOLED AppMenu bytecode verification failed for Cromite $APP_MENU_VERSION: " +
+                        "structural anchors are out of order."
+                )
+            }
+
+            val rootResult = method.getInstruction<OneRegisterInstruction>(inflateIndex + 1)
+            if (rootResult.opcode != Opcode.MOVE_RESULT_OBJECT) {
+                throw IllegalStateException(
+                    "AMOLED AppMenu bytecode verification failed for Cromite $APP_MENU_VERSION: " +
+                        "f50.b() is not followed by move-result-object."
+                )
+            }
+
+            // The pre/post anchors select the second f50.b() in x50: the ViewGroup
+            // that is actually installed into the AppMenu PopupWindow.
             method.addInstructions(
                 inflateIndex + 2,
                 """
