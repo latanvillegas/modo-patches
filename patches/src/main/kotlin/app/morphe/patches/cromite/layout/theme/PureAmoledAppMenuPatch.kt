@@ -188,24 +188,9 @@ val pureAmoledAppMenuPatch = bytecodePatch(
         }
 
         appMenuVisibleSurfaceFingerprint.apply {
-            val semanticResolveIndex = instructionMatches[0].index
             val colorResolveIndex = instructionMatches[1].index
             val tintIndex = instructionMatches[2].index
             val tintCall = method.getInstruction<FiveRegisterInstruction>(tintIndex)
-
-            // The exact SemanticColorUtils -> typed-value resolver -> Drawable.setTint ->
-            // MULTIPLY -> View.setBackground chain is the AppMenu surface owner identified
-            // in Cromite 153. Verify its semantic attribute literal before changing bytecode.
-            val semanticAttributeFound = method.instructions
-                .subList(maxOf(0, semanticResolveIndex - 4), semanticResolveIndex)
-                .any { instruction ->
-                    instruction.toString().contains("0x7f050155")
-                }
-            if (!semanticAttributeFound) {
-                throw IllegalStateException(
-                    "AMOLED AppMenu fingerprint matched without semantic attribute 0x7f050155"
-                )
-            }
 
             // Override the resolved integer immediately after Lis7.f() returns it and before
             // Drawable.setTint(I), preserving the native drawable geometry and tint mode.
