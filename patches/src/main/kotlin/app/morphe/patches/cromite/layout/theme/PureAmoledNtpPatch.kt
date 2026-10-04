@@ -262,8 +262,6 @@ private fun ntpFallbackIconColorSmali(theme: String): String =
         "black" -> "const p2, -0x1000000"
         "white" -> "const p2, -0x1"
         else -> """
-            // At this verified point v2 still holds Context and v3 is the null
-            // ColorStateList sentinel. Reuse v3 as scratch; no extra register needed.
             invoke-virtual {v2}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
             move-result-object v3
             invoke-virtual {v3}, Landroid/content/res/Resources;->getConfiguration()Landroid/content/res/Configuration;
