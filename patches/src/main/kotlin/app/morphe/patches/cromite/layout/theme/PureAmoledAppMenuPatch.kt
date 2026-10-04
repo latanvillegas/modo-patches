@@ -196,12 +196,14 @@ val pureAmoledAppMenuPatch = bytecodePatch(
             val inflateIndex = instructionMatches[1].index
             val semanticIndex = instructionMatches[2].index
             val tintIndex = instructionMatches[4].index
+            val tintModeIndex = instructionMatches[5].index
             val backgroundIndex = instructionMatches[6].index
 
             if (!(preAnchorIndex < inflateIndex &&
                     inflateIndex < semanticIndex &&
                     semanticIndex < tintIndex &&
-                    tintIndex < backgroundIndex)) {
+                    tintIndex < tintModeIndex &&
+                    tintModeIndex < backgroundIndex)) {
                 throw IllegalStateException(
                     "AMOLED AppMenu bytecode verification failed for Cromite $APP_MENU_VERSION: " +
                         "structural anchors are out of order."
@@ -223,6 +225,24 @@ val pureAmoledAppMenuPatch = bytecodePatch(
             }
 
             val colorRegister = tintInstruction.registerD
+
+            // Cromite applies PorterDuff.MULTIPLY after setTint(). Runtime #280
+            // proved that this leaves the visible Nine-Patch surface gray even
+            // when q72.b() supplies #FF000000. Keep the original Nine-Patch
+            // (shape, alpha, padding and shadow), but force SRC_IN for the tint
+            // composition so the opaque white panel pixels become the requested
+            // AMOLED color while retaining the drawable alpha mask.
+            val tintModeInstruction = method.getInstruction(tintModeIndex)
+            if (tintModeInstruction.opcode != Opcode.INVOKE_VIRTUAL ||
+                tintModeInstruction !is FiveRegisterInstruction ||
+                tintModeInstruction.registerCount != 2) {
+                throw IllegalStateException(
+                    "AMOLED AppMenu bytecode verification failed for Cromite $APP_MENU_VERSION: " +
+                        "Drawable.setTintMode(PorterDuff.Mode) is not the expected two-register invoke-virtual."
+                )
+            }
+            val tintModeRegister = tintModeInstruction.registerD
+
             val targetColorSmali = when (selectedTheme) {
                 "black" -> "const v$colorRegister, -0x1000000"
                 "white" -> "const v$colorRegister, -0x1"
@@ -237,6 +257,18 @@ val pureAmoledAppMenuPatch = bytecodePatch(
             method.addInstructions(
                 tintIndex,
                 targetColorSmali,
+            )
+
+            // Override Cromite's MULTIPLY mode immediately before setTintMode().
+            // Account for the instructions inserted before setTint() when
+            // addressing the original setTintMode anchor.
+            val insertedInstructionCount = when (selectedTheme) {
+                "black", "white" -> 1
+                else -> 3
+            }
+            method.addInstructions(
+                tintModeIndex + insertedInstructionCount,
+                "sget-object v$tintModeRegister, Landroid/graphics/PorterDuff\\$Mode;->SRC_IN:Landroid/graphics/PorterDuff\\$Mode;",
             )
         }
     }
