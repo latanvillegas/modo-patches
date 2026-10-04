@@ -16,6 +16,9 @@ private const val CHROME_IMAGE_VIEW_PREFERENCE =
     "Lorg/chromium/components/browser_ui/settings/ChromeImageViewPreference;"
 private const val CHROME_SWITCH_PREFERENCE =
     "Lorg/chromium/components/browser_ui/settings/ChromeSwitchPreference;"
+private const val SEARCH_ENGINE_SETTINGS =
+    "Lorg/chromium/chrome/browser/search_engines/settings/SearchEngineSettings;"
+private const val SETTINGS_SEARCH_HELPER = "Lf4c;"
 
 private val settingsActivityBackgroundFingerprint = Fingerprint(
     definingClass = SETTINGS_ACTIVITY,
@@ -54,6 +57,27 @@ private val chromeSwitchPreferenceBindFingerprint = Fingerprint(
     name = "y",
     returnType = "V",
     parameters = listOf("Lepa;"),
+)
+
+private val searchEngineSettingsViewFingerprint = Fingerprint(
+    definingClass = SEARCH_ENGINE_SETTINGS,
+    name = "F1",
+    returnType = "V",
+    parameters = listOf("Landroid/view/View;", "Landroid/os/Bundle;"),
+)
+
+private val settingsSearchViewFingerprint = Fingerprint(
+    definingClass = SETTINGS_SEARCH_HELPER,
+    name = "b",
+    returnType = "V",
+    parameters = listOf(
+        "Landroid/view/MenuItem;",
+        "Landroidx/appcompat/widget/SearchView;",
+        "Ljava/lang/String;",
+        "Landroid/app/Activity;",
+        "Lfd5;",
+        "Le4c;",
+    ),
 )
 
 private val settingsSetBackgroundColorCall = methodCall(
@@ -163,6 +187,26 @@ val pureAmoledSettingsPatch = bytecodePatch(
                 ),
             )
         }
+
+        // SearchEngineSettings owns its ListView through the r2c adapter. Recolor
+        // that Settings-specific list surface instead of every RadioButtonGroup.
+        searchEngineSettingsViewFingerprint.method.addInstructions(
+            0,
+            """
+                move-object v0, p1
+                ${settingsBackgroundSmali(selectedTheme, 0, 1)}
+            """,
+        )
+
+        // f4c.b is Chromium's Settings search helper. Patch this consumer rather
+        // than androidx.appcompat.widget.SearchView globally.
+        settingsSearchViewFingerprint.method.addInstructions(
+            0,
+            """
+                move-object v1, p1
+                ${settingsBackgroundSmali(selectedTheme, 1, 0)}
+            """,
+        )
 
         chromeSwitchPreferenceBindFingerprint.method.apply {
             val backgroundIndices =
