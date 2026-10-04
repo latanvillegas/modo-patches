@@ -21,7 +21,7 @@ private const val CHROME_SWITCH_PREFERENCE =
     "Lorg/chromium/components/browser_ui/settings/ChromeSwitchPreference;"
 private const val SEARCH_ENGINE_SETTINGS =
     "Lorg/chromium/chrome/browser/search_engines/settings/SearchEngineSettings;"
-private const val SEARCH_ENGINE_ADAPTER = "Lr2c;"
+private const val SEARCH_ENGINE_ADAPTER = "Lr2c;"\nprivate const val SETTINGS_PREFERENCE_HELPER = "Lvo7;"
 
 private val settingsActivityBackgroundFingerprint = Fingerprint(
     definingClass = SETTINGS_ACTIVITY,
@@ -69,6 +69,13 @@ private val searchEngineAdapterViewFingerprint = Fingerprint(
     parameters = listOf("I", "Landroid/view/View;", "Landroid/view/ViewGroup;"),
 )
 
+private val settingsPreferenceDrawableFingerprint = Fingerprint(
+    definingClass = SETTINGS_PREFERENCE_HELPER,
+    name = "b",
+    returnType = "Landroid/graphics/drawable/Drawable;",
+    parameters = listOf("Lto7;", "Landroidx/preference/Preference;"),
+)
+
 private val settingsSetBackgroundColorCall = methodCall(
     definingClass = "Landroid/view/View;",
     name = "setBackgroundColor",
@@ -105,6 +112,32 @@ private fun settingsBackgroundSmali(
             ushr-int/lit8 $scratch, $scratch, 0x8
             not-int $scratch, $scratch
             invoke-virtual {$view, $scratch}, Landroid/view/View;->setBackgroundColor(I)V
+        """
+    }
+}
+
+private fun settingsContextColorSmali(
+    theme: String,
+    contextRegister: Int,
+    colorRegister: Int,
+): String {
+    val context = "v$contextRegister"
+    val color = "v$colorRegister"
+
+    return when (theme) {
+        "black" -> "const $color, -0x1000000"
+        "white" -> "const $color, -0x1"
+        else -> """
+            invoke-virtual {$context}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
+            move-result-object $color
+            invoke-virtual {$color}, Landroid/content/res/Resources;->getConfiguration()Landroid/content/res/Configuration;
+            move-result-object $color
+            iget $color, $color, Landroid/content/res/Configuration;->uiMode:I
+            and-int/lit8 $color, $color, 0x20
+            ushr-int/lit8 $color, $color, 0x5
+            neg-int $color, $color
+            ushr-int/lit8 $color, $color, 0x8
+            not-int $color, $color
         """
     }
 }
@@ -212,6 +245,64 @@ val pureAmoledSettingsPatch = bytecodePatch(
             addInstructions(
                 styleIndex + 1,
                 settingsBackgroundSmali(selectedTheme, 3, 9),
+            )
+        }
+
+        // Lvo7.b() is the shared Settings containment drawable factory. Only
+        // tint the drawable produced by Lfic.d(); the fallback Preference.C path
+        // remains native. v1 is dead on the cond_5 path and is safe for the
+        // resolved AMOLED color while p0 still contains Context.
+        settingsPreferenceDrawableFingerprint.method.apply {
+            val drawableFactoryIndices = findInstructionIndicesReversedOrThrow(
+                methodCall(
+                    definingClass = "Lfic;",
+                    name = "d",
+                    returnType = "Landroid/graphics/drawable/Drawable;",
+                    parameters = listOf("Landroid/content/Context;", "I", "I"),
+                ),
+            )
+            if (drawableFactoryIndices.size != 1) {
+                throw PatchException(
+                    "AMOLED Settings verification failed for Lvo7.b: expected exactly " +
+                        "one Lfic.d(Context, int, int) containment drawable call, found " +
+                        "${drawableFactoryIndices.size}.",
+                )
+            }
+
+            val factoryIndex = drawableFactoryIndices.single()
+            val factoryInvoke = getInstruction<FiveRegisterInstruction>(factoryIndex)
+            if (factoryInvoke.registerC != 2 || factoryInvoke.registerD != 0 ||
+                factoryInvoke.registerE != 3
+            ) {
+                throw PatchException(
+                    "AMOLED Settings verification failed for Lvo7.b: expected " +
+                        "Lfic.d(p0, v0, p1) physical registers v2/v0/v3, found " +
+                        "v${factoryInvoke.registerC}/v${factoryInvoke.registerD}/" +
+                        "v${factoryInvoke.registerE}.",
+                )
+            }
+
+            val resultIndex = factoryIndex + 1
+            if (getInstruction(resultIndex).opcode != Opcode.MOVE_RESULT_OBJECT ||
+                getInstruction<OneRegisterInstruction>(resultIndex).registerA != 2
+            ) {
+                throw PatchException(
+                    "AMOLED Settings verification failed for Lvo7.b: expected " +
+                        "move-result-object p0 immediately after Lfic.d.",
+                )
+            }
+
+            // Physical registers for .locals 3 + two parameters:
+            // v1 = 1 (dead scratch), p0 = 3 before the call, result p0 = 3.
+            addInstructions(
+                resultIndex + 1,
+                """
+                    invoke-virtual {p0, v1}, Landroid/graphics/drawable/Drawable;->setTint(I)V
+                """,
+            )
+            addInstructions(
+                factoryIndex,
+                settingsContextColorSmali(selectedTheme, 3, 1),
             )
         }
 
