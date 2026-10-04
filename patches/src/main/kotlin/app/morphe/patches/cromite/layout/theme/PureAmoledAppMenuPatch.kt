@@ -193,11 +193,13 @@ val pureAmoledAppMenuPatch = bytecodePatch(
             // Paint the actual AppMenu root returned by f50.b(), independent of the
             // optional Nine-Patch/SysUtils path. This is intentionally scoped to the
             // AppMenu owner method selected by the fingerprint above.
+            // Keep the View reference intact. p0 is no longer live at this point in
+            // the owner method, so use it only as the temporary integer color register.
             method.addInstructions(
                 inflateIndex + 2,
                 """
-                    const v${rootResult.registerA}, $targetColor
-                    invoke-virtual {v${rootResult.registerA}, v${rootResult.registerA}}, Landroid/view/View;->setBackgroundColor(I)V
+                    const p0, $targetColor
+                    invoke-virtual {v${rootResult.registerA}, p0}, Landroid/view/View;->setBackgroundColor(I)V
                 """.trimIndent(),
             )
         }
