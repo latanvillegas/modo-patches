@@ -12,6 +12,10 @@ import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
 private const val SETTINGS_VERSION = "153.0.8010.37"
 private const val SETTINGS_ACTIVITY =
     "Lorg/chromium/chrome/browser/settings/SettingsActivity;"
+private const val CHROME_IMAGE_VIEW_PREFERENCE =
+    "Lorg/chromium/components/browser_ui/settings/ChromeImageViewPreference;"
+private const val CHROME_SWITCH_PREFERENCE =
+    "Lorg/chromium/components/browser_ui/settings/ChromeSwitchPreference;"
 
 private val settingsActivityBackgroundFingerprint = Fingerprint(
     definingClass = SETTINGS_ACTIVITY,
@@ -36,6 +40,20 @@ private val settingsActivityBackgroundFingerprint = Fingerprint(
             ),
         ),
     ),
+)
+
+private val chromeImageViewPreferenceBindFingerprint = Fingerprint(
+    definingClass = CHROME_IMAGE_VIEW_PREFERENCE,
+    name = "y",
+    returnType = "V",
+    parameters = listOf("Lepa;"),
+)
+
+private val chromeSwitchPreferenceBindFingerprint = Fingerprint(
+    definingClass = CHROME_SWITCH_PREFERENCE,
+    name = "y",
+    returnType = "V",
+    parameters = listOf("Lepa;"),
 )
 
 private val settingsSetBackgroundColorCall = methodCall(
@@ -82,14 +100,14 @@ private fun settingsBackgroundSmali(
  * Settings is intentionally a separate selectable patch.
  *
  * Cromite 153 resolves the Settings root/AppBar background inside SettingsActivity
- * from theme attribute 0x7f050157 and then applies the same color through two
- * View.setBackgroundColor(I) calls. Patch those verified consumers directly instead
- * of changing pac.l globally, because pac.l also has unrelated consumers.
+ * and also applies explicit row/container backgrounds in ChromeImageViewPreference
+ * and ChromeSwitchPreference. Patch only those verified consumers; do not change
+ * SemanticColorUtils or AppCompat SearchView globally.
  */
 @Suppress("unused")
 val pureAmoledSettingsPatch = bytecodePatch(
     name = "AMOLED - Settings",
-    description = "Applies the selected Device default / Pure Black / Pure White palette to the verified native Cromite Settings root and AppBar backgrounds without changing global SemanticColorUtils consumers.",
+    description = "Applies Device default / Pure Black / Pure White to verified Cromite Settings root, AppBar and preference container backgrounds without recoloring global Material or SearchView surfaces.",
 ) {
     compatibleWith("org.cromite.cromite"(SETTINGS_VERSION))
     val browserTheme by browserThemeOption()
@@ -108,19 +126,65 @@ val pureAmoledSettingsPatch = bytecodePatch(
                 )
             }
 
-            // Both verified calls consume the same theme-derived color register.
-            // Override each exact View immediately after Chromium's original setter.
-            // Reusing the consumed color register avoids allocating registers and
-            // introduces no branch targets around invoke/move-result pairs.
             backgroundIndices.forEach { index ->
                 val invoke = getInstruction<FiveRegisterInstruction>(index)
-                val viewRegister = invoke.registerC
-                val colorRegister = invoke.registerD
                 addInstructions(
                     index + 1,
-                    settingsBackgroundSmali(selectedTheme, viewRegister, colorRegister),
+                    settingsBackgroundSmali(
+                        selectedTheme,
+                        invoke.registerC,
+                        invoke.registerD,
+                    ),
                 )
             }
+        }
+
+        chromeImageViewPreferenceBindFingerprint.method.apply {
+            val backgroundIndices =
+                findInstructionIndicesReversedOrThrow(settingsSetBackgroundColorCall)
+            if (backgroundIndices.size != 2) {
+                throw PatchException(
+                    "AMOLED Settings verification failed for ChromeImageViewPreference.y: " +
+                        "expected transparent image + container background setters, " +
+                        "found ${backgroundIndices.size}.",
+                )
+            }
+
+            // Reversed order makes the first match the later o0 container setter.
+            // Leave the earlier ImageView.setBackgroundColor(0) transparency untouched.
+            val containerIndex = backgroundIndices.first()
+            val invoke = getInstruction<FiveRegisterInstruction>(containerIndex)
+            addInstructions(
+                containerIndex + 1,
+                settingsBackgroundSmali(
+                    selectedTheme,
+                    invoke.registerC,
+                    invoke.registerD,
+                ),
+            )
+        }
+
+        chromeSwitchPreferenceBindFingerprint.method.apply {
+            val backgroundIndices =
+                findInstructionIndicesReversedOrThrow(settingsSetBackgroundColorCall)
+            if (backgroundIndices.size != 1) {
+                throw PatchException(
+                    "AMOLED Settings verification failed for ChromeSwitchPreference.y: " +
+                        "expected exactly one container View.setBackgroundColor(I) call, " +
+                        "found ${backgroundIndices.size}.",
+                )
+            }
+
+            val index = backgroundIndices.single()
+            val invoke = getInstruction<FiveRegisterInstruction>(index)
+            addInstructions(
+                index + 1,
+                settingsBackgroundSmali(
+                    selectedTheme,
+                    invoke.registerC,
+                    invoke.registerD,
+                ),
+            )
         }
     }
 }
