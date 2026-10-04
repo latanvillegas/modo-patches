@@ -272,8 +272,8 @@ val pureAmoledSettingsPatch = bytecodePatch(
 
             val factoryIndex = drawableFactoryIndices.single()
             val factoryInvoke = getInstruction<FiveRegisterInstruction>(factoryIndex)
-            if (factoryInvoke.registerC != 2 || factoryInvoke.registerD != 0 ||
-                factoryInvoke.registerE != 3
+            if (factoryInvoke.registerC != 3 || factoryInvoke.registerD != 0 ||
+                factoryInvoke.registerE != 4
             ) {
                 throw PatchException(
                     "AMOLED Settings verification failed for Lvo7.b: expected " +
