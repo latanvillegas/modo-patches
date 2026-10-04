@@ -208,20 +208,16 @@ val pureAmoledAppMenuPatch = bytecodePatch(
                 )
             }
 
-            val semanticInvokeIndex = (semanticIndex..tintIndex).firstOrNull { index ->
-                method.getInstruction(index).opcode == Opcode.INVOKE_STATIC
-            } ?: throw IllegalStateException(
-                "AMOLED AppMenu bytecode verification failed for Cromite $APP_MENU_VERSION: " +
-                    "could not locate Lis7.f() invoke between semantic and tint anchors."
-            )
-
-            val semanticResultIndex = semanticInvokeIndex + 1
+            // Fingerprint anchor #3 is the exact Lis7.f(...) invocation.
+            // Termux verification of Cromite 153.0.8010.37 confirms its result is
+            // consumed immediately by Drawable.setTint(I), so patch only that value.
+            val semanticResultIndex = instructionMatches[3].index
             val semanticResultInstruction = method.getInstruction(semanticResultIndex)
             if (semanticResultInstruction.opcode != Opcode.MOVE_RESULT ||
                 semanticResultInstruction !is OneRegisterInstruction) {
                 throw IllegalStateException(
                     "AMOLED AppMenu bytecode verification failed for Cromite $APP_MENU_VERSION: " +
-                        "resolved Lis7.f() invoke is not followed by one-register move-result."
+                        "Lis7.f() fingerprint result is not a one-register move-result."
                 )
             }
 
@@ -237,8 +233,6 @@ val pureAmoledAppMenuPatch = bytecodePatch(
                 """.trimIndent()
             }
 
-            // Resolve the actual invoke/move-result pair structurally instead of
-            // assuming that the filter match index is the invoke instruction itself.
             method.addInstructions(
                 semanticResultIndex + 1,
                 targetColorSmali,
