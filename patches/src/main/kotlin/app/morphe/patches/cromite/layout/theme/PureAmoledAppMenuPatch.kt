@@ -7,7 +7,7 @@ import app.morphe.patcher.methodCall
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.resourcePatch
 import com.android.tools.smali.dexlib2.Opcode
-import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
 import org.w3c.dom.Element
 import org.w3c.dom.Node
 
@@ -208,20 +208,21 @@ val pureAmoledAppMenuPatch = bytecodePatch(
                 )
             }
 
-            // Fingerprint anchor #3 is the exact Lis7.f(...) invocation.
-            // Termux verification of Cromite 153.0.8010.37 confirms its result is
-            // consumed immediately by Drawable.setTint(I), so patch only that value.
-            val semanticResultIndex = instructionMatches[3].index
-            val semanticResultInstruction = method.getInstruction(semanticResultIndex)
-            if (semanticResultInstruction.opcode != Opcode.MOVE_RESULT ||
-                semanticResultInstruction !is OneRegisterInstruction) {
+            // Anchor directly on Drawable.setTint(I). In Cromite 153 this is
+            // invoke-virtual {v12, v10}, so registerD is the tint color consumed by
+            // the visible AppMenu drawable. This avoids all assumptions about the
+            // Lis7.f() move-result position.
+            val tintInstruction = method.getInstruction(tintIndex)
+            if (tintInstruction.opcode != Opcode.INVOKE_VIRTUAL ||
+                tintInstruction !is FiveRegisterInstruction ||
+                tintInstruction.registerCount != 2) {
                 throw IllegalStateException(
                     "AMOLED AppMenu bytecode verification failed for Cromite $APP_MENU_VERSION: " +
-                        "Lis7.f() fingerprint result is not a one-register move-result."
+                        "Drawable.setTint(I) is not the expected two-register invoke-virtual."
                 )
             }
 
-            val colorRegister = semanticResultInstruction.registerA
+            val colorRegister = tintInstruction.registerD
             val targetColorSmali = when (selectedTheme) {
                 "black" -> "const v$colorRegister, -0x1000000"
                 "white" -> "const v$colorRegister, -0x1"
@@ -233,8 +234,9 @@ val pureAmoledAppMenuPatch = bytecodePatch(
                 """.trimIndent()
             }
 
+            // Override only the tint argument immediately before setTint().
             method.addInstructions(
-                semanticResultIndex + 1,
+                tintIndex,
                 targetColorSmali,
             )
         }
