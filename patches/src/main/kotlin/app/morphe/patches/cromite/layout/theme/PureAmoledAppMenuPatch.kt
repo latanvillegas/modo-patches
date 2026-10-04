@@ -227,10 +227,9 @@ val pureAmoledAppMenuPatch = bytecodePatch(
                 "black" -> "const v$colorRegister, -0x1000000"
                 "white" -> "const v$colorRegister, -0x1"
                 else -> """
-                    and-int/lit32 v$colorRegister, v$colorRegister, 0x00ffffff
-                    ushr-int/lit8 v$colorRegister, v$colorRegister, 0x17
-                    neg-int v$colorRegister, v$colorRegister
-                    or-int/lit32 v$colorRegister, v$colorRegister, 0xff000000
+                    const/4 v$colorRegister, 0x0
+                    invoke-static {v1, v$colorRegister}, Lq72;->b(Landroid/content/Context;Z)I
+                    move-result v$colorRegister
                 """.trimIndent()
             }
 
