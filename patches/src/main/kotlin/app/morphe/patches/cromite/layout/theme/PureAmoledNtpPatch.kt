@@ -257,28 +257,26 @@ private fun ntpMostVisitedCardTintSmali(
     """
 }
 
-private fun ntpFallbackIconColorSmali(theme: String, scratchRegister: Int): String {
-    val scratch = "v$scratchRegister"
-
-    return when (theme) {
+private fun ntpFallbackIconColorSmali(theme: String): String =
+    when (theme) {
         "black" -> "const p2, -0x1000000"
         "white" -> "const p2, -0x1"
         else -> """
-            iget-object $scratch, p0, Lb7f;->c:Lc7f;
-            iget-object $scratch, $scratch, Lc7f;->a:Landroid/content/Context;
-            invoke-virtual {$scratch}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
-            move-result-object $scratch
-            invoke-virtual {$scratch}, Landroid/content/res/Resources;->getConfiguration()Landroid/content/res/Configuration;
-            move-result-object $scratch
-            iget p2, $scratch, Landroid/content/res/Configuration;->uiMode:I
+            // At this verified point v2 still holds Context and v3 is the null
+            // ColorStateList sentinel. Reuse v3 as scratch; no extra register needed.
+            invoke-virtual {v2}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
+            move-result-object v3
+            invoke-virtual {v3}, Landroid/content/res/Resources;->getConfiguration()Landroid/content/res/Configuration;
+            move-result-object v3
+            iget p2, v3, Landroid/content/res/Configuration;->uiMode:I
             and-int/lit8 p2, p2, 0x20
             ushr-int/lit8 p2, p2, 0x5
             neg-int p2, p2
             ushr-int/lit8 p2, p2, 0x8
             not-int p2, p2
+            const/4 v3, 0x0
         """.trimIndent()
     }
-}
 
 private fun ntpCanvasColorSmali(theme: String, scratchRegister: Int): String {
     val scratch = "v$scratchRegister"
@@ -367,10 +365,9 @@ val pureAmoledNtpPatch = bytecodePatch(
                 parameters = listOf("I"),
             )
             val colorIndex = findInstructionIndicesReversedOrThrow(paintSetColor).single()
-            val scratchRegister = findFreeRegister(colorIndex)
             addInstructions(
                 colorIndex,
-                ntpFallbackIconColorSmali(selectedTheme, scratchRegister),
+                ntpFallbackIconColorSmali(selectedTheme),
             )
         }
 
