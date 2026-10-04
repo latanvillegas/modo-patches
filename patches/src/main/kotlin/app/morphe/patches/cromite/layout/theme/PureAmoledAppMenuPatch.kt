@@ -188,14 +188,14 @@ val pureAmoledAppMenuPatch = bytecodePatch(
         }
 
         appMenuVisibleSurfaceFingerprint.apply {
-            val colorResolveIndex = instructionMatches[1].index
             val tintIndex = instructionMatches[2].index
             val tintCall = method.getInstruction<FiveRegisterInstruction>(tintIndex)
 
-            // Override the resolved integer immediately after Lis7.f() returns it and before
-            // Drawable.setTint(I), preserving the native drawable geometry and tint mode.
+            // Override the exact integer argument consumed by Drawable.setTint(I).
+            // Inserting immediately before setTint avoids depending on the instruction
+            // width/index of the preceding Lis7.f() result sequence.
             method.addInstructions(
-                colorResolveIndex + 2,
+                tintIndex,
                 "const v${tintCall.registerD}, $targetColor",
             )
         }
