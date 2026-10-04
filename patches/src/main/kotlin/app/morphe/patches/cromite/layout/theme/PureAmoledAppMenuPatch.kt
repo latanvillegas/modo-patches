@@ -183,11 +183,22 @@ val pureAmoledAppMenuPatch = bytecodePatch(
 
     execute {
         val selectedTheme = browserTheme ?: "device"
-        if (selectedTheme == "device") return@execute
 
-        val targetColor = when (selectedTheme) {
-            "black" -> "-0x1000000"
-            "white" -> "-0x1"
+        val targetColorSmali = when (selectedTheme) {
+            "black" -> "const p0, -0x1000000"
+            "white" -> "const p0, -0x1"
+            "device" -> """
+                invoke-virtual {v${rootResult.registerA}}, Landroid/view/View;->getResources()Landroid/content/res/Resources;
+                move-result-object p0
+                invoke-virtual {p0}, Landroid/content/res/Resources;->getConfiguration()Landroid/content/res/Configuration;
+                move-result-object p0
+                iget p0, p0, Landroid/content/res/Configuration;->uiMode:I
+                and-int/lit8 p0, p0, 0x20
+                ushr-int/lit8 p0, p0, 0x5
+                neg-int p0, p0
+                ushr-int/lit8 p0, p0, 0x8
+                not-int p0, p0
+            """.trimIndent()
             else -> return@execute
         }
 
@@ -228,7 +239,7 @@ val pureAmoledAppMenuPatch = bytecodePatch(
             method.addInstructions(
                 inflateIndex + 2,
                 """
-                    const p0, $targetColor
+                    $targetColorSmali
                     invoke-virtual {v${rootResult.registerA}, p0}, Landroid/view/View;->setBackgroundColor(I)V
                 """.trimIndent(),
             )
