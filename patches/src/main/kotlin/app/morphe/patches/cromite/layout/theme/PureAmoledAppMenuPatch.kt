@@ -8,6 +8,7 @@ import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.resourcePatch
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.WideLiteralInstruction
 import org.w3c.dom.Element
 import org.w3c.dom.Node
 
@@ -24,6 +25,12 @@ private const val APP_MENU_WHITE = "#FFFFFFFF"
  */
 private val appMenuVisibleSurfaceFingerprint = Fingerprint(
     filters = listOf(
+        { _, instruction ->
+            instruction.opcode == Opcode.CONST &&
+                (instruction as? WideLiteralInstruction)?.wideLiteral == 0x7f050155L
+        },
+        methodCall(opcode = Opcode.INVOKE_STATIC, smali = "Ldr7;->e(Landroid/content/Context;ILjava/lang/String;)Landroid/util/TypedValue;"),
+        methodCall(opcode = Opcode.INVOKE_STATIC, smali = "Lis7;->f(Landroid/content/Context;Landroid/util/TypedValue;)I"),
         methodCall(opcode = Opcode.INVOKE_VIRTUAL, smali = "Landroid/graphics/drawable/Drawable;->setTint(I)V"),
         methodCall(opcode = Opcode.INVOKE_VIRTUAL, smali = "Landroid/graphics/drawable/Drawable;->setTintMode(Landroid/graphics/PorterDuff\$Mode;)V"),
         methodCall(opcode = Opcode.INVOKE_VIRTUAL, smali = "Landroid/view/View;->setBackground(Landroid/graphics/drawable/Drawable;)V"),
@@ -186,13 +193,15 @@ val pureAmoledAppMenuPatch = bytecodePatch(
         }
 
         appMenuVisibleSurfaceFingerprint.apply {
-            val tintIndex = instructionMatches[0].index
+            val colorResolveIndex = instructionMatches[2].index
+            val tintIndex = instructionMatches[3].index
             val tintCall = method.getInstruction<FiveRegisterInstruction>(tintIndex)
 
-            // Override only the integer consumed by Drawable.setTint(I).
-            // Native drawable geometry, tint mode and View.setBackground remain intact.
+            // Anchor to AppMenu's semantic surface attribute 0x7f050155, then override
+            // the resolved integer immediately before the exact Drawable.setTint(I).
+            // This preserves the native drawable, MULTIPLY mode, rounded geometry and padding.
             method.addInstructions(
-                tintIndex,
+                colorResolveIndex + 2,
                 "const v${tintCall.registerD}, $targetColor",
             )
         }
