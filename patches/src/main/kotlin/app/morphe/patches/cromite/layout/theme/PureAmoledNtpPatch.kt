@@ -146,11 +146,11 @@ private val ntpCanvasColorFingerprint = Fingerprint(
     parameters = listOf("I"),
 )
 
-private val ntpMonogramTintFingerprint = Fingerprint(
-    definingClass = "Lj6f;",
-    name = "run",
+private val ntpFallbackIconFingerprint = Fingerprint(
+    definingClass = "Lb7f;",
+    name = "onLargeIconAvailable",
     returnType = "V",
-    parameters = emptyList(),
+    parameters = listOf("Landroid/graphics/Bitmap;", "I", "Z", "I"),
 )
 
 private val setBackgroundColorCall = methodCall(
@@ -257,32 +257,27 @@ private fun ntpMostVisitedCardTintSmali(
     """
 }
 
-private fun ntpMonogramTintSmali(theme: String): String {
-    val colorSmali = when (theme) {
-        "black" -> "const v1, -0x1000000"
-        "white" -> "const v1, -0x1"
+private fun ntpFallbackIconColorSmali(theme: String, scratchRegister: Int): String {
+    val scratch = "v$scratchRegister"
+
+    return when (theme) {
+        "black" -> "const p2, -0x1000000"
+        "white" -> "const p2, -0x1"
         else -> """
-            invoke-virtual {v3}, Landroid/view/View;->getResources()Landroid/content/res/Resources;
-            move-result-object v1
-            invoke-virtual {v1}, Landroid/content/res/Resources;->getConfiguration()Landroid/content/res/Configuration;
-            move-result-object v1
-            iget v1, v1, Landroid/content/res/Configuration;->uiMode:I
-            and-int/lit8 v1, v1, 0x20
-            ushr-int/lit8 v1, v1, 0x5
-            neg-int v1, v1
-            ushr-int/lit8 v1, v1, 0x8
-            not-int v1, v1
+            iget-object $scratch, p0, Lb7f;->c:Lc7f;
+            iget-object $scratch, $scratch, Lc7f;->a:Landroid/content/Context;
+            invoke-virtual {$scratch}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
+            move-result-object $scratch
+            invoke-virtual {$scratch}, Landroid/content/res/Resources;->getConfiguration()Landroid/content/res/Configuration;
+            move-result-object $scratch
+            iget p2, $scratch, Landroid/content/res/Configuration;->uiMode:I
+            and-int/lit8 p2, p2, 0x20
+            ushr-int/lit8 p2, p2, 0x5
+            neg-int p2, p2
+            ushr-int/lit8 p2, p2, 0x8
+            not-int p2, p2
         """.trimIndent()
     }
-
-    return """
-        if-eqz v1, :amoled_ntp_monogram_keep_native
-        $colorSmali
-        invoke-static {v1}, Landroid/content/res/ColorStateList;->valueOf(I)Landroid/content/res/ColorStateList;
-        move-result-object v1
-        :amoled_ntp_monogram_keep_native
-        nop
-    """
 }
 
 private fun ntpCanvasColorSmali(theme: String, scratchRegister: Int): String {
@@ -361,21 +356,21 @@ val pureAmoledNtpPatch = bytecodePatch(
             addInstructions(0, ntpCanvasColorSmali(selectedTheme, scratchRegister))
         }
 
-        // j6f.run() is the verified late icon writer. La6f.f is the optional
-        // ColorStateList consumed by SuggestionsTileView.w.setImageTintList().
-        // Preserve null (untinted real favicons); normalize only non-null tint
-        // payloads used by the fallback/monogram route.
-        ntpMonogramTintFingerprint.method.apply {
-            val tintCall = methodCall(
-                definingClass = "Landroid/widget/ImageView;",
-                name = "setImageTintList",
+        // b7f is LargeIconBridge's callback. Paint.setColor(p2) is reached only
+        // when p1 (the real favicon Bitmap) is null, immediately before Lmob.b()
+        // rasterizes the fallback/monogram. The p1 != null favicon branch is untouched.
+        ntpFallbackIconFingerprint.method.apply {
+            val paintSetColor = methodCall(
+                definingClass = "Landroid/graphics/Paint;",
+                name = "setColor",
                 returnType = "V",
-                parameters = listOf("Landroid/content/res/ColorStateList;"),
+                parameters = listOf("I"),
             )
-            val tintIndex = findInstructionIndicesReversedOrThrow(tintCall).single()
-            addInstructionsWithLabels(
-                tintIndex,
-                ntpMonogramTintSmali(selectedTheme),
+            val colorIndex = findInstructionIndicesReversedOrThrow(paintSetColor).single()
+            val scratchRegister = findFreeRegister(colorIndex)
+            addInstructions(
+                colorIndex,
+                ntpFallbackIconColorSmali(selectedTheme, scratchRegister),
             )
         }
 
