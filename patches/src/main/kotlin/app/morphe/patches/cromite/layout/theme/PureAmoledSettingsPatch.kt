@@ -7,7 +7,9 @@ import app.morphe.patcher.methodCall
 import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.util.findInstructionIndicesReversedOrThrow
+import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 
 private const val SETTINGS_VERSION = "153.0.8010.37"
 private const val SETTINGS_ACTIVITY =
@@ -19,6 +21,7 @@ private const val CHROME_SWITCH_PREFERENCE =
 private const val SEARCH_ENGINE_SETTINGS =
     "Lorg/chromium/chrome/browser/search_engines/settings/SearchEngineSettings;"
 private const val SETTINGS_SEARCH_HELPER = "Lf4c;"
+private const val SEARCH_ENGINE_ADAPTER = "Lr2c;"
 
 private val settingsActivityBackgroundFingerprint = Fingerprint(
     definingClass = SETTINGS_ACTIVITY,
@@ -59,11 +62,11 @@ private val chromeSwitchPreferenceBindFingerprint = Fingerprint(
     parameters = listOf("Lepa;"),
 )
 
-private val searchEngineSettingsViewFingerprint = Fingerprint(
-    definingClass = SEARCH_ENGINE_SETTINGS,
-    name = "F1",
-    returnType = "V",
-    parameters = listOf("Landroid/view/View;", "Landroid/os/Bundle;"),
+private val searchEngineAdapterViewFingerprint = Fingerprint(
+    definingClass = SEARCH_ENGINE_ADAPTER,
+    name = "getView",
+    returnType = "Landroid/view/View;",
+    parameters = listOf("I", "Landroid/view/View;", "Landroid/view/ViewGroup;"),
 )
 
 private val settingsSearchViewFingerprint = Fingerprint(
@@ -188,22 +191,29 @@ val pureAmoledSettingsPatch = bytecodePatch(
             )
         }
 
-        // SearchEngineSettings owns its ListView through the r2c adapter. Recolor
-        // that Settings-specific list surface instead of every RadioButtonGroup.
-        searchEngineSettingsViewFingerprint.method.addInstructions(
-            0,
-            """
-                move-object v0, p1
-                ${settingsBackgroundSmali(selectedTheme, 0, 1)}
-            """,
-        )
+        // r2c.getView() owns the actual SearchEngine row views. Patch every
+        // returned row after all inflation/binding work, avoiding unrelated
+        // RadioButtonGroup implementations.
+        searchEngineAdapterViewFingerprint.method.apply {
+            findInstructionIndicesReversedOrThrow(Opcode.RETURN_OBJECT).forEach { index ->
+                val returnRegister =
+                    getInstruction<OneRegisterInstruction>(index).registerA
+                addInstructions(
+                    index,
+                    """
+                        move-object/from16 v14, v$returnRegister
+                        ${settingsBackgroundSmali(selectedTheme, 14, 15)}
+                    """,
+                )
+            }
+        }
 
-        // f4c.b is Chromium's Settings search helper. Patch this consumer rather
-        // than androidx.appcompat.widget.SearchView globally.
+        // f4c.b is Chromium's Settings search helper. The visible rounded
+        // surface is SearchView.O, not the SearchView root patched previously.
         settingsSearchViewFingerprint.method.addInstructions(
             0,
             """
-                move-object v1, p1
+                iget-object v1, p1, Landroidx/appcompat/widget/SearchView;->O:Landroid/view/View;
                 ${settingsBackgroundSmali(selectedTheme, 1, 0)}
             """,
         )
