@@ -177,38 +177,41 @@ val pureAmoledSettingsPatch = bytecodePatch(
             )
         }
 
-        // r2c.getView() already resolves the visible row container with
-        // const v3, 0x7f0102e3 -> findViewById -> move-result-object v3.
-        // Reuse v8 only as a temporary for the AMOLED resolver and restore its
-        // verified original value (0x2) immediately, before Chromium continues.
+        // r2c.getView() resolves the visible row container in v3, then Chromium
+        // applies its containment styling through Lxx2.a/b(v3, rx2). The latter
+        // overwrites an earlier setBackgroundColor(), so apply AMOLED only after
+        // the final Lxx2.b call. At that exact point v9 is dead and is redefined
+        // later before its next use, making it a safe scratch register.
         searchEngineAdapterViewFingerprint.method.apply {
-            val childIdIndex = implementation!!.instructions.indexOfFirst { instruction ->
-                instruction.opcode == Opcode.CONST &&
-                    (instruction as? WideLiteralInstruction)?.wideLiteral == 0x7f0102e3L
-            }
-            if (childIdIndex < 0) {
+            val containmentStyleIndices = findInstructionIndicesReversedOrThrow(
+                methodCall(
+                    definingClass = "Lxx2;",
+                    name = "b",
+                    returnType = "V",
+                    parameters = listOf("Landroid/view/View;", "Lrx2;"),
+                ),
+            )
+            if (containmentStyleIndices.size != 1) {
                 throw PatchException(
                     "AMOLED Settings verification failed for r2c.getView: " +
-                        "SearchEngine row child id 0x7f0102e3 was not found.",
+                        "expected exactly one Lxx2.b(View, rx2) containment style call, " +
+                        "found ${containmentStyleIndices.size}.",
                 )
             }
 
-            val moveResultIndex = (childIdIndex + 1 until implementation!!.instructions.size)
-                .firstOrNull { index ->
-                    getInstruction(index).opcode == Opcode.MOVE_RESULT_OBJECT &&
-                        getInstruction<OneRegisterInstruction>(index).registerA == 3
-                }
-                ?: throw PatchException(
+            val styleIndex = containmentStyleIndices.single()
+            val invoke = getInstruction<FiveRegisterInstruction>(styleIndex)
+            if (invoke.registerC != 3 || invoke.registerD != 9) {
+                throw PatchException(
                     "AMOLED Settings verification failed for r2c.getView: " +
-                        "verified SearchEngine child move-result-object v3 was not found.",
+                        "expected containment style registers v3/v9, found " +
+                        "v${invoke.registerC}/v${invoke.registerD}.",
                 )
+            }
 
             addInstructions(
-                moveResultIndex + 1,
-                """
-                    ${settingsBackgroundSmali(selectedTheme, 3, 8)}
-                    const/4 v8, 0x2
-                """,
+                styleIndex + 1,
+                settingsBackgroundSmali(selectedTheme, 3, 9),
             )
         }
 
