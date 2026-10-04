@@ -132,6 +132,10 @@ val pureAmoledPatch = bytecodePatch(
     description = "Main Cromite browser UI theme. Device default follows Cromite/System light-dark state; manual Pure Black/Pure White override it. Web content is not recolored.",
 ) {
     compatibleWith("org.cromite.cromite"(CROMITE_VERSION))
+    // Main browser UI is the user-facing AMOLED entry point. Make the isolated
+    // AppMenu bytecode patch an explicit dependency so it cannot be omitted by
+    // patch selection while its resource-only effects make the build look applied.
+    dependsOn(pureAmoledAppMenuPatch)
     val browserTheme by browserThemeOption()
 
     execute {
