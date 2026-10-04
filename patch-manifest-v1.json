@@ -93,7 +93,7 @@
       "schemaVersion": 1,
       "id": "cromite.amoled-settings",
       "name": "AMOLED - Settings",
-      "description": "Applies Device default / Pure Black / Pure White to verified Cromite Settings root, AppBar and preference container backgrounds without recoloring global Material or SearchView surfaces.",
+      "description": "Applies Device default / Pure Black / Pure White to verified Cromite Settings root, AppBar and containment-card backgrounds without recoloring global Material or SearchView surfaces.",
       "applications": [
         "cromite"
       ],
