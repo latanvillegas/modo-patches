@@ -16,8 +16,6 @@ private val pureAmoledSettingsResourcesPatch = resourcePatch(
     val browserTheme by browserThemeOption()
 
     execute {
-        if ((browserTheme ?: "device") == "device") return@execute
-
         val valueDirectories = get("res").listFiles()
             ?.filter { it.isDirectory && it.name.startsWith("values") }
             .orEmpty()
@@ -103,8 +101,6 @@ val pureAmoledSettingsPatch = bytecodePatch(
 
     execute {
         val selectedTheme = browserTheme ?: "device"
-        if (selectedTheme == "device") return@execute
-
         settingsBackgroundColorFingerprint.method.addInstructions(
             0,
             surfaceSmali(selectedTheme),
