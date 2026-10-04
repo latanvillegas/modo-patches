@@ -219,7 +219,7 @@ val pureAmoledAppMenuPatch = bytecodePatch(
             val targetColorSmali = when (selectedTheme) {
                 "black" -> "const p0, -0x1000000"
                 "white" -> "const p0, -0x1"
-                "device" -> """
+                else -> """
                     invoke-virtual {v${rootResult.registerA}}, Landroid/view/View;->getResources()Landroid/content/res/Resources;
                     move-result-object p0
                     invoke-virtual {p0}, Landroid/content/res/Resources;->getConfiguration()Landroid/content/res/Configuration;
@@ -231,7 +231,6 @@ val pureAmoledAppMenuPatch = bytecodePatch(
                     ushr-int/lit8 p0, p0, 0x8
                     not-int p0, p0
                 """.trimIndent()
-                else -> return@execute
             }
 
             // The pre/post anchors select the second f50.b() in x50: the ViewGroup
