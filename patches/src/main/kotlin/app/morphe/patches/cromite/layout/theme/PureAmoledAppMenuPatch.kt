@@ -17,43 +17,18 @@ private const val APP_MENU_WHITE = "#FFFFFFFF"
 
 
 /**
- * Chromium AppMenu-specific runtime owner.
+ * Chromium AppMenu visible-surface runtime owner.
  *
- * The matched method configures the same PopupWindow with its background Drawable and
- * then installs the inflated AppMenu root View. Requiring both calls avoids matching
- * BasicListMenu globally, which is also used by unrelated native popups.
+ * Requires the exact setTint -> setTintMode -> View.setBackground chain that
+ * Cromite 153 uses to paint the visible AppMenu surface.
  */
-private val appMenuPopupContentFingerprint = Fingerprint(
-    returnType = "V",
+private val appMenuVisibleSurfaceFingerprint = Fingerprint(
     filters = listOf(
-        methodCall(
-            opcode = Opcode.INVOKE_VIRTUAL,
-            smali = "Landroid/widget/PopupWindow;->setBackgroundDrawable(Landroid/graphics/drawable/Drawable;)V",
-        ),
-        methodCall(
-            opcode = Opcode.INVOKE_VIRTUAL,
-            smali = "Landroid/widget/PopupWindow;->setContentView(Landroid/view/View;)V",
-        ),
+        methodCall(opcode = Opcode.INVOKE_VIRTUAL, smali = "Landroid/graphics/drawable/Drawable;->setTint(I)V"),
+        methodCall(opcode = Opcode.INVOKE_VIRTUAL, smali = "Landroid/graphics/drawable/Drawable;->setTintMode(Landroid/graphics/PorterDuff$Mode;)V"),
+        methodCall(opcode = Opcode.INVOKE_VIRTUAL, smali = "Landroid/view/View;->setBackground(Landroid/graphics/drawable/Drawable;)V"),
     ),
 )
-
-private fun appMenuContentSurfaceSmali(theme: String, rootRegister: Int, childRegister: Int): String {
-    val color = when (theme) {
-        "black" -> "-0x1000000"
-        "white" -> "-0x1"
-        else -> error("AppMenu runtime hook must be a no-op for Device default")
-    }
-
-    return """
-        const v$childRegister, 0x7f010101
-        invoke-virtual { v$rootRegister, v$childRegister }, Landroid/view/View;->findViewById(I)Landroid/view/View;
-        move-result-object v$childRegister
-        if-eqz v$childRegister, :amoled_app_menu_content_done
-        const v$rootRegister, $color
-        invoke-virtual { v$childRegister, v$rootRegister }, Landroid/view/View;->setBackgroundColor(I)V
-        :amoled_app_menu_content_done
-    """
-}
 
 private val pureAmoledAppMenuResourcesPatch = resourcePatch(
     description = "Scoped AppMenu, popup and native list-menu resources for the selectable Cromite AMOLED palette.",
@@ -204,24 +179,21 @@ val pureAmoledAppMenuPatch = bytecodePatch(
         val selectedTheme = browserTheme ?: "device"
         if (selectedTheme == "device") return@execute
 
-        appMenuPopupContentFingerprint.apply {
-            val backgroundIndex = instructionMatches[0].index
-            val contentIndex = instructionMatches[1].index
-            val backgroundCall = method.getInstruction<FiveRegisterInstruction>(backgroundIndex)
-            val contentCall = method.getInstruction<FiveRegisterInstruction>(contentIndex)
+        val targetColor = when (selectedTheme) {
+            "black" -> "-0x1000000"
+            "white" -> "-0x1"
+            else -> return@execute
+        }
 
-            // The Drawable argument has already been consumed before contentIndex, so its
-            // register is safe scratch space. No register-count change means parameter
-            // registers and the R8-optimized method layout remain intact.
-            val scratchRegister = backgroundCall.registerD
-            val contentViewRegister = contentCall.registerD
+        appMenuVisibleSurfaceFingerprint.apply {
+            val tintIndex = instructionMatches[0].index
+            val tintCall = method.getInstruction<FiveRegisterInstruction>(tintIndex)
 
-            // The visible rounded panel is app_menu_content_container (0x7f010101),
-            // not the PopupWindow root. Run after setContentView(), then reuse the root
-            // register as the color temporary because the framework call has consumed it.
+            // Override only the integer consumed by Drawable.setTint(I).
+            // Native drawable geometry, tint mode and View.setBackground remain intact.
             method.addInstructions(
-                contentIndex + 1,
-                appMenuContentSurfaceSmali(selectedTheme, contentViewRegister, scratchRegister),
+                tintIndex,
+                "const v${tintCall.registerD}, $targetColor",
             )
         }
     }
