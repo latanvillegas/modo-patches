@@ -21,7 +21,8 @@ private const val CHROME_SWITCH_PREFERENCE =
     "Lorg/chromium/components/browser_ui/settings/ChromeSwitchPreference;"
 private const val SEARCH_ENGINE_SETTINGS =
     "Lorg/chromium/chrome/browser/search_engines/settings/SearchEngineSettings;"
-private const val SEARCH_ENGINE_ADAPTER = "Lr2c;"\nprivate const val SETTINGS_PREFERENCE_HELPER = "Lvo7;"
+private const val SEARCH_ENGINE_ADAPTER = "Lr2c;"
+private const val SETTINGS_PREFERENCE_HELPER = "Lvo7;"
 
 private val settingsActivityBackgroundFingerprint = Fingerprint(
     definingClass = SETTINGS_ACTIVITY,
