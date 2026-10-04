@@ -176,9 +176,9 @@ val pureAmoledSettingsPatch = bytecodePatch(
             )
         }
 
-        // r2c inflates SearchEngine rows whose visible background belongs to the
-        // ContainedLinearLayout child id 0x7f0102e3. Recolor only that verified
-        // child; the outer FrameLayout, RadioButton, favicon and text stay intact.
+        // r2c.getView() owns the SearchEngine row views. Keep the previously
+        // runtime-stable outer-row override while the verified child hook is
+        // relocated to a safe post-inflate point.
         searchEngineAdapterViewFingerprint.method.apply {
             findInstructionIndicesReversedOrThrow(Opcode.RETURN_OBJECT).forEach { index ->
                 val returnRegister =
@@ -187,12 +187,7 @@ val pureAmoledSettingsPatch = bytecodePatch(
                     index,
                     """
                         move-object/from16 v14, v$returnRegister
-                        const v15, 0x7f0102e3
-                        invoke-virtual {v14, v15}, Landroid/view/View;->findViewById(I)Landroid/view/View;
-                        move-result-object v14
-                        if-eqz v14, :amoled_settings_row_${index}
                         ${settingsBackgroundSmali(selectedTheme, 14, 15)}
-                        :amoled_settings_row_${index}
                     """,
                 )
             }
