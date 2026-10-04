@@ -268,7 +268,7 @@ val pureAmoledAppMenuPatch = bytecodePatch(
             }
             method.addInstructions(
                 tintModeIndex + insertedInstructionCount,
-                "sget-object v$tintModeRegister, Landroid/graphics/PorterDuff\\$Mode;->SRC_IN:Landroid/graphics/PorterDuff\\$Mode;",
+                "sget-object v$tintModeRegister, Landroid/graphics/PorterDuff\$Mode;->SRC_IN:Landroid/graphics/PorterDuff\$Mode;",
             )
         }
     }
