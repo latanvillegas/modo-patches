@@ -20,7 +20,6 @@ private const val CHROME_SWITCH_PREFERENCE =
     "Lorg/chromium/components/browser_ui/settings/ChromeSwitchPreference;"
 private const val SEARCH_ENGINE_SETTINGS =
     "Lorg/chromium/chrome/browser/search_engines/settings/SearchEngineSettings;"
-private const val SETTINGS_SEARCH_HELPER = "Lf4c;"
 private const val SEARCH_ENGINE_ADAPTER = "Lr2c;"
 
 private val settingsActivityBackgroundFingerprint = Fingerprint(
@@ -67,20 +66,6 @@ private val searchEngineAdapterViewFingerprint = Fingerprint(
     name = "getView",
     returnType = "Landroid/view/View;",
     parameters = listOf("I", "Landroid/view/View;", "Landroid/view/ViewGroup;"),
-)
-
-private val settingsSearchViewFingerprint = Fingerprint(
-    definingClass = SETTINGS_SEARCH_HELPER,
-    name = "b",
-    returnType = "V",
-    parameters = listOf(
-        "Landroid/view/MenuItem;",
-        "Landroidx/appcompat/widget/SearchView;",
-        "Ljava/lang/String;",
-        "Landroid/app/Activity;",
-        "Lfd5;",
-        "Le4c;",
-    ),
 )
 
 private val settingsSetBackgroundColorCall = methodCall(
@@ -191,9 +176,9 @@ val pureAmoledSettingsPatch = bytecodePatch(
             )
         }
 
-        // r2c.getView() owns the actual SearchEngine row views. Patch every
-        // returned row after all inflation/binding work, avoiding unrelated
-        // RadioButtonGroup implementations.
+        // r2c inflates SearchEngine rows whose visible background belongs to the
+        // ContainedLinearLayout child id 0x7f0102e3. Recolor only that verified
+        // child; the outer FrameLayout, RadioButton, favicon and text stay intact.
         searchEngineAdapterViewFingerprint.method.apply {
             findInstructionIndicesReversedOrThrow(Opcode.RETURN_OBJECT).forEach { index ->
                 val returnRegister =
@@ -202,21 +187,19 @@ val pureAmoledSettingsPatch = bytecodePatch(
                     index,
                     """
                         move-object/from16 v14, v$returnRegister
+                        const v15, 0x7f0102e3
+                        invoke-virtual {v14, v15}, Landroid/view/View;->findViewById(I)Landroid/view/View;
+                        move-result-object v14
+                        if-eqz v14, :amoled_settings_row_${index}
                         ${settingsBackgroundSmali(selectedTheme, 14, 15)}
+                        :amoled_settings_row_${index}
                     """,
                 )
             }
         }
 
-        // f4c.b is Chromium's Settings search helper. The visible rounded
-        // surface is SearchView.O, not the SearchView root patched previously.
-        settingsSearchViewFingerprint.method.addInstructions(
-            0,
-            """
-                iget-object v1, p1, Landroidx/appcompat/widget/SearchView;->O:Landroid/view/View;
-                ${settingsBackgroundSmali(selectedTheme, 1, 0)}
-            """,
-        )
+        // SearchView remains intentionally untouched until its visible rounded
+        // background owner is mapped to an exact XML/view.
 
         chromeSwitchPreferenceBindFingerprint.method.apply {
             val backgroundIndices =
