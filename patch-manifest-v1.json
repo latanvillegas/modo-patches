@@ -93,7 +93,7 @@
       "schemaVersion": 1,
       "id": "cromite.amoled-settings",
       "name": "AMOLED - Settings",
-      "description": "Applies the selected Device default / Pure Black / Pure White palette to native Cromite Settings independently from the main browser UI and NTP.",
+      "description": "Applies the selected Device default / Pure Black / Pure White palette to the verified native Cromite Settings root and AppBar backgrounds without changing global SemanticColorUtils consumers.",
       "applications": [
         "cromite"
       ],
