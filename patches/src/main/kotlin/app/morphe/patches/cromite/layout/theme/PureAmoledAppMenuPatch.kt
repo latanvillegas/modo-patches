@@ -208,12 +208,20 @@ val pureAmoledAppMenuPatch = bytecodePatch(
                 )
             }
 
-            val semanticResultInstruction = method.getInstruction(semanticIndex + 1)
+            val semanticInvokeIndex = (semanticIndex..tintIndex).firstOrNull { index ->
+                method.getInstruction(index).opcode == Opcode.INVOKE_STATIC
+            } ?: throw IllegalStateException(
+                "AMOLED AppMenu bytecode verification failed for Cromite $APP_MENU_VERSION: " +
+                    "could not locate Lis7.f() invoke between semantic and tint anchors."
+            )
+
+            val semanticResultIndex = semanticInvokeIndex + 1
+            val semanticResultInstruction = method.getInstruction(semanticResultIndex)
             if (semanticResultInstruction.opcode != Opcode.MOVE_RESULT ||
                 semanticResultInstruction !is OneRegisterInstruction) {
                 throw IllegalStateException(
                     "AMOLED AppMenu bytecode verification failed for Cromite $APP_MENU_VERSION: " +
-                        "Lis7.f() is not immediately followed by a one-register move-result."
+                        "resolved Lis7.f() invoke is not followed by one-register move-result."
                 )
             }
 
@@ -229,11 +237,10 @@ val pureAmoledAppMenuPatch = bytecodePatch(
                 """.trimIndent()
             }
 
-            // Reuse the semantic color register already produced by Lis7.f().
-            // This avoids introducing any move-result or object scratch register into
-            // x50.l(), while preserving the original Drawable/tint/background chain.
+            // Resolve the actual invoke/move-result pair structurally instead of
+            // assuming that the filter match index is the invoke instruction itself.
             method.addInstructions(
-                semanticIndex + 2,
+                semanticResultIndex + 1,
                 targetColorSmali,
             )
         }
