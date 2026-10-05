@@ -2,8 +2,12 @@ package app.morphe.patches.cromite.layout.theme
 
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
+import app.morphe.patcher.methodCall
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.stringOption
+import com.android.tools.smali.dexlib2.Opcode
+import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
 
 private const val CROMITE_VERSION = "153.0.8010.37"
 private const val SEMANTIC_COLOR_UTILS = "Lpac;"
@@ -60,6 +64,17 @@ private val tabStripBackgroundDefaultFingerprint = Fingerprint(
     name = "c",
     returnType = "I",
     parameters = listOf(CONTEXT, "Z"),
+)
+
+private val settingsSearchSurfaceFingerprint = Fingerprint(
+    definingClass = "Ldic;",
+    filters = listOf(
+        methodCall(opcode = Opcode.INVOKE_VIRTUAL, smali = "Landroid/content/Context;->getDrawable(I)Landroid/graphics/drawable/Drawable;"),
+        methodCall(opcode = Opcode.INVOKE_STATIC, smali = "Lis7;->c(Landroid/content/Context;ILjava/lang/String;)I"),
+        methodCall(opcode = Opcode.INVOKE_VIRTUAL, smali = "Landroid/graphics/drawable/Drawable;->setTint(I)V"),
+        methodCall(opcode = Opcode.INVOKE_VIRTUAL, smali = "Landroid/view/View;->setBackground(Landroid/graphics/drawable/Drawable;)V"),
+        methodCall(opcode = Opcode.INVOKE_VIRTUAL, smali = "Landroid/view/View;->setBackground(Landroid/graphics/drawable/Drawable;)V"),
+    ),
 )
 
 private val dynamicColorsApplyFingerprint = Fingerprint(
@@ -158,6 +173,58 @@ val pureAmoledPatch = bytecodePatch(
         // primary text/icons on a black browser surface (and vice versa for Pure White).
         listOf(defaultIconColorFingerprint, defaultTextColorFingerprint).forEach { fingerprint ->
             fingerprint.method.addInstructions(0, foregroundSmali(selectedTheme))
+        }
+
+        // Settings search has its own drawable tint path in dic and bypasses the
+        // generic surface wrappers. Cromite 153 loads drawable 0x7f0905ab,
+        // resolves its semantic tint, then assigns that same drawable to the two
+        // search surfaces. Override only the tint argument immediately before
+        // Drawable.setTint(); do not alter the shared semantic attribute/resource.
+        settingsSearchSurfaceFingerprint.apply {
+            if (instructionMatches.size != 5) {
+                throw IllegalStateException(
+                    "AMOLED Settings search verification failed for Cromite $CROMITE_VERSION: " +
+                        "expected 5 structural anchors, found ${instructionMatches.size}."
+                )
+            }
+
+            val semanticIndex = instructionMatches[1].index
+            val tintIndex = instructionMatches[2].index
+            val firstBackgroundIndex = instructionMatches[3].index
+            val secondBackgroundIndex = instructionMatches[4].index
+            if (!(semanticIndex < tintIndex &&
+                    tintIndex < firstBackgroundIndex &&
+                    firstBackgroundIndex < secondBackgroundIndex)) {
+                throw IllegalStateException(
+                    "AMOLED Settings search verification failed for Cromite $CROMITE_VERSION: " +
+                        "structural anchors are out of order."
+                )
+            }
+
+            val semanticInstruction = method.getInstruction(semanticIndex)
+            val tintInstruction = method.getInstruction(tintIndex)
+            if (semanticInstruction !is FiveRegisterInstruction ||
+                semanticInstruction.registerCount != 3 ||
+                tintInstruction !is FiveRegisterInstruction ||
+                tintInstruction.registerCount != 2) {
+                throw IllegalStateException(
+                    "AMOLED Settings search verification failed for Cromite $CROMITE_VERSION: " +
+                        "unexpected SemanticColorUtils/setTint register shape."
+                )
+            }
+
+            val contextRegister = semanticInstruction.registerC
+            val colorRegister = tintInstruction.registerD
+            val searchTintSmali = when (selectedTheme) {
+                THEME_BLACK -> "const v$colorRegister, -0x1000000"
+                THEME_WHITE -> "const v$colorRegister, -0x1"
+                else -> """
+                    const/4 v$colorRegister, 0x0
+                    invoke-static {v$contextRegister, v$colorRegister}, Lq72;->b(Landroid/content/Context;Z)I
+                    move-result v$colorRegister
+                """.trimIndent()
+            }
+            method.addInstructions(tintIndex, searchTintSmali)
         }
 
         // Dynamic Material colors would re-introduce tinted gray/colored surfaces.
