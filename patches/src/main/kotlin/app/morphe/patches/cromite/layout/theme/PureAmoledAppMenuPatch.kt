@@ -8,6 +8,8 @@ import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.resourcePatch
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.WideLiteralInstruction
 import org.w3c.dom.Element
 import org.w3c.dom.Node
 
@@ -33,6 +35,7 @@ private val appMenuVisibleSurfaceFingerprint = Fingerprint(
         methodCall(opcode = Opcode.INVOKE_VIRTUAL, smali = "Landroid/graphics/drawable/Drawable;->setTint(I)V"),
         methodCall(opcode = Opcode.INVOKE_VIRTUAL, smali = "Landroid/graphics/drawable/Drawable;->setTintMode(Landroid/graphics/PorterDuff\$Mode;)V"),
         methodCall(opcode = Opcode.INVOKE_VIRTUAL, smali = "Landroid/view/View;->setBackground(Landroid/graphics/drawable/Drawable;)V"),
+        methodCall(opcode = Opcode.INVOKE_VIRTUAL, smali = "Landroid/view/View;->findViewById(I)Landroid/view/View;"),
     ),
 )
 
@@ -90,21 +93,7 @@ private val pureAmoledAppMenuResourcesPatch = resourcePatch(
                                 // owner here, then neutralize its local background.
                                 root.setAttribute("android:background", "@android:color/transparent")
 
-                                // Runtime #285 proved this child is the visible
-                                // AppMenu interior: transparency exposes the NTP
-                                // behind the popup. Give that exact surface an
-                                // opaque AMOLED color instead.
-                                val contentBackground = when (selectedTheme) {
-                                    "black" -> APP_MENU_BLACK
-                                    "white" -> APP_MENU_WHITE
-                                    // #287 runtime child injection was verifier-unsafe because
-                                    // Cromite aliases the tint color and tint-mode operand in v10.
-                                    // Restore the last verifier-safe Device resource while the
-                                    // visible owner is corrected without register aliasing.
-                                    else -> "@color/color_0x7f07056f"
-                                }
-                                element.setAttribute("android:background", contentBackground)
-                                contentContainerHits++
+                                // Runtime #285 proved this child is the visible AppMenu interior.\n                                // Keep XML neutral; x50.l() assigns the opaque runtime color.\n                                element.setAttribute("android:background", "@android:color/transparent")\n                                contentContainerHits++
                             }
                         }
                     }
@@ -259,10 +248,10 @@ val pureAmoledAppMenuPatch = bytecodePatch(
         val selectedTheme = browserTheme ?: "device"
 
         appMenuVisibleSurfaceFingerprint.apply {
-            if (instructionMatches.size != 7) {
+            if (instructionMatches.size != 8) {
                 throw IllegalStateException(
                     "AMOLED AppMenu bytecode verification failed for Cromite $APP_MENU_VERSION: " +
-                        "expected 7 structural anchors, found ${instructionMatches.size}."
+                        "expected 8 structural anchors, found ${instructionMatches.size}."
                 )
             }
 
@@ -272,12 +261,14 @@ val pureAmoledAppMenuPatch = bytecodePatch(
             val tintIndex = instructionMatches[4].index
             val tintModeIndex = instructionMatches[5].index
             val backgroundIndex = instructionMatches[6].index
+            val contentLookupIndex = instructionMatches[7].index
 
             if (!(preAnchorIndex < inflateIndex &&
                     inflateIndex < semanticIndex &&
                     semanticIndex < tintIndex &&
                     tintIndex < tintModeIndex &&
-                    tintModeIndex < backgroundIndex)) {
+                    tintModeIndex < backgroundIndex &&
+                    backgroundIndex < contentLookupIndex)) {
                 throw IllegalStateException(
                     "AMOLED AppMenu bytecode verification failed for Cromite $APP_MENU_VERSION: " +
                         "structural anchors are out of order."
@@ -343,6 +334,55 @@ val pureAmoledAppMenuPatch = bytecodePatch(
             method.addInstructions(
                 tintModeIndex + insertedInstructionCount,
                 "sget-object v$tintModeRegister, Landroid/graphics/PorterDuff\$Mode;->SRC_IN:Landroid/graphics/PorterDuff\$Mode;",
+            )
+
+            // Clean Cromite 153 DEX proves that the first lookup after the
+            // Nine-Patch background is app_menu_content_container:
+            // const v10, 0x7f010101 -> findViewById -> move-result-object v12.
+            // Verify that exact structure before injecting anything.
+            val contentLookupShift = insertedInstructionCount + 1
+            val shiftedContentLookupIndex = contentLookupIndex + contentLookupShift
+            val contentIdInstruction = method.getInstruction(shiftedContentLookupIndex - 1)
+            val contentLookupInstruction = method.getInstruction(shiftedContentLookupIndex)
+            val contentResultInstruction = method.getInstruction(shiftedContentLookupIndex + 1)
+
+            if (contentIdInstruction !is OneRegisterInstruction ||
+                contentIdInstruction !is WideLiteralInstruction ||
+                contentIdInstruction.literal != 0x7f010101L ||
+                contentLookupInstruction.opcode != Opcode.INVOKE_VIRTUAL ||
+                contentLookupInstruction !is FiveRegisterInstruction ||
+                contentLookupInstruction.registerCount != 2 ||
+                contentLookupInstruction.registerD != contentIdInstruction.registerA ||
+                contentResultInstruction.opcode != Opcode.MOVE_RESULT_OBJECT ||
+                contentResultInstruction !is OneRegisterInstruction) {
+                throw IllegalStateException(
+                    "AMOLED AppMenu bytecode verification failed for Cromite $APP_MENU_VERSION: " +
+                        "app_menu_content_container lookup differs from the verified DEX."
+                )
+            }
+
+            val contentIdRegister = contentIdInstruction.registerA
+            val contentViewRegister = contentResultInstruction.registerA
+            val contentColorSmali = when (selectedTheme) {
+                "black" -> "const v$contentIdRegister, -0x1000000"
+                "white" -> "const v$contentIdRegister, -0x1"
+                else -> """
+                    move-object/from16 v14, p1
+                    const/4 v$contentIdRegister, 0x0
+                    invoke-static {v14, v$contentIdRegister}, Lq72;->b(Landroid/content/Context;Z)I
+                    move-result v$contentIdRegister
+                """.trimIndent()
+            }
+
+            // v10/ID is dead after the lookup. v14 is dead at :cond_b and is
+            // overwritten by Cromite before its next use; it only bridges p1
+            // into an encodable low Context register for q72.b().
+            method.addInstructions(
+                shiftedContentLookupIndex + 2,
+                """
+                    $contentColorSmali
+                    invoke-virtual {v$contentViewRegister, v$contentIdRegister}, Landroid/view/View;->setBackgroundColor(I)V
+                """.trimIndent(),
             )
 
         }
