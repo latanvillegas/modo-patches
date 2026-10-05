@@ -89,7 +89,17 @@ private val pureAmoledAppMenuResourcesPatch = resourcePatch(
                                 // this AppMenu layout; verify only the structural
                                 // owner here, then neutralize its local background.
                                 root.setAttribute("android:background", "@android:color/transparent")
-                                element.setAttribute("android:background", "@android:color/transparent")
+
+                                // Runtime #285 proved this child is the visible
+                                // AppMenu interior: transparency exposes the NTP
+                                // behind the popup. Give that exact surface an
+                                // opaque AMOLED color instead.
+                                val contentBackground = when (selectedTheme) {
+                                    "black" -> APP_MENU_BLACK
+                                    "white" -> APP_MENU_WHITE
+                                    else -> "@color/color_0x7f07056f"
+                                }
+                                element.setAttribute("android:background", contentBackground)
                                 contentContainerHits++
                             }
                         }
