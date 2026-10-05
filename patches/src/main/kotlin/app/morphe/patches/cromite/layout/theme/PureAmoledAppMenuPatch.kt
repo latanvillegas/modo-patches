@@ -44,6 +44,51 @@ private val pureAmoledAppMenuResourcesPatch = resourcePatch(
 
     execute {
         val selectedTheme = browserTheme ?: "device"
+
+        // The visible AppMenu layout has a second themed background on
+        // app_menu_content_container. It sits above the Nine-Patch applied to
+        // the root by x50.l(), so leaving it opaque hides the AMOLED tint.
+        // Make only that inner container transparent; the root Nine-Patch
+        // remains responsible for shape, shadow, padding and runtime color.
+        var contentContainerHits = 0
+        val layoutDirectories = get("res").listFiles()
+            ?.filter { it.isDirectory && it.name.startsWith("layout") }
+            .orEmpty()
+
+        layoutDirectories.forEach { directory ->
+            directory.listFiles()
+                ?.filter { it.isFile && it.extension == "xml" }
+                .orEmpty()
+                .forEach { file ->
+                    runCatching {
+                        document(file.absolutePath).use { document ->
+                            val nodes = document.getElementsByTagName("*")
+                            for (index in 0 until nodes.length) {
+                                val element = nodes.item(index) as? Element ?: continue
+                                val id = element.getAttribute("android:id")
+                                if (id != "@id/app_menu_content_container" &&
+                                    id != "@+id/app_menu_content_container") continue
+                                if (!element.hasAttribute("android:background")) {
+                                    throw IllegalStateException(
+                                        "AMOLED AppMenu layout verification failed for Cromite $APP_MENU_VERSION: " +
+                                            "app_menu_content_container has no android:background."
+                                    )
+                                }
+                                element.setAttribute("android:background", "@android:color/transparent")
+                                contentContainerHits++
+                            }
+                        }
+                    }
+                }
+        }
+
+        if (contentContainerHits != 1) {
+            throw IllegalStateException(
+                "AMOLED AppMenu layout verification failed for Cromite $APP_MENU_VERSION: " +
+                    "expected exactly 1 app_menu_content_container, found $contentContainerHits."
+            )
+        }
+
         if (selectedTheme == "device") return@execute
 
         val target = when (selectedTheme) {
