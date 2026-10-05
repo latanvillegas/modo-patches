@@ -74,6 +74,21 @@ private val pureAmoledAppMenuResourcesPatch = resourcePatch(
                                             "app_menu_content_container has no android:background."
                                     )
                                 }
+                                val root = document.documentElement
+                                if (root.tagName != "FrameLayout" ||
+                                    root.getAttribute("android:background") != "?attr_0x7f050556") {
+                                    throw IllegalStateException(
+                                        "AMOLED AppMenu layout verification failed for Cromite $APP_MENU_VERSION: " +
+                                            "expected the AppMenu root FrameLayout background ?attr_0x7f050556."
+                                    )
+                                }
+
+                                // Runtime #283 proved that making only the child
+                                // container transparent is insufficient: this root
+                                // FrameLayout still paints the gray themed drawable
+                                // above the Nine-Patch installed later by x50.l().
+                                // Neutralize this layout-local background only.
+                                root.setAttribute("android:background", "@android:color/transparent")
                                 element.setAttribute("android:background", "@android:color/transparent")
                                 contentContainerHits++
                             }
