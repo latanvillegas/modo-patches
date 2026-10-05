@@ -97,10 +97,11 @@ private val pureAmoledAppMenuResourcesPatch = resourcePatch(
                                 val contentBackground = when (selectedTheme) {
                                     "black" -> APP_MENU_BLACK
                                     "white" -> APP_MENU_WHITE
-                                    // Device color is applied at runtime from q72.b()
-                                    // to avoid a fixed resource resolving to the
-                                    // wrong day/night value.
-                                    else -> "@android:color/transparent"
+                                    // #287 runtime child injection was verifier-unsafe because
+                                    // Cromite aliases the tint color and tint-mode operand in v10.
+                                    // Restore the last verifier-safe Device resource while the
+                                    // visible owner is corrected without register aliasing.
+                                    else -> "@color/color_0x7f07056f"
                                 }
                                 element.setAttribute("android:background", contentBackground)
                                 contentContainerHits++
@@ -316,9 +317,6 @@ val pureAmoledAppMenuPatch = bytecodePatch(
             }
             val tintModeRegister = tintModeInstruction.registerD
 
-            // Runtime #285/#286 proved app_menu_content_container (0x7f010101)
-            // is the opaque visible interior. Apply the same resolved AMOLED
-            // color to that child after the root Nine-Patch is installed.
             val targetColorSmali = when (selectedTheme) {
                 "black" -> "const v$colorRegister, -0x1000000"
                 "white" -> "const v$colorRegister, -0x1"
@@ -347,19 +345,6 @@ val pureAmoledAppMenuPatch = bytecodePatch(
                 "sget-object v$tintModeRegister, Landroid/graphics/PorterDuff\$Mode;->SRC_IN:Landroid/graphics/PorterDuff\$Mode;",
             )
 
-            // Insert immediately after the original root setBackground().
-            // Reuse the already-proven context v1 and the tint color register;
-            // find the confirmed content-container ID and make it opaque.
-            val childBackgroundIndex = backgroundIndex + insertedInstructionCount + 1 + 1
-            method.addInstructions(
-                childBackgroundIndex,
-                """
-                    const v$tintModeRegister, 0x7f010101
-                    invoke-virtual {v7, v$tintModeRegister}, Landroid/view/View;->findViewById(I)Landroid/view/View;
-                    move-result-object v$tintModeRegister
-                    invoke-virtual {v$tintModeRegister, v$colorRegister}, Landroid/view/View;->setBackgroundColor(I)V
-                """.trimIndent(),
-            )
         }
     }
 }
