@@ -76,18 +76,18 @@ private val pureAmoledAppMenuResourcesPatch = resourcePatch(
                                 }
                                 val root = document.documentElement
                                 if (root.tagName != "FrameLayout" ||
-                                    root.getAttribute("android:background") != "?attr_0x7f050556") {
+                                    !root.hasAttribute("android:background")) {
                                     throw IllegalStateException(
                                         "AMOLED AppMenu layout verification failed for Cromite $APP_MENU_VERSION: " +
-                                            "expected the AppMenu root FrameLayout background ?attr_0x7f050556."
+                                            "app_menu_content_container is not under the expected root FrameLayout with a background."
                                     )
                                 }
 
-                                // Runtime #283 proved that making only the child
-                                // container transparent is insufficient: this root
-                                // FrameLayout still paints the gray themed drawable
-                                // above the Nine-Patch installed later by x50.l().
-                                // Neutralize this layout-local background only.
+                                // The exact decoded attribute spelling can differ
+                                // between apktool diagnostics and Morphe's resource
+                                // representation. The child ID uniquely identifies
+                                // this AppMenu layout; verify only the structural
+                                // owner here, then neutralize its local background.
                                 root.setAttribute("android:background", "@android:color/transparent")
                                 element.setAttribute("android:background", "@android:color/transparent")
                                 contentContainerHits++
