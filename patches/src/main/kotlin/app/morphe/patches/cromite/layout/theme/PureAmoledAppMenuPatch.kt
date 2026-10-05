@@ -348,7 +348,7 @@ val pureAmoledAppMenuPatch = bytecodePatch(
 
             if (contentIdInstruction !is OneRegisterInstruction ||
                 contentIdInstruction !is WideLiteralInstruction ||
-                contentIdInstruction.literal != 0x7f010101L ||
+                contentIdInstruction.wideLiteral != 0x7f010101L ||
                 contentLookupInstruction.opcode != Opcode.INVOKE_VIRTUAL ||
                 contentLookupInstruction !is FiveRegisterInstruction ||
                 contentLookupInstruction.registerCount != 2 ||
