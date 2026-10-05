@@ -63,8 +63,7 @@ private val pureAmoledAppMenuResourcesPatch = resourcePatch(
                 ?.filter { it.isFile && it.extension == "xml" }
                 .orEmpty()
                 .forEach { file ->
-                    runCatching {
-                        document(file.absolutePath).use { document ->
+                    document(file.absolutePath).use { document ->
                             val nodes = document.getElementsByTagName("*")
                             for (index in 0 until nodes.length) {
                                 val element = nodes.item(index) as? Element ?: continue
@@ -93,8 +92,10 @@ private val pureAmoledAppMenuResourcesPatch = resourcePatch(
                                 // owner here, then neutralize its local background.
                                 root.setAttribute("android:background", "@android:color/transparent")
 
-                                // Runtime #285 proved this child is the visible AppMenu interior.\n                                // Keep XML neutral; x50.l() assigns the opaque runtime color.\n                                element.setAttribute("android:background", "@android:color/transparent")\n                                contentContainerHits++
-                            }
+                                // Runtime #285 proved this child is the visible AppMenu interior.
+                                // Keep XML neutral; x50.l() assigns the opaque runtime color.
+                                element.setAttribute("android:background", "@android:color/transparent")
+                                contentContainerHits++
                         }
                     }
                 }
