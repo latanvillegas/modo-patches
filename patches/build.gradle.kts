@@ -1,3 +1,5 @@
+import org.gradle.language.jvm.tasks.ProcessResources
+
 group = "app.morphe"
 
 patches {
@@ -29,6 +31,12 @@ dependencies {
 }
 
 tasks {
+    // Ship declarative application profiles inside the patch bundle itself. The manager reads
+    // this optional resource generically; application-specific policy remains owned here.
+    named<ProcessResources>("processResources") {
+        from(rootProject.file("application-profiles-v1.json"))
+    }
+
     register<JavaExec>("checkStringResources") {
         description = "Checks resource strings for invalid formatting"
 
@@ -45,6 +53,18 @@ tasks {
 
         classpath = sourceSets["main"].runtimeClasspath + patchListGeneratorClasspath
         mainClass.set("app.morphe.util.PatchListGeneratorKt")
+    }
+
+    register<Exec>("generatePatchManifest") {
+        description = "Generate audited PatchManifest v1 metadata from the executable patch catalog"
+        workingDir(rootProject.projectDir)
+        commandLine(
+            "python3",
+            ".github/scripts/generate_patch_manifest.py",
+            "patches-list.json",
+            "patch-manifest-metadata-v1.json",
+            "patch-manifest-v1.json",
+        )
     }
     // Used by gradle-semantic-release-plugin.
     publish {

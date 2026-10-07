@@ -2,20 +2,38 @@ package app.morphe.patches.cromite.layout.theme
 
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
+import app.morphe.patcher.methodCall
 import app.morphe.patcher.patch.bytecodePatch
-import app.morphe.patcher.patch.resourcePatch
-import org.w3c.dom.Element
-import org.w3c.dom.Node
+import app.morphe.patcher.patch.stringOption
+import com.android.tools.smali.dexlib2.Opcode
+import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
 
 private const val CROMITE_VERSION = "153.0.8010.37"
 private const val SEMANTIC_COLOR_UTILS = "Lpac;"
 private const val CHROME_COLORS = "Lq72;"
 private const val DYNAMIC_COLORS = "Lqb4;"
 private const val DYNAMIC_COLORS_OPTIONS = "Ltb4;"
+private const val TAB_UI_THEME_UTILS = "Laqe;"
 private const val CONTEXT = "Landroid/content/Context;"
 private const val ACTIVITY = "Landroid/app/Activity;"
 private const val PURE_BLACK = "#FF000000"
 private const val PURE_WHITE = "#FFFFFFFF"
+private const val THEME_DEVICE = "device"
+private const val THEME_BLACK = "black"
+private const val THEME_WHITE = "white"
+
+internal val browserThemeOption = stringOption(
+    key = "browserTheme",
+    default = THEME_DEVICE,
+    values = mapOf(
+        "Device default" to THEME_DEVICE,
+        "Pure Black" to THEME_BLACK,
+        "Pure White" to THEME_WHITE,
+    ),
+    title = "Browser theme",
+    description = "Choose Device default, Pure Black (#000000), or Pure White (#FFFFFF).",
+)
 
 private fun semanticSurfaceFingerprint(name: String) = Fingerprint(
     definingClass = SEMANTIC_COLOR_UTILS,
@@ -30,13 +48,33 @@ private val colorSurfaceContainerFingerprint = semanticSurfaceFingerprint("e")
 private val colorSurfaceContainerHighestFingerprint = semanticSurfaceFingerprint("f")
 private val colorSurfaceContainerLowFingerprint = semanticSurfaceFingerprint("g")
 private val defaultBgColorFingerprint = semanticSurfaceFingerprint("h")
-private val settingsBackgroundColorFingerprint = semanticSurfaceFingerprint("l")
+private val defaultIconColorFingerprint = semanticSurfaceFingerprint("i")
+private val defaultTextColorFingerprint = semanticSurfaceFingerprint("j")
+internal val settingsBackgroundColorFingerprint = semanticSurfaceFingerprint("l")
 
 private val primaryBackgroundColorFingerprint = Fingerprint(
     definingClass = CHROME_COLORS,
     name = "b",
     returnType = "I",
     parameters = listOf(CONTEXT, "Z"),
+)
+
+private val tabStripBackgroundDefaultFingerprint = Fingerprint(
+    definingClass = TAB_UI_THEME_UTILS,
+    name = "c",
+    returnType = "I",
+    parameters = listOf(CONTEXT, "Z"),
+)
+
+private val settingsSearchSurfaceFingerprint = Fingerprint(
+    definingClass = "Ldic;",
+    filters = listOf(
+        methodCall(opcode = Opcode.INVOKE_VIRTUAL, smali = "Landroid/content/Context;->getDrawable(I)Landroid/graphics/drawable/Drawable;"),
+        methodCall(opcode = Opcode.INVOKE_STATIC, smali = "Lis7;->c(Landroid/content/Context;ILjava/lang/String;)I"),
+        methodCall(opcode = Opcode.INVOKE_VIRTUAL, smali = "Landroid/graphics/drawable/Drawable;->setTint(I)V"),
+        methodCall(opcode = Opcode.INVOKE_VIRTUAL, smali = "Landroid/view/View;->setBackground(Landroid/graphics/drawable/Drawable;)V"),
+        methodCall(opcode = Opcode.INVOKE_VIRTUAL, smali = "Landroid/view/View;->setBackground(Landroid/graphics/drawable/Drawable;)V"),
+    ),
 )
 
 private val dynamicColorsApplyFingerprint = Fingerprint(
@@ -46,220 +84,147 @@ private val dynamicColorsApplyFingerprint = Fingerprint(
     parameters = listOf(ACTIVITY, DYNAMIC_COLORS_OPTIONS),
 )
 
-private val pureAmoledResourcesPatch = resourcePatch(
-    description = "Internal resources for system-following pure black / pure white Cromite UI."
-) {
-    compatibleWith("org.cromite.cromite"(CROMITE_VERSION))
-
-    execute {
-        val explicitColorFiles = setOf(
-            "bottom_sheet_bg_color.xml", "context_menu_header_circle_bg_color.xml", "dialog_bg_color.xml",
-            "distilled_page_pref_background_color.xml", "fake_search_box_base_color.xml",
-            "home_surface_background_color.xml", "home_surface_ui_background_color.xml",
-            "hub_search_box_bg_color.xml", "interactable_chip_bg_color.xml", "item_chooser_row_background.xml",
-            "m3_list_item_background_color_selector.xml", "m3_segmented_list_item_background_color_selector.xml",
-            "m3_textfield_filled_background_color.xml", "mtrl_filled_background_color.xml",
-            "mtrl_popupmenu_overlay_color.xml", "message_bg_color.xml", "omnibox_popover_suggestion_bg_color.xml",
-            "omnibox_suggestion_dropdown_bg.xml", "search_suggestion_bg_color.xml", "single_tab_favicon_bg_color.xml",
-            "tab_group_dialog_bg_color.xml", "tab_hover_card_bg_color.xml", "tab_strip_ntb_bg_tint_list.xml",
-            "tile_view_icon_background_color.xml", "toast_color.xml", "toolbar_text_box_bg_color.xml",
-            "widget_bg.xml", "widget_button_bg.xml", "widget_searchbox_bg.xml", "xr_toolbar_bg.xml",
-            "menu_item_bg_color.xml", "menu_item_bg_color_baseline.xml", "menu_item_bg_color_dark_baseline.xml",
-            "menu_bg_color.xml", "menu_bg_color_baseline.xml", "menu_bg_color_dark_baseline.xml",
-            "list_menu_background_color.xml", "list_menu_background_tint.xml",
-            // Desktop-Android/Cromite toolbar and tab-strip surfaces. Missing files are intentionally ignored.
-            "toolbar_background_primary.xml", "toolbar_background_primary_incognito.xml",
-            "toolbar_background_color.xml", "top_toolbar_background_color.xml",
-            "tab_strip_background_color.xml", "tab_strip_bg_color.xml", "tab_strip_background.xml",
-            "primary_background_color.xml", "default_bg_color.xml",
-        )
-
-        val surfaceDrawableFiles = setOf(
-            "popup_bg.xml", "popup_bg_8dp.xml", "popup_bg_24dp.xml",
-            "popup_bg_shape_16dp.xml", "popup_bg_shape_24dp.xml", "popup_bg_shape_24dp_baseline.xml",
-            "list_menu_background.xml", "menu_bg_tinted.xml",
-            "toolbar_background.xml", "tab_strip_background.xml",
-        )
-
-        val drawableDirectories = listOf(
-            "res/drawable", "res/drawable-night", "res/drawable-v21", "res/drawable-night-v21",
-            "res/drawable-v23", "res/drawable-night-v23", "res/drawable-v31", "res/drawable-night-v31",
-            "res/drawable-v35", "res/drawable-night-v35",
-        )
-        val colorDirectories = listOf(
-            "res/color", "res/color-night", "res/color-night-v8", "res/color-v31",
-            "res/color-night-v31", "res/color-v35", "res/color-night-v35",
-        )
-        val valueDirectories = listOf(
-            "res/values", "res/values-night", "res/values-v31", "res/values-night-v31",
-            "res/values-v35", "res/values-night-v35",
-        )
-
-        fun isNight(directory: String) = directory.substringAfter("res/").contains("night")
-        fun pureSurface(directory: String) = if (isNight(directory)) PURE_BLACK else PURE_WHITE
-
-        val surfaceColorNames = setOf(
-            "default_bg_color", "default_bg_color_dark",
-            "settings_background_color", "settings_background_color_dark",
-            "primary_background_color", "primary_background_color_dark",
-            "toolbar_background_primary", "toolbar_background_primary_incognito", "toolbar_background_color",
-            "top_toolbar_background_color", "tab_strip_background_color", "tab_strip_bg_color",
-            "color_surface", "color_surface_dark", "color_surface_bright", "color_surface_bright_dark",
-            "color_surface_dim", "color_surface_dim_dark", "color_surface_container_lowest",
-            "color_surface_container_lowest_dark", "color_surface_container_low", "color_surface_container_low_dark",
-            "color_surface_container", "color_surface_container_dark", "color_surface_container_high",
-            "color_surface_container_high_dark", "color_surface_container_highest", "color_surface_container_highest_dark",
-            "gm3_baseline_surface_dark", "gm3_baseline_surface_bright_dark", "gm3_baseline_surface_dim_dark",
-            "gm3_baseline_surface_container_lowest_dark", "gm3_baseline_surface_container_low_dark",
-            "gm3_baseline_surface_container_dark", "gm3_baseline_surface_container_high_dark",
-            "gm3_baseline_surface_container_highest_dark",
-            "menu_bg_color", "menu_bg_color_baseline", "menu_bg_color_dark_baseline",
-            "menu_item_bg_color", "menu_item_bg_color_baseline", "menu_item_bg_color_dark_baseline",
-            "list_menu_background_color", "list_menu_background_tint",
-            "mtrl_popupmenu_overlay_color", "mtrl_filled_background_color",
-        )
-
-        val surfaceThemeAttrs = setOf(
-            "android:colorBackground", "android:windowBackground", "android:navigationBarColor", "android:statusBarColor",
-            "colorBackground", "colorSurface", "colorSurfaceBright", "colorSurfaceDim", "colorSurfaceVariant",
-            "colorSurfaceContainerLowest", "colorSurfaceContainerLow", "colorSurfaceContainer",
-            "colorSurfaceContainerHigh", "colorSurfaceContainerHighest",
-        )
-
-        var valuesPatched = 0
-        val verifiedHits = mutableListOf<String>()
-
-        fun recolor(element: Element, color: String, forceLeaf: Boolean) {
-            val attributes = element.attributes
-            for (i in 0 until attributes.length) {
-                val attribute = attributes.item(i)
-                if (attribute.nodeName.endsWith(":color") || attribute.nodeName == "color" ||
-                    attribute.nodeName.endsWith(":tint") || attribute.nodeName == "tint") {
-                    attribute.nodeValue = color
-                    valuesPatched++
-                }
-            }
-            val children = element.childNodes
-            var hasElementChildren = false
-            for (i in 0 until children.length) {
-                val child = children.item(i)
-                if (child.nodeType == Node.ELEMENT_NODE) {
-                    hasElementChildren = true
-                    recolor(child as Element, color, forceLeaf)
-                }
-            }
-            if (!hasElementChildren) {
-                val value = element.textContent.trim()
-                if (forceLeaf || value.startsWith("#")) {
-                    element.textContent = color
-                    valuesPatched++
-                }
-            }
-        }
-
-        explicitColorFiles.forEach { fileName ->
-            colorDirectories.forEach { directory ->
-                runCatching {
-                    document("$directory/$fileName").use { document ->
-                        val before = valuesPatched
-                        recolor(document.documentElement, pureSurface(directory), true)
-                        if (valuesPatched > before) verifiedHits += "$directory/$fileName"
-                    }
-                }
-            }
-        }
-
-        surfaceDrawableFiles.forEach { fileName ->
-            drawableDirectories.forEach { directory ->
-                runCatching {
-                    document("$directory/$fileName").use { document ->
-                        val before = valuesPatched
-                        recolor(document.documentElement, pureSurface(directory), false)
-                        if (valuesPatched > before) verifiedHits += "$directory/$fileName"
-                    }
-                }
-            }
-        }
-
-        valueDirectories.forEach { directory ->
-            val target = pureSurface(directory)
-            runCatching {
-                document("$directory/colors.xml").use { document ->
-                    val colors = document.getElementsByTagName("color")
-                    var localHits = 0
-                    for (index in 0 until colors.length) {
-                        val color = colors.item(index) as? Element ?: continue
-                        if (color.getAttribute("name") in surfaceColorNames) {
-                            // The qualifier, not a *_dark suffix in the resource name, decides the final color.
-                            // This is required because Cromite can reference *_dark aliases from the light resource set.
-                            color.textContent = target
-                            localHits++
-                            valuesPatched++
-                        }
-                    }
-                    if (localHits > 0) verifiedHits += "$directory/colors.xml:$localHits"
-                }
-            }
-
-            listOf("styles.xml", "themes.xml").forEach { fileName ->
-                runCatching {
-                    document("$directory/$fileName").use { document ->
-                        val items = document.getElementsByTagName("item")
-                        var localHits = 0
-                        for (index in 0 until items.length) {
-                            val item = items.item(index) as? Element ?: continue
-                            if (item.getAttribute("name") in surfaceThemeAttrs) {
-                                item.textContent = target
-                                localHits++
-                                valuesPatched++
-                            }
-                        }
-                        if (localHits > 0) verifiedHits += "$directory/$fileName:$localHits"
-                    }
-                }
-            }
-        }
-
-        if (verifiedHits.isEmpty() || valuesPatched == 0) {
-            throw IllegalStateException(
-                "Pure black/white resource verification failed for Cromite $CROMITE_VERSION: expected UI surface resources were not found."
-            )
-        }
-    }
+// Device default intentionally consumes Chromium's effective UI Configuration.
+// ThemeSettingsFragment persists ui_theme_setting as 0=system, 1=light, 2=dark;
+// Chromium resolves that preference before these native color hooks run. Reading
+// Configuration.uiMode here therefore follows both the browser selector and system
+// night-mode changes without coupling this patch to SharedPreferences or WebContents.
+internal fun foregroundSmali(theme: String): String = when (theme) {
+    THEME_BLACK -> """
+        const v0, -0x1
+        return v0
+    """
+    THEME_WHITE -> """
+        const v0, -0x1000000
+        return v0
+    """
+    else -> """
+        invoke-virtual {p0}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
+        move-result-object v0
+        invoke-virtual {v0}, Landroid/content/res/Resources;->getConfiguration()Landroid/content/res/Configuration;
+        move-result-object v0
+        iget v0, v0, Landroid/content/res/Configuration;->uiMode:I
+        and-int/lit8 v0, v0, 0x30
+        xor-int/lit8 v0, v0, 0x20
+        if-nez v0, :pure_foreground_light
+        const v0, -0x1
+        return v0
+        :pure_foreground_light
+        const v0, -0x1000000
+        return v0
+    """
 }
 
-private const val SYSTEM_SURFACE_SMALI = """
-    invoke-virtual {p0}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
-    move-result-object v0
-    invoke-virtual {v0}, Landroid/content/res/Resources;->getConfiguration()Landroid/content/res/Configuration;
-    move-result-object v0
-    iget v0, v0, Landroid/content/res/Configuration;->uiMode:I
-    and-int/lit8 v0, v0, 0x30
-    xor-int/lit8 v0, v0, 0x20
-    if-nez v0, :pure_light
-    const v0, -0x1000000
-    return v0
-    :pure_light
-    const v0, -0x1
-    return v0
-"""
+internal fun surfaceSmali(theme: String): String = when (theme) {
+    THEME_BLACK -> """
+        const v0, -0x1000000
+        return v0
+    """
+    THEME_WHITE -> """
+        const v0, -0x1
+        return v0
+    """
+    else -> """
+        invoke-virtual {p0}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
+        move-result-object v0
+        invoke-virtual {v0}, Landroid/content/res/Resources;->getConfiguration()Landroid/content/res/Configuration;
+        move-result-object v0
+        iget v0, v0, Landroid/content/res/Configuration;->uiMode:I
+        and-int/lit8 v0, v0, 0x30
+        xor-int/lit8 v0, v0, 0x20
+        if-nez v0, :pure_light
+        const v0, -0x1000000
+        return v0
+        :pure_light
+        const v0, -0x1
+        return v0
+    """
+}
 
 @Suppress("unused")
 val pureAmoledPatch = bytecodePatch(
-    name = "Pure AMOLED / Pure White system theme",
-    description = "Follows Android system theme: true black (#000000) in dark mode and true white (#FFFFFF) in light mode for Cromite 153 native UI surfaces.",
+    name = "AMOLED - Main browser UI",
+    description = "Main Cromite browser UI theme. Device default follows Cromite/System light-dark state; manual Pure Black/Pure White override it. Web content is not recolored.",
 ) {
     compatibleWith("org.cromite.cromite"(CROMITE_VERSION))
-    dependsOn(pureAmoledResourcesPatch)
+    val browserTheme by browserThemeOption()
 
     execute {
-        val systemSurfaceTargets = listOf(
+        val selectedTheme = browserTheme ?: THEME_DEVICE
+        val nativeSurfaceTargets = listOf(
             colorSurfaceFingerprint, colorSurfaceBrightFingerprint, colorSurfaceContainerFingerprint,
             colorSurfaceContainerHighestFingerprint, colorSurfaceContainerLowFingerprint,
-            defaultBgColorFingerprint, settingsBackgroundColorFingerprint, primaryBackgroundColorFingerprint,
+            defaultBgColorFingerprint, primaryBackgroundColorFingerprint,
         )
-        systemSurfaceTargets.forEach { fingerprint ->
-            fingerprint.method.addInstructions(0, SYSTEM_SURFACE_SMALI)
+        nativeSurfaceTargets.forEach { fingerprint ->
+            fingerprint.method.addInstructions(0, surfaceSmali(selectedTheme))
+        }
+
+        // TabUiThemeUtil.getTabStripBackgroundColorDefault(Context, boolean) survives R8
+        // as aqe.c. Its source path bypasses the surviving pac surface wrappers, so
+        // patch it explicitly; this is native tab-strip UI only, never WebContents.
+        tabStripBackgroundDefaultFingerprint.method.addInstructions(
+            0,
+            surfaceSmali(selectedTheme),
+        )
+
+        // These two SemanticColorUtils methods survive R8 in Cromite 153 as pac.i/pac.j.
+        // Patch them independently from surfaces so Pure Black never leaves black
+        // primary text/icons on a black browser surface (and vice versa for Pure White).
+        listOf(defaultIconColorFingerprint, defaultTextColorFingerprint).forEach { fingerprint ->
+            fingerprint.method.addInstructions(0, foregroundSmali(selectedTheme))
+        }
+
+        // Settings search has its own drawable tint path in dic and bypasses the
+        // generic surface wrappers. Cromite 153 loads drawable 0x7f0905ab,
+        // resolves its semantic tint, then assigns that same drawable to the two
+        // search surfaces. Override only the tint argument immediately before
+        // Drawable.setTint(); do not alter the shared semantic attribute/resource.
+        settingsSearchSurfaceFingerprint.apply {
+            if (instructionMatches.size != 5) {
+                throw IllegalStateException(
+                    "AMOLED Settings search verification failed for Cromite $CROMITE_VERSION: " +
+                        "expected 5 structural anchors, found ${instructionMatches.size}."
+                )
+            }
+
+            val semanticIndex = instructionMatches[1].index
+            val tintIndex = instructionMatches[2].index
+            val firstBackgroundIndex = instructionMatches[3].index
+            val secondBackgroundIndex = instructionMatches[4].index
+            if (!(semanticIndex < tintIndex &&
+                    tintIndex < firstBackgroundIndex &&
+                    firstBackgroundIndex < secondBackgroundIndex)) {
+                throw IllegalStateException(
+                    "AMOLED Settings search verification failed for Cromite $CROMITE_VERSION: " +
+                        "structural anchors are out of order."
+                )
+            }
+
+            val semanticInstruction = method.getInstruction(semanticIndex)
+            val tintInstruction = method.getInstruction(tintIndex)
+            if (semanticInstruction !is FiveRegisterInstruction ||
+                semanticInstruction.registerCount != 3 ||
+                tintInstruction !is FiveRegisterInstruction ||
+                tintInstruction.registerCount != 2) {
+                throw IllegalStateException(
+                    "AMOLED Settings search verification failed for Cromite $CROMITE_VERSION: " +
+                        "unexpected SemanticColorUtils/setTint register shape."
+                )
+            }
+
+            val contextRegister = semanticInstruction.registerC
+            val colorRegister = tintInstruction.registerD
+            val searchTintSmali = when (selectedTheme) {
+                THEME_BLACK -> "const v$colorRegister, -0x1000000"
+                THEME_WHITE -> "const v$colorRegister, -0x1"
+                else -> """
+                    const/4 v$colorRegister, 0x0
+                    invoke-static {v$contextRegister, v$colorRegister}, Lq72;->b(Landroid/content/Context;Z)I
+                    move-result v$colorRegister
+                """.trimIndent()
+            }
+            method.addInstructions(tintIndex, searchTintSmali)
         }
 
         // Dynamic Material colors would re-introduce tinted gray/colored surfaces.
