@@ -16,6 +16,7 @@ MARKERS = {
     "absolute XML path": "document(file.absolutePath)",
     "unscoped exception swallowing": "runCatching {",
     "unverified native injection": "toInstructions()",
+    "unsafe generic XML color rewrite": "attribute.nodeValue = target",
 }
 
 def audit(bundle: Path) -> int:
@@ -30,10 +31,8 @@ def audit(bundle: Path) -> int:
     warnings = []
     print(f"Original compiled patch classes: {len(classes)}")
     for class_path in classes:
-        source = SRC / class_path.removesuffix("Kt.class").replace("Patch", "Patch") 
         # Kotlin top-level files compile to FileNameKt.class.
-        source = SRC / class_path.removesuffix("Kt.class")
-        source = source.with_suffix(".kt")
+        source = SRC / (class_path.removesuffix("Kt.class") + ".kt")
         if not source.exists():
             missing.append(class_path)
             print(f"MISSING {source.relative_to(ROOT)}")
