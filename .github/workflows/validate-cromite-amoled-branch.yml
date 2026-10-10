@@ -39,3 +39,23 @@ jobs:
           find patches/build -type f -path "*/$CLASS" -print | tee /tmp/amoled-classes.txt
           test -s /tmp/amoled-classes.txt || { echo "::error::Native AMOLED patch was not compiled"; exit 1; }
           echo "Native AMOLED patch class found. No Cromite APK was generated."
+
+      - name: Inspect generated bundle
+        run: |
+          echo "Generated bundle candidates:"
+          find patches/build -type f \( -name '*.mpp' -o -name '*patches*.json' \) -print
+          MPP="$(find patches/build -type f -name '*.mpp' -print -quit)"
+          if [ -z "$MPP" ]; then
+            echo "::error::No .mpp bundle produced by generatePatchesList"
+            exit 1
+          fi
+          echo "Bundle: $MPP"
+          unzip -l "$MPP" | tail -25
+
+      - name: Upload patch bundle for Manager inspection
+        uses: actions/upload-artifact@v4
+        with:
+          name: cromite-amoled-patches
+          path: patches/build/libs/*.mpp
+          if-no-files-found: error
+          retention-days: 7
