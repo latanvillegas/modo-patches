@@ -1,3 +1,9 @@
+## [1.50.1](https://github.com/latanvillegas/modo-patches/compare/v1.50.0...v1.50.1) (2026-10-10)
+
+### 🐛 Bug Fixes
+
+* **ci:** convert patch bundle to Android DEX required by Modo Manager ([fbafb04](https://github.com/latanvillegas/modo-patches/commit/fbafb04cbeee8b547d36d35b399074bc1ef27874))
+
 ## [1.50.0](https://github.com/latanvillegas/modo-patches/compare/v1.49.0...v1.50.0) (2026-09-30)
 
 ### ✨ New Features
