@@ -2,6 +2,7 @@ package app.morphe.patches.cromite.misc.fullscreen
 
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.patch.bytecodePatch
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod.Companion.toMutable
 import app.morphe.patcher.util.smali.toInstructions
 import com.android.tools.smali.dexlib2.AccessFlags
@@ -25,6 +26,21 @@ val hideSettingsStatusBarPatch = bytecodePatch(
     compatibleWith("org.cromite.cromite"("153.0.8010.37"))
 
     execute {
+        // Reinforce fullscreen after SettingsActivity resumes.
+        val onResume = settingsActivityFingerprint.method
+        check((onResume.implementation?.registerCount ?: 0) >= 3) {
+            "SettingsActivity.onResume has insufficient registers for fullscreen flags"
+        }
+        onResume.addInstructions(
+            0,
+            """
+                invoke-virtual {p0}, Landroid/app/Activity;->getWindow()Landroid/view/Window;
+                move-result-object v0
+                const/16 v1, 0x400
+                invoke-virtual {v0, v1, v1}, Landroid/view/Window;->setFlags(II)V
+            """.trimIndent(),
+        )
+
         val settingsClass = settingsActivityFingerprint.classDef
         check(settingsClass.methods.none {
             it.name == "onWindowFocusChanged" &&
