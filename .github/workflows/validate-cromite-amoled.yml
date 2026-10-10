@@ -31,6 +31,15 @@ jobs:
           chmod +x ./gradlew
           ./gradlew :patches:compileKotlin :patches:generatePatchesList --no-daemon --stacktrace
 
+      - name: Assert AMOLED patch was compiled
+        run: |
+          CLASS='app/morphe/patches/cromite/layout/theme/PureAmoledNativeResourcesPatchKt.class'
+          if ! find patches/build -type f -path "*/$CLASS" -print -quit | grep -q .; then
+            echo "::error::Missing compiled AMOLED patch class: $CLASS"
+            exit 1
+          fi
+          echo "AMOLED resource patch compiled successfully."
+
       - name: Inspect compiled patch list
         run: |
           find patches/build -type f \( -iname '*patch*list*' -o -iname '*.json' \) -print | head -40
