@@ -93,8 +93,8 @@ val pureAmoledSettingsPatch = bytecodePatch(
             preference: String,
         ) {
             val indices = method.findInstructionIndicesReversedOrThrow(settingsSetBackgroundColorCall)
-            check(indices.size == 2) {
-                "AMOLED Settings: $preference must contain exactly two background setters; found ${indices.size}"
+            check(indices.size in 1..2) {
+                "AMOLED Settings: $preference must contain one or two background setters; found ${indices.size}"
             }
             val index = indices.first()
             val instruction = method.getInstruction(index) as FiveRegisterInstruction
