@@ -51,7 +51,14 @@ val hideStatusBarPatch = resourcePatch(
         val targetNames = activityThemes.map(::normalizeThemeName).toSet()
         var stylesPatched = 0
 
-        document("res/values/styles.xml").use { document ->
+        val stylePaths = get("res").listFiles()
+            ?.filter { it.isDirectory && it.name.startsWith("values") }
+            ?.map { "res/${it.name}/styles.xml" }
+            ?.filter { get(it).isFile }
+            .orEmpty()
+
+        stylePaths.forEach { stylePath ->
+            document(stylePath).use { document ->
             val styles = document.getElementsByTagName("style")
             for (index in 0 until styles.length) {
                 val style = styles.item(index) as? Element ?: continue
@@ -79,6 +86,7 @@ val hideStatusBarPatch = resourcePatch(
                 }
                 fullscreenItem.textContent = "true"
                 stylesPatched++
+            }
             }
         }
 
