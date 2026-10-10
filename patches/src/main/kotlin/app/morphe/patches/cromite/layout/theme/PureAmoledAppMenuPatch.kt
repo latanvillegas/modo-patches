@@ -8,6 +8,12 @@ import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.VariableRegisterInstruction
 import app.morphe.patcher.patch.resourcePatch
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.WideLiteralInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.VariableRegisterInstruction
 import com.android.tools.smali.dexlib2.Opcode
 import org.w3c.dom.Element
 import org.w3c.dom.Node
@@ -129,7 +135,7 @@ private val pureAmoledAppMenuResourcesPatch = resourcePatch(
 @Suppress("unused")
 val pureAmoledAppMenuPatch = bytecodePatch(
     name = "AMOLED - App menu",
-    description = "Restores native AppMenu resources; bytecode surface reconstruction remains pending.",
+    description = "Restores native AppMenu resources and three verified bytecode injections.",
 ) {
     compatibleWith("org.cromite.cromite"("153.0.8010.37"))
     dependsOn(pureAmoledAppMenuResourcesPatch)
@@ -182,7 +188,43 @@ val pureAmoledAppMenuPatch = bytecodePatch(
             "sget-object v$modeRegister, Landroid/graphics/PorterDuff\\$Mode;->SRC_IN:Landroid/graphics/PorterDuff\\$Mode;",
         )
 
-        // The original also recolors the app_menu_content_container lookup
-        // after the eighth anchor. That third injection remains pending.
+        // Third original injection: app_menu_content_container lookup after findViewById.
+        // The compiled original checks ID 2130772225 and inserts at anchor + offset + 2.
+        val findIndex = indices[7] + offset + 1
+        val idInstruction = method.getInstruction(findIndex - 1)
+        val findInstruction = method.getInstruction(findIndex)
+        val viewResult = method.getInstruction(findIndex + 1)
+        check(
+            idInstruction is OneRegisterInstruction &&
+                idInstruction is WideLiteralInstruction &&
+                idInstruction.wideLiteral == 2130772225L &&
+                findInstruction.opcode == Opcode.INVOKE_VIRTUAL &&
+                findInstruction is FiveRegisterInstruction &&
+                (findInstruction as VariableRegisterInstruction).registerCount == 2 &&
+                findInstruction.registerD == idInstruction.registerA &&
+                viewResult.opcode == Opcode.MOVE_RESULT_OBJECT &&
+                viewResult is OneRegisterInstruction
+        ) {
+            "AMOLED AppMenu: app_menu_content_container lookup differs from verified DEX."
+        }
+        val scratch = (idInstruction as OneRegisterInstruction).registerA
+        val view = (viewResult as OneRegisterInstruction).registerA
+        val colorSmali = when (theme) {
+            "black" -> "const v$scratch, -0x1000000"
+            "white" -> "const v$scratch, -0x1"
+            else -> """
+                move-object/from16 v14, p1
+                const/4 v$scratch, 0x0
+                invoke-static {v14, v$scratch}, Lq72;->b(Landroid/content/Context;Z)I
+                move-result v$scratch
+            """.trimIndent()
+        }
+        method.addInstructions(
+            findIndex + 2,
+            """
+                $colorSmali
+                invoke-virtual {v$view, v$scratch}, Landroid/view/View;->setBackgroundColor(I)V
+            """.trimIndent(),
+        )
     }
 }
