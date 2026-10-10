@@ -1,6 +1,11 @@
 package app.morphe.patches.cromite.layout.theme
 
 import app.morphe.patcher.Fingerprint
+import app.morphe.patcher.methodCall
+import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
+import com.android.tools.smali.dexlib2.Opcode
+import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.VariableRegisterInstruction
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.resourcePatch
@@ -37,6 +42,21 @@ private val primaryBackgroundColorFingerprint = Fingerprint(
     name = "b",
     returnType = "I",
     parameters = listOf(CONTEXT, "Z"),
+)
+
+/**
+ * Recovered from the original patches-1.50.0.mpp, PureAmoledPatchKt.class.
+ * The Settings search drawable is tinted after SemanticColorUtils resolves its color.
+ */
+private val settingsSearchSurfaceFingerprint = Fingerprint(
+    definingClass = "Ldic;",
+    filters = listOf(
+        methodCall("Landroid/content/Context;->getDrawable(I)Landroid/graphics/drawable/Drawable;", Opcode.INVOKE_VIRTUAL),
+        methodCall("Lis7;->c(Landroid/content/Context;ILjava/lang/String;)I", Opcode.INVOKE_STATIC),
+        methodCall("Landroid/graphics/drawable/Drawable;->setTint(I)V", Opcode.INVOKE_VIRTUAL),
+        methodCall("Landroid/view/View;->setBackground(Landroid/graphics/drawable/Drawable;)V", Opcode.INVOKE_VIRTUAL),
+        methodCall("Landroid/view/View;->setBackground(Landroid/graphics/drawable/Drawable;)V", Opcode.INVOKE_VIRTUAL),
+    ),
 )
 
 private val dynamicColorsApplyFingerprint = Fingerprint(
@@ -264,6 +284,40 @@ val pureAmoledPatch = bytecodePatch(
         systemSurfaceTargets.forEach { fingerprint ->
             fingerprint.method.addInstructions(0, SYSTEM_SURFACE_SMALI)
         }
+
+        // Original Settings search fix: replace the color just before Drawable.setTint.
+        val searchMatches = settingsSearchSurfaceFingerprint.instructionMatches
+        check(searchMatches.size == 5) {
+            "AMOLED Settings search: expected 5 structural anchors, found ${searchMatches.size}"
+        }
+        val semanticIndex = searchMatches[1].index
+        val tintIndex = searchMatches[2].index
+        val firstBackgroundIndex = searchMatches[3].index
+        val secondBackgroundIndex = searchMatches[4].index
+        check(semanticIndex < tintIndex && tintIndex < firstBackgroundIndex &&
+            firstBackgroundIndex < secondBackgroundIndex) {
+            "AMOLED Settings search: structural anchors are out of order"
+        }
+        val searchMethod = settingsSearchSurfaceFingerprint.method
+        val semanticCall = searchMethod.getInstruction(semanticIndex)
+        val tintCall = searchMethod.getInstruction(tintIndex)
+        check(semanticCall is FiveRegisterInstruction &&
+            (semanticCall as VariableRegisterInstruction).registerCount == 3 &&
+            tintCall is FiveRegisterInstruction &&
+            (tintCall as VariableRegisterInstruction).registerCount == 2) {
+            "AMOLED Settings search: unexpected color/tint register shape"
+        }
+        val contextReg = (semanticCall as FiveRegisterInstruction).registerC
+        val tintReg = (tintCall as FiveRegisterInstruction).registerD
+        // Reproduces the original 'device' option: ChromeColors primary background.
+        searchMethod.addInstructions(
+            tintIndex,
+            """
+                const/4 v$tintReg, 0x0
+                invoke-static {v$contextReg, v$tintReg}, Lq72;->b(Landroid/content/Context;Z)I
+                move-result v$tintReg
+            """.trimIndent(),
+        )
 
         // Dynamic Material colors would re-introduce tinted gray/colored surfaces.
         dynamicColorsApplyFingerprint.method.addInstructions(0, "return-void")
