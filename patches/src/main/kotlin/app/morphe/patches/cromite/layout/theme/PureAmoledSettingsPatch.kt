@@ -45,22 +45,23 @@ private val settingsContainmentDrawableFingerprint = Fingerprint(
 private val settingsContextColorCall =
     methodCall("Lis7;->f(Landroid/content/Context;Landroid/util/TypedValue;)I")
 
-private fun settingsContextColorSmali(theme: String): String = when (theme) {
-    "black" -> "const v14, -0x1000000"
-    "white" -> "const v14, -0x1"
-    else -> """
-        invoke-virtual {v11}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
-        move-result-object v14
-        invoke-virtual {v14}, Landroid/content/res/Resources;->getConfiguration()Landroid/content/res/Configuration;
-        move-result-object v14
-        iget v14, v14, Landroid/content/res/Configuration;->uiMode:I
-        and-int/lit8 v14, v14, 0x20
-        ushr-int/lit8 v14, v14, 0x5
-        neg-int v14, v14
-        ushr-int/lit8 v14, v14, 0x8
-        not-int v14, v14
-    """.trimIndent()
-}
+private fun settingsContextColorSmali(theme: String, contextRegister: Int, colorRegister: Int): String =
+    when (theme) {
+        "black" -> "const v$colorRegister, -0x1000000"
+        "white" -> "const v$colorRegister, -0x1"
+        else -> """
+            invoke-virtual {v$contextRegister}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
+            move-result-object v$colorRegister
+            invoke-virtual {v$colorRegister}, Landroid/content/res/Resources;->getConfiguration()Landroid/content/res/Configuration;
+            move-result-object v$colorRegister
+            iget v$colorRegister, v$colorRegister, Landroid/content/res/Configuration;->uiMode:I
+            and-int/lit8 v$colorRegister, v$colorRegister, 0x20
+            ushr-int/lit8 v$colorRegister, v$colorRegister, 0x5
+            neg-int v$colorRegister, v$colorRegister
+            ushr-int/lit8 v$colorRegister, v$colorRegister, 0x8
+            not-int v$colorRegister, v$colorRegister
+        """.trimIndent()
+    }
 
 private val settingsSetBackgroundColorCall =
     methodCall("Landroid/view/View;->setBackgroundColor(I)V")
@@ -139,21 +140,27 @@ val pureAmoledSettingsPatch = bytecodePatch(
             "ChromeSwitchPreference",
         )
 
-        // Restore the fourth original DEX mutation: the containment-card color.
-        // The original bundle uses v11 as Context and v14 as the color register.
+        // Override the actual color returned by the resolved lookup.
+        // Never assume obfuscated methods use fixed v11/v14 registers.
         val containment = settingsContainmentDrawableFingerprint.method
         val colorCalls = containment.findInstructionIndicesReversedOrThrow(settingsContextColorCall)
         check(colorCalls.size == 1) {
             "AMOLED Settings: expected one containment-card color lookup; found ${colorCalls.size}"
         }
+        val call = containment.getInstruction(colorCalls.single()) as FiveRegisterInstruction
         val resultIndex = colorCalls.single() + 1
-        check(containment.getInstruction(resultIndex).opcode ==
-            com.android.tools.smali.dexlib2.Opcode.MOVE_RESULT) {
+        val result = containment.getInstruction(resultIndex)
+        check(result.opcode == com.android.tools.smali.dexlib2.Opcode.MOVE_RESULT) {
             "AMOLED Settings: expected move-result after containment color lookup"
         }
-        check(containment.implementation!!.registerCount > 14) {
-            "AMOLED Settings: containment-card method lacks v14"
+        val colorRegister = (result as com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction).registerA
+        val contextRegister = call.registerC
+        check(contextRegister != colorRegister) {
+            "AMOLED Settings: context and result registers overlap"
         }
-        containment.addInstructions(resultIndex + 1, settingsContextColorSmali(theme))
+        containment.addInstructions(
+            resultIndex + 1,
+            settingsContextColorSmali(theme, contextRegister, colorRegister),
+        )
     }
 }
