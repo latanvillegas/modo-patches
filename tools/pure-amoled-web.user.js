@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Pure AMOLED Web - Cromite
 // @namespace    https://github.com/latanvillegas/modo-patches
-// @version      0.1.0
-// @description  Convierte fondos oscuros opacos en negro AMOLED conservando fondos claros, imágenes y transparencias.
+// @version      0.2.0
+// @description  AMOLED para fondos oscuros opacos sin filtros sobre medios ni transparencias.
 // @match        http://*/*
 // @match        https://*/*
 // @run-at       document-start
@@ -12,95 +12,81 @@
 (() => {
   'use strict';
 
-  const ATTRIBUTE = 'data-pure-amoled-bg';
+  const MARK = 'data-pure-amoled-bg';
   const STYLE_ID = 'pure-amoled-web-style';
-  const DARK_LUMINANCE_MAX = 0.11;
-  const MAX_CHANNEL = 92;
-  const MAX_CHROMA = 34;
   const EXCLUDED = new Set(['IMG', 'VIDEO', 'CANVAS', 'SVG', 'PICTURE', 'IFRAME', 'OBJECT', 'EMBED']);
-  const pending = new Set();
+  const darkMode = matchMedia('(prefers-color-scheme: dark)');
+  const queue = new Set();
   let scheduled = false;
-
-  // Only operate when the page/browser explicitly prefers dark colors.
-  const darkQuery = matchMedia('(prefers-color-scheme: dark)');
-  const css = `
-    :root[${ATTRIBUTE}], :root [${ATTRIBUTE}] {
-      background-color: #000 !important;
-    }
-  `;
 
   function installStyle() {
     if (document.getElementById(STYLE_ID)) return;
-    const style = document.createElement('style');
-    style.id = STYLE_ID;
-    style.textContent = css;
-    (document.head || document.documentElement)?.appendChild(style);
+    const sheet = document.createElement('style');
+    sheet.id = STYLE_ID;
+    sheet.textContent = ':root[' + MARK + '], :root [' + MARK + '] { background-color: #000 !important; }';
+    (document.head || document.documentElement).appendChild(sheet);
   }
 
-  function isDarkNeutral(color) {
-    const match = color.match(/^rgba?\\(\\s*([\\d.]+)[, ]+([\\d.]+)[, ]+([\\d.]+)(?:[, /]+([\\d.]+))?\\s*\\)$/i);
-    if (!match) return false;
-    const rgb = match.slice(1, 4).map(Number);
-    const alpha = match[4] === undefined ? 1 : Number(match[4]);
+  function darkNeutralOpaque(value) {
+    // getComputedStyle() normally returns rgb()/rgba(), including the modern space-separated form.
+    const m = /^rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:\s*[,/]\s*([\d.]+))?\s*\)$/i.exec(value);
+    if (!m) return false;
+    const rgb = [Number(m[1]), Number(m[2]), Number(m[3])];
+    const alpha = m[4] === undefined ? 1 : Number(m[4]);
     if (rgb.some(v => !Number.isFinite(v) || v < 0 || v > 255)) return false;
-    if (alpha < 0.995) return false; // Preserve transparency.
-    if (Math.max(...rgb) > MAX_CHANNEL || Math.max(...rgb) - Math.min(...rgb) > MAX_CHROMA) return false;
+    if (!Number.isFinite(alpha) || alpha < 0.995) return false;
+    if (Math.max(...rgb) > 92 || Math.max(...rgb) - Math.min(...rgb) > 34) return false;
     const linear = rgb.map(v => {
-      const s = v / 255;
-      return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+      const x = v / 255;
+      return x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4;
     });
-    return linear[0] * 0.2126 + linear[1] * 0.7152 + linear[2] * 0.0722 <= DARK_LUMINANCE_MAX;
-  }
-
-  function eligible(element) {
-    if (!(element instanceof HTMLElement) || EXCLUDED.has(element.tagName)) return false;
-    if (element.id === STYLE_ID) return false;
-    const style = getComputedStyle(element);
-    if (style.backgroundImage !== 'none') return false;
-    return isDarkNeutral(style.backgroundColor);
+    return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2] <= 0.11;
   }
 
   function inspect(element) {
-    if (!(element instanceof HTMLElement)) return;
-    // Temporarily remove our override before measuring the original color.
-    const had = element.hasAttribute(ATTRIBUTE);
-    if (had) element.removeAttribute(ATTRIBUTE);
-    const shouldApply = darkQuery.matches && eligible(element);
-    if (shouldApply) element.setAttribute(ATTRIBUTE, '');
+    if (!(element instanceof HTMLElement) || EXCLUDED.has(element.tagName)) return;
+    if (element.id === STYLE_ID) return;
+
+    // Read the original computed background without our CSS override.
+    const had = element.hasAttribute(MARK);
+    if (had) element.removeAttribute(MARK);
+    if (!darkMode.matches) return;
+
+    const style = getComputedStyle(element);
+    if (style.backgroundImage === 'none' && darkNeutralOpaque(style.backgroundColor)) {
+      element.setAttribute(MARK, '');
+    }
   }
 
   function scan(root) {
     if (root instanceof HTMLElement) inspect(root);
-    if (!root.querySelectorAll) return;
-    root.querySelectorAll('*').forEach(inspect);
+    if (root.querySelectorAll) root.querySelectorAll('*').forEach(inspect);
   }
 
   function flush() {
     scheduled = false;
-    const nodes = [...pending];
-    pending.clear();
-    nodes.forEach(scan);
+    const roots = [...queue];
+    queue.clear();
+    // Avoid rescanning descendants when an ancestor is already scheduled.
+    const minimal = roots.filter(node => !roots.some(other => other !== node && other.contains?.(node)));
+    minimal.forEach(scan);
   }
 
-  function queue(root) {
-    if (!root) return;
-    pending.add(root);
+  function enqueue(node) {
+    if (!(node instanceof Element)) return;
+    queue.add(node);
     if (scheduled) return;
     scheduled = true;
     requestAnimationFrame(flush);
   }
 
-  function clear() {
-    document.querySelectorAll('[' + ATTRIBUTE + ']').forEach(el => el.removeAttribute(ATTRIBUTE));
-  }
-
   function refresh() {
-    if (!darkQuery.matches) {
-      clear();
+    if (!darkMode.matches) {
+      document.querySelectorAll('[' + MARK + ']').forEach(node => node.removeAttribute(MARK));
       return;
     }
     installStyle();
-    queue(document.documentElement);
+    enqueue(document.documentElement);
   }
 
   function start() {
@@ -109,21 +95,18 @@
     new MutationObserver(records => {
       for (const record of records) {
         if (record.type === 'attributes') {
-          if (record.attributeName === ATTRIBUTE) continue;
-          queue(record.target);
+          enqueue(record.target);
         } else {
-          record.addedNodes.forEach(node => {
-            if (node.nodeType === Node.ELEMENT_NODE) queue(node);
-          });
+          record.addedNodes.forEach(enqueue);
         }
       }
     }).observe(document.documentElement, {
       subtree: true,
       childList: true,
       attributes: true,
-      attributeFilter: ['class', 'style', 'bgcolor', ATTRIBUTE],
+      attributeFilter: ['class', 'style', 'bgcolor']
     });
-    darkQuery.addEventListener?.('change', refresh);
+    darkMode.addEventListener?.('change', refresh);
   }
 
   if (document.documentElement) start();
