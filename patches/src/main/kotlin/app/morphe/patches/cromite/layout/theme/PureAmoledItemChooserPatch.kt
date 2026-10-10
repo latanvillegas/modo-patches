@@ -28,7 +28,7 @@ val pureAmoledItemChooserPatch = resourcePatch(
         directories.filter { it.name.startsWith("color") }.forEach { directory ->
             val file = directory.resolve(fileName)
             if (!file.isFile) return@forEach
-            document(file.absolutePath).use { document ->
+            document("res/${directory.name}/${file.name}").use { document ->
                 val elements = document.getElementsByTagName("*")
                 for (i in 0 until elements.length) {
                     val element = elements.item(i) as? Element ?: continue
@@ -53,7 +53,7 @@ val pureAmoledItemChooserPatch = resourcePatch(
 
         directories.filter { it.name.startsWith("values") }.forEach { directory ->
             directory.listFiles()?.filter { it.isFile && it.extension == "xml" }.orEmpty().forEach { file ->
-                document(file.absolutePath).use { document ->
+                document("res/${directory.name}/${file.name}").use { document ->
                     val elements = document.getElementsByTagName("*")
                     for (i in 0 until elements.length) {
                         val element = elements.item(i) as? Element ?: continue
