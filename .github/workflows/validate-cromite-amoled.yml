@@ -1,0 +1,39 @@
+name: Cromite AMOLED patch validation
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout selected branch
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle cache
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Compile patches and generate patch list (no Cromite APK)
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          chmod +x ./gradlew
+          ./gradlew :patches:compileKotlin :patches:generatePatchesList --no-daemon --stacktrace
+
+      - name: Inspect compiled patch list
+        run: |
+          find patches/build -type f \( -iname '*patch*list*' -o -iname '*.json' \) -print | head -40
+          if ! grep -R -l -F 'Pure AMOLED native theme resources' patches/build --include='*.json' --include='*.txt' --include='*.md' 2>/dev/null; then
+            echo 'NOTE: Patch list text was not found in generated JSON/TXT/MD; inspect build outputs and generator format.'
+          fi
