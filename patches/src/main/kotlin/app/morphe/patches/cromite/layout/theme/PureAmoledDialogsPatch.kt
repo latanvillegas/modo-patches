@@ -38,7 +38,7 @@ val pureAmoledDialogsPatch = resourcePatch(
             files.forEach { name ->
                 val file = directory.resolve(name)
                 if (!file.isFile) return@forEach
-                document(file.absolutePath).use { document ->
+                document("res/${directory.name}/${file.name}").use { document ->
                     val elements = document.getElementsByTagName("*")
                     for (index in 0 until elements.length) {
                         val element = elements.item(index) as? Element ?: continue
@@ -64,7 +64,7 @@ val pureAmoledDialogsPatch = resourcePatch(
         directories.filter { it.name.startsWith("values") }.forEach { directory ->
             directory.listFiles()?.filter { it.isFile && it.extension == "xml" }.orEmpty().forEach { file ->
                 runCatching {
-                    document(file.absolutePath).use { document ->
+                    document("res/${directory.name}/${file.name}").use { document ->
                         val elements = document.getElementsByTagName("*")
                         for (index in 0 until elements.length) {
                             val element = elements.item(index) as? Element ?: continue
