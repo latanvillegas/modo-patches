@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Pure AMOLED Web - Cromite
 // @namespace    https://github.com/latanvillegas/modo-patches
-// @version      0.3.0
-// @description  Fondo negro AMOLED y texto blanco en superficies opacas; modo forzado configurable.
+// @version      0.4.0
+// @description  Negro puro en modo oscuro y blanco puro en modo claro, según el sistema.
 // @match        http://*/*
 // @match        https://*/*
 // @run-at       document-start
@@ -12,9 +12,8 @@
 (() => {
   'use strict';
 
-  // 'force' activa AMOLED incluso cuando Cromite no informa prefers-color-scheme: dark.
-  // Cambiar a 'system' para respetar el tema del sistema.
-  const MODE = 'force';
+  // Seguir automáticamente el tema comunicado por el navegador/sistema.
+  const MODE = 'system';
   const BG_MARK = 'data-pure-amoled-bg';
   const TEXT_MARK = 'data-pure-amoled-text';
   const STYLE_ID = 'pure-amoled-web-style';
@@ -25,7 +24,7 @@
   const pending = new Set();
   let scheduled = false;
 
-  const active = () => MODE === 'force' || darkMode.matches;
+  const isDark = () => darkMode.matches;
 
   function rgb(value) {
     const m = /^rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:\s*[,/]\s*([\d.]+))?\s*\)$/i.exec(value);
@@ -53,30 +52,35 @@
     const style = document.createElement('style');
     style.id = STYLE_ID;
     style.textContent =
-      ':root[' + BG_MARK + '],:root [' + BG_MARK + ']{background-color:#000!important}' +
-      ':root[' + TEXT_MARK + '],:root [' + TEXT_MARK + ']{color:#fff!important}' +
-      'html{color-scheme:dark}';
+      ':root[' + BG_MARK + '="dark"],:root [' + BG_MARK + '="dark"]{background-color:#000!important}' +
+      ':root[' + BG_MARK + '="light"],:root [' + BG_MARK + '="light"]{background-color:#fff!important}' +
+      ':root[' + TEXT_MARK + '],:root [' + TEXT_MARK + ']{color:#fff!important}';
     (document.head || document.documentElement).appendChild(style);
   }
 
   function inspect(el) {
     if (!(el instanceof HTMLElement) || SKIP.has(el.tagName) || el.id === STYLE_ID) return;
-    // Eliminar nuestras marcas temporalmente permite leer los colores originales.
+    // Leer los colores originales sin nuestras reglas.
     el.removeAttribute(BG_MARK);
     el.removeAttribute(TEXT_MARK);
-    if (!active()) return;
     const css = getComputedStyle(el);
     const bg = rgb(css.backgroundColor);
     const fg = rgb(css.color);
     const safeBg = css.backgroundImage === 'none' && bg && bg.a >= 0.995 && neutral(bg.v);
-    const bgLum = safeBg ? luminance(bg.v) : null;
-    // Fondos blancos o grises claros se oscurecen solo si el texto es oscuro.
-    // Los fondos ya oscuros se convierten a negro puro.
-    const convertLight = safeBg && bgLum >= 0.55 && fg && luminance(fg.v) <= 0.25;
-    const convertDark = safeBg && bgLum <= 0.11;
-    if (convertLight || convertDark) el.setAttribute(BG_MARK, '');
-    if (convertLight || (convertDark && fg && luminance(fg.v) < 0.55)) {
-      el.setAttribute(TEXT_MARK, '');
+    if (!safeBg) return;
+
+    const bgLum = luminance(bg.v);
+    if (isDark()) {
+      const convertLight = bgLum >= 0.55 && fg && luminance(fg.v) <= 0.25;
+      const convertDark = bgLum <= 0.11;
+      if (convertLight || convertDark) el.setAttribute(BG_MARK, 'dark');
+      if (convertLight || (convertDark && fg && luminance(fg.v) < 0.55)) {
+        el.setAttribute(TEXT_MARK, '');
+      }
+    } else {
+      // En modo claro, conservar el texto original y blanquear solo fondos claros.
+      // No blanquear superficies oscuras (p. ej., reproductores y paneles).
+      if (bgLum >= 0.70) el.setAttribute(BG_MARK, 'light');
     }
   }
 
@@ -103,11 +107,8 @@
   }
 
   function refresh() {
-    if (!active()) {
-      document.querySelectorAll('[' + BG_MARK + '],[' + TEXT_MARK + ']')
-        .forEach(el => { el.removeAttribute(BG_MARK); el.removeAttribute(TEXT_MARK); });
-      return;
-    }
+    document.querySelectorAll('[' + BG_MARK + '],[' + TEXT_MARK + ']')
+      .forEach(el => { el.removeAttribute(BG_MARK); el.removeAttribute(TEXT_MARK); });
     installStyle();
     enqueue(document.documentElement);
   }
