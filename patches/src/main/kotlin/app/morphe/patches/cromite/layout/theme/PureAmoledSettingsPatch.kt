@@ -9,10 +9,9 @@ import app.morphe.util.findInstructionIndicesReversedOrThrow
 import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
 
 /**
- * Partial bytecode recovery from the original PureAmoledSettingsPatchKt.class
+ * Bytecode recovery from the original PureAmoledSettingsPatchKt.class
  * in patches-1.50.0.mpp. The original contains four distinct mutation groups;
- * this first stage restores the SettingsActivity root and the preference
- * background setters. The Lxx2; containment-card mutation is still pending.
+ * restores SettingsActivity, preference background setters, and the Lxx2 containment-card mutation.
  */
 private val settingsActivityBackgroundFingerprint = Fingerprint(
     definingClass = "Lorg/chromium/chrome/browser/settings/SettingsActivity;",
@@ -35,6 +34,36 @@ private val chromeSwitchPreferenceBindFingerprint = Fingerprint(
     returnType = "V",
     parameters = listOf("Lepa;"),
 )
+
+private val settingsContainmentDrawableFingerprint = Fingerprint(
+    definingClass = "Lxx2;",
+    name = "d",
+    returnType = "Landroid/graphics/drawable/RippleDrawable;",
+    parameters = listOf("Landroid/content/Context;", "F", "F", "I"),
+)
+
+private val settingsContextColorCall =
+    methodCall("Lis7;->f(Landroid/content/Context;Landroid/util/TypedValue;)I")
+
+private fun settingsContextColorSmali(theme: String): String = when (theme) {
+    "black" -> "const v14, -0x1000000"
+    "white" -> "const v14, -0x1"
+    else -> """
+        invoke-virtual {v11}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
+        move-result-object v14
+        invoke-virtual {v14}, Landroid/content/res/Resources;->getConfiguration()Landroid/content/res/Configuration;
+        move-result-object v14
+        iget v14, v14, Landroid/content/res/Configuration;->uiMode:I
+        and-int/lit8 v14, v14, 0x30
+        xor-int/lit8 v14, v14, 0x20
+        if-nez v14, :settings_card_light
+        const v14, -0x1000000
+        goto :settings_card_done
+        :settings_card_light
+        const v14, -0x1
+        :settings_card_done
+    """.trimIndent()
+}
 
 private val settingsSetBackgroundColorCall =
     methodCall("Landroid/view/View;->setBackgroundColor(I)V")
@@ -67,7 +96,7 @@ private fun settingsBackgroundSmali(theme: String, viewRegister: Int, colorRegis
 @Suppress("unused")
 val pureAmoledSettingsPatch = bytecodePatch(
     name = "AMOLED - Settings",
-    description = "Recovers verified SettingsActivity and preference background mutations; containment-card DEX recovery pending.",
+    description = "Recovers SettingsActivity, preference backgrounds, and the original containment-card color override.",
 ) {
     compatibleWith("org.cromite.cromite"("153.0.8010.37"))
     val browserTheme = recoveredBrowserThemeOption
@@ -113,9 +142,21 @@ val pureAmoledSettingsPatch = bytecodePatch(
             "ChromeSwitchPreference",
         )
 
-        // Original fourth fingerprint:
-        // Lxx2;->d(Landroid/content/Context;FFI)Landroid/graphics/drawable/RippleDrawable;
-        // with Lis7;->f(Landroid/content/Context;Landroid/util/TypedValue;)I.
-        // Its context-color mutation is not yet restored.
+        // Restore the fourth original DEX mutation: the containment-card color.
+        // The original bundle uses v11 as Context and v14 as the color register.
+        val containment = settingsContainmentDrawableFingerprint.method
+        val colorCalls = containment.findInstructionIndicesReversedOrThrow(settingsContextColorCall)
+        check(colorCalls.size == 1) {
+            "AMOLED Settings: expected one containment-card color lookup; found ${colorCalls.size}"
+        }
+        val resultIndex = colorCalls.single() + 1
+        check(containment.getInstruction(resultIndex).opcode ==
+            com.android.tools.smali.dexlib2.Opcode.MOVE_RESULT) {
+            "AMOLED Settings: expected move-result after containment color lookup"
+        }
+        check(containment.implementation!!.registerCount > 14) {
+            "AMOLED Settings: containment-card method lacks v14"
+        }
+        containment.addInstructions(resultIndex + 1, settingsContextColorSmali(theme))
     }
 }
