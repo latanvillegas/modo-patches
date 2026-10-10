@@ -97,9 +97,11 @@ val hideStatusBarPatch = bytecodePatch(
         val insetsImpl = insetsMethod.implementation
             ?: error("FullscreenHtmlApiHandlerCompat.onApplyWindowInsets has no implementation")
         val localRegisters = insetsImpl.registerCount - 3
-        check(localRegisters >= 2) {
-            "FullscreenHtmlApiHandlerCompat.onApplyWindowInsets requires 2 local registers; found ${localRegisters}"
+        check(localRegisters == 2) {
+            "Unexpected onApplyWindowInsets local register count: ${localRegisters}"
         }
+        // Allocate a third local register; p0/p1/p2 remain parameter aliases.
+        insetsImpl.registerCount += 1
         val insetsClass = insetsMethod.definingClass
         insetsMethod.addInstructions(0, """
             invoke-virtual {p0}, Lmg5;->h()Z
@@ -108,15 +110,15 @@ val hideStatusBarPatch = bytecodePatch(
             invoke-virtual {p1}, Landroid/view/View;->getContext()Landroid/content/Context;
             move-result-object v0
             const-string v1, "org.cromite.cromite_preferences"
-            const/4 p1, 0x0
-            invoke-virtual {v0, v1, p1}, Landroid/content/Context;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
+            const/4 v2, 0x0
+            invoke-virtual {v0, v1, v2}, Landroid/content/Context;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
             move-result-object v0
             const-string v1, "hide_status_bar_info_tablet_ui"
-            invoke-interface {v0, v1, p1}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
+            invoke-interface {v0, v1, v2}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
             move-result v1
             if-eqz v1, :morphe_status_show
             const-string v1, "force_tablet_ui"
-            invoke-interface {v0, v1, p1}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
+            invoke-interface {v0, v1, v2}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
             move-result v1
             if-eqz v1, :morphe_status_show
             invoke-virtual {p0}, $insetsClass->E()Llng;
