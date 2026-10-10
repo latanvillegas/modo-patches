@@ -48,7 +48,10 @@ jobs:
           D8="$(find "${ANDROID_HOME}/build-tools" -mindepth 2 -maxdepth 2 -type f -name d8 | sort -V | tail -1)"
           test -x "$D8" || { echo "::error::Android D8 compiler unavailable"; exit 1; }
           DEX_DIR="$(mktemp -d)"
-          "$D8" --min-api 26 --output "$DEX_DIR" "$MPP"
+          # D8 accepts JAR/ZIP input; .mpp is a JAR-compatible archive with a custom extension.
+          INPUT_JAR="$(mktemp --suffix=.jar)"
+          cp "$MPP" "$INPUT_JAR"
+          "$D8" --min-api 26 --output "$DEX_DIR" "$INPUT_JAR"
           find "$DEX_DIR" -maxdepth 1 -type f -name '*.dex' -size +0c -print
           test -n "$(find "$DEX_DIR" -maxdepth 1 -type f -name '*.dex' -size +0c -print -quit)" || {
             echo "::error::DEX conversion produced no classes"; exit 1;
