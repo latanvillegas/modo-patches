@@ -117,6 +117,9 @@ private val pureAmoledResourcesPatch = resourcePatch(
             "menu_item_bg_color", "menu_item_bg_color_baseline", "menu_item_bg_color_dark_baseline",
             "list_menu_background_color", "list_menu_background_tint",
             "mtrl_popupmenu_overlay_color", "mtrl_filled_background_color",
+            // Material 3 preference rows and grouped settings cards.
+            "m3_list_item_background_color", "m3_segmented_list_item_background_color",
+            "m3_textfield_filled_background_color",
         )
 
         val surfaceThemeAttrs = setOf(
