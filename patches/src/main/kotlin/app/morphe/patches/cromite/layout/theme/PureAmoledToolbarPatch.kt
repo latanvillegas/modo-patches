@@ -3,7 +3,6 @@ package app.morphe.patches.cromite.layout.theme
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.bytecodePatch
-import app.morphe.patcher.patch.stringOption
 
 // Reconstructed from the original 1.50.0 PureAmoledToolbarPatchKt bytecode.
 // Verified target: ToolbarTablet.i(IZ)V in Cromite 153.0.8010.37.
@@ -41,16 +40,7 @@ val pureAmoledToolbarPatch = bytecodePatch(
 ) {
     compatibleWith("org.cromite.cromite"("153.0.8010.37"))
 
-    val browserTheme = stringOption(
-        key = "browserTheme",
-        default = "device",
-        values = mapOf(
-            "Device default" to "device",
-            "Pure Black" to "black",
-            "Pure White" to "white",
-        ),
-        title = "Browser theme",
-    )
+    val browserTheme = recoveredBrowserThemeOption()
 
     execute {
         toolbarTabletBackgroundFingerprint.method.addInstructions(
