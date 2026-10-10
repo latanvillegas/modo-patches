@@ -15,7 +15,7 @@ import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
  * background setters. The Lxx2; containment-card mutation is still pending.
  */
 private val settingsActivityBackgroundFingerprint = Fingerprint(
-    classDescriptor = "Lorg/chromium/chrome/browser/settings/SettingsActivity;",
+    definingClass = "Lorg/chromium/chrome/browser/settings/SettingsActivity;",
     filters = listOf(
         methodCall("Ldr7;->e(Landroid/content/Context;ILjava/lang/String;)Landroid/util/TypedValue;"),
         methodCall("Lis7;->f(Landroid/content/Context;Landroid/util/TypedValue;)I"),
@@ -23,15 +23,15 @@ private val settingsActivityBackgroundFingerprint = Fingerprint(
 )
 
 private val chromeImageViewPreferenceBindFingerprint = Fingerprint(
-    classDescriptor = "Lorg/chromium/components/browser_ui/settings/ChromeImageViewPreference;",
-    methodName = "y",
+    definingClass = "Lorg/chromium/components/browser_ui/settings/ChromeImageViewPreference;",
+    name = "y",
     returnType = "V",
     parameters = listOf("Lepa;"),
 )
 
 private val chromeSwitchPreferenceBindFingerprint = Fingerprint(
-    classDescriptor = "Lorg/chromium/components/browser_ui/settings/ChromeSwitchPreference;",
-    methodName = "y",
+    definingClass = "Lorg/chromium/components/browser_ui/settings/ChromeSwitchPreference;",
+    name = "y",
     returnType = "V",
     parameters = listOf("Lepa;"),
 )
