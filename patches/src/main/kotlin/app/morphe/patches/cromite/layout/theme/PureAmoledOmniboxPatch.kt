@@ -13,14 +13,14 @@ import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
  * patches-1.50.0.mpp, including its StringConcatFactory smali templates.
  */
 private val locationBarTabletInflateFingerprint = Fingerprint(
-    classDescriptor = "Lorg/chromium/chrome/browser/omnibox/LocationBarTablet;",
-    methodName = "onFinishInflate",
+    definingClass = "Lorg/chromium/chrome/browser/omnibox/LocationBarTablet;",
+    name = "onFinishInflate",
     returnType = "V",
 )
 
 private val locationBarTabletRefreshFingerprint = Fingerprint(
-    classDescriptor = "Lorg/chromium/chrome/browser/omnibox/LocationBarTablet;",
-    methodName = "Q",
+    definingClass = "Lorg/chromium/chrome/browser/omnibox/LocationBarTablet;",
+    name = "Q",
     returnType = "V",
 )
 
