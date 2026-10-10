@@ -22,7 +22,7 @@ private val appMenuVisibleSurfaceFingerprint = Fingerprint(
         methodCall("Landroid/graphics/drawable/Drawable;->setTint(I)V", Opcode.INVOKE_VIRTUAL),
         methodCall("Landroid/graphics/drawable/Drawable;->setTintMode(Landroid/graphics/PorterDuff\$Mode;)V", Opcode.INVOKE_VIRTUAL),
         methodCall("Landroid/view/View;->setBackground(Landroid/graphics/drawable/Drawable;)V", Opcode.INVOKE_VIRTUAL),
-        methodCall("Landroid/view/View;->setBackgroundColor(I)V", Opcode.INVOKE_VIRTUAL),
+        methodCall("Landroid/view/View;->findViewById(I)Landroid/view/View;", Opcode.INVOKE_VIRTUAL),
     ),
 )
 
