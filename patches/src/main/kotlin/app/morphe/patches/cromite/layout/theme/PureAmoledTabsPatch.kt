@@ -3,7 +3,6 @@ package app.morphe.patches.cromite.layout.theme
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.bytecodePatch
-import app.morphe.patcher.patch.stringOption
 import app.morphe.util.indexOfFirstInstructionOrThrow
 import com.android.tools.smali.dexlib2.Opcode
 
@@ -57,16 +56,7 @@ val pureAmoledTabsPatch = bytecodePatch(
 ) {
     compatibleWith("org.cromite.cromite"("153.0.8010.37"))
 
-    val browserTheme = stringOption(
-        key = "browserTheme",
-        default = "device",
-        values = mapOf(
-            "Device default" to "device",
-            "Pure Black" to "black",
-            "Pure White" to "white",
-        ),
-        title = "Browser theme",
-    )
+    val browserTheme = recoveredBrowserThemeOption()
 
     execute {
         val instructions = tabsBackgroundSmali(browserTheme.value ?: "device")
