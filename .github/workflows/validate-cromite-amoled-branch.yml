@@ -52,10 +52,35 @@ jobs:
           echo "Bundle: $MPP"
           unzip -l "$MPP" | tail -25
 
+      - name: Verify generated patch catalog contains AMOLED
+        run: |
+          echo "Locate generated patches-list.json:"
+          find . -name 'patches-list.json' -type f -print
+          CATALOG="$(find . -name 'patches-list.json' -type f -print -quit)"
+          if [ -z "$CATALOG" ]; then
+            echo "::error::Patch catalog patches-list.json was not generated"
+            exit 1
+          fi
+          python3 - "$CATALOG" <<'PY'
+          import json,sys
+          path=sys.argv[1]
+          with open(path,encoding='utf-8') as f: data=json.load(f)
+          raw=json.dumps(data,ensure_ascii=False)
+          required=['Pure AMOLED native theme resources','Pure AMOLED web content']
+          for name in required:
+              if name not in raw:
+                  print(f'::error::Patch absent from generated catalog: {name}')
+                  sys.exit(1)
+          print('Both AMOLED patch names present in',path)
+          PY
+          cp "$CATALOG" patches-list-validated.json
+
       - name: Upload patch bundle for Manager inspection
         uses: actions/upload-artifact@v4
         with:
           name: cromite-amoled-patches
-          path: patches/build/libs/*.mpp
+          path: |
+            patches/build/libs/*.mpp
+            patches-list-validated.json
           if-no-files-found: error
           retention-days: 7
