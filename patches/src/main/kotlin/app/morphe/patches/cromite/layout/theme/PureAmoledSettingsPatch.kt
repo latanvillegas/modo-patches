@@ -54,14 +54,11 @@ private fun settingsContextColorSmali(theme: String): String = when (theme) {
         invoke-virtual {v14}, Landroid/content/res/Resources;->getConfiguration()Landroid/content/res/Configuration;
         move-result-object v14
         iget v14, v14, Landroid/content/res/Configuration;->uiMode:I
-        and-int/lit8 v14, v14, 0x30
-        xor-int/lit8 v14, v14, 0x20
-        if-nez v14, :settings_card_light
-        const v14, -0x1000000
-        goto :settings_card_done
-        :settings_card_light
-        const v14, -0x1
-        :settings_card_done
+        and-int/lit8 v14, v14, 0x20
+        ushr-int/lit8 v14, v14, 0x5
+        neg-int v14, v14
+        ushr-int/lit8 v14, v14, 0x8
+        not-int v14, v14
     """.trimIndent()
 }
 
