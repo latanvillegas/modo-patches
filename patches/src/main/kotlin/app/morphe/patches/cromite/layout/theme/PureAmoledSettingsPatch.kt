@@ -140,27 +140,23 @@ val pureAmoledSettingsPatch = bytecodePatch(
             "ChromeSwitchPreference",
         )
 
-        // Override the actual color returned by the resolved lookup.
-        // Never assume obfuscated methods use fixed v11/v14 registers.
+        // Restore the original containment-card override at the verified call site.
         val containment = settingsContainmentDrawableFingerprint.method
         val colorCalls = containment.findInstructionIndicesReversedOrThrow(settingsContextColorCall)
         check(colorCalls.size == 1) {
             "AMOLED Settings: expected one containment-card color lookup; found ${colorCalls.size}"
         }
-        val call = containment.getInstruction(colorCalls.single()) as FiveRegisterInstruction
         val resultIndex = colorCalls.single() + 1
-        val result = containment.getInstruction(resultIndex)
-        check(result.opcode == com.android.tools.smali.dexlib2.Opcode.MOVE_RESULT) {
+        check(containment.getInstruction(resultIndex).opcode ==
+            com.android.tools.smali.dexlib2.Opcode.MOVE_RESULT) {
             "AMOLED Settings: expected move-result after containment color lookup"
         }
-        val colorRegister = (result as com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction).registerA
-        val contextRegister = call.registerC
-        check(contextRegister != colorRegister) {
-            "AMOLED Settings: context and result registers overlap"
+        // Verified in the original patches-1.50.0.mpp bytecode:
+        // settingsContextColorSmali(theme, 11, 14), not registers inferred
+        // from the Lis7.f call. Preserve the original method's register mapping.
+        check(containment.implementation!!.registerCount > 14) {
+            "AMOLED Settings: containment method lacks original v14 register"
         }
-        containment.addInstructions(
-            resultIndex + 1,
-            settingsContextColorSmali(theme, contextRegister, colorRegister),
-        )
+        containment.addInstructions(resultIndex + 1, settingsContextColorSmali(theme, 11, 14))
     }
 }
