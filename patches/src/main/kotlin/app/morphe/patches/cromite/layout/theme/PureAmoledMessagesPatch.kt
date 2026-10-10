@@ -32,7 +32,7 @@ val pureAmoledMessagesPatch = resourcePatch(
             files.forEach { filename ->
                 val file = directory.resolve(filename)
                 if (!file.isFile) return@forEach
-                document(file.absolutePath).use { xml ->
+                document("res/${directory.name}/${file.name}").use { xml ->
                     val nodes = xml.getElementsByTagName("*")
                     for (i in 0 until nodes.length) {
                         val element = nodes.item(i) as? Element ?: continue
@@ -58,7 +58,7 @@ val pureAmoledMessagesPatch = resourcePatch(
 
         directories.filter { it.name.startsWith("values") }.forEach { directory ->
             directory.listFiles()?.filter { it.isFile && it.extension == "xml" }.orEmpty().forEach { file ->
-                document(file.absolutePath).use { xml ->
+                document("res/${directory.name}/${file.name}").use { xml ->
                     val nodes = xml.getElementsByTagName("*")
                     for (i in 0 until nodes.length) {
                         val element = nodes.item(i) as? Element ?: continue
