@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Pure AMOLED Web - Cromite
 // @namespace    https://github.com/latanvillegas/modo-patches
-// @version      0.4.0
+// @version      0.5.0
 // @description  Negro puro en modo oscuro y blanco puro en modo claro, según el sistema.
 // @match        http://*/*
 // @match        https://*/*
@@ -15,7 +15,6 @@
   // Seguir automáticamente el tema comunicado por el navegador/sistema.
   const MODE = 'system';
   const BG_MARK = 'data-pure-amoled-bg';
-  const TEXT_MARK = 'data-pure-amoled-text';
   const STYLE_ID = 'pure-amoled-web-style';
   const SKIP = new Set(['IMG', 'VIDEO', 'CANVAS', 'SVG', 'PICTURE', 'IFRAME',
     'OBJECT', 'EMBED', 'INPUT', 'TEXTAREA', 'SELECT', 'OPTION', 'BUTTON',
@@ -53,34 +52,25 @@
     style.id = STYLE_ID;
     style.textContent =
       ':root[' + BG_MARK + '="dark"],:root [' + BG_MARK + '="dark"]{background-color:#000!important}' +
-      ':root[' + BG_MARK + '="light"],:root [' + BG_MARK + '="light"]{background-color:#fff!important}' +
-      ':root[' + TEXT_MARK + '],:root [' + TEXT_MARK + ']{color:#fff!important}';
+      ':root[' + BG_MARK + '="light"],:root [' + BG_MARK + '="light"]{background-color:#fff!important}';
     (document.head || document.documentElement).appendChild(style);
   }
 
   function inspect(el) {
     if (!(el instanceof HTMLElement) || SKIP.has(el.tagName) || el.id === STYLE_ID) return;
-    // Leer los colores originales sin nuestras reglas.
+    // Conservar siempre el color del texto y el contraste original del sitio.
     el.removeAttribute(BG_MARK);
-    el.removeAttribute(TEXT_MARK);
     const css = getComputedStyle(el);
     const bg = rgb(css.backgroundColor);
-    const fg = rgb(css.color);
-    const safeBg = css.backgroundImage === 'none' && bg && bg.a >= 0.995 && neutral(bg.v);
-    if (!safeBg) return;
-
-    const bgLum = luminance(bg.v);
+    if (css.backgroundImage !== 'none' || !bg || bg.a < 0.995 || !neutral(bg.v)) return;
+    const lum = luminance(bg.v);
     if (isDark()) {
-      const convertLight = bgLum >= 0.55 && fg && luminance(fg.v) <= 0.25;
-      const convertDark = bgLum <= 0.11;
-      if (convertLight || convertDark) el.setAttribute(BG_MARK, 'dark');
-      if (convertLight || (convertDark && fg && luminance(fg.v) < 0.55)) {
-        el.setAttribute(TEXT_MARK, '');
-      }
-    } else {
-      // En modo claro, conservar el texto original y blanquear solo fondos claros.
-      // No blanquear superficies oscuras (p. ej., reproductores y paneles).
-      if (bgLum >= 0.70) el.setAttribute(BG_MARK, 'light');
+      // Solo oscurecer fondos que ya son oscuros. Nunca convertir tarjetas
+      // claras a negro: sus textos y metadatos podrían desaparecer.
+      if (lum <= 0.11) el.setAttribute(BG_MARK, 'dark');
+    } else if (lum >= 0.70) {
+      // Solo aclarar fondos que ya son claros.
+      el.setAttribute(BG_MARK, 'light');
     }
   }
 
@@ -107,8 +97,8 @@
   }
 
   function refresh() {
-    document.querySelectorAll('[' + BG_MARK + '],[' + TEXT_MARK + ']')
-      .forEach(el => { el.removeAttribute(BG_MARK); el.removeAttribute(TEXT_MARK); });
+    document.querySelectorAll('[' + BG_MARK + ']')
+      .forEach(el => el.removeAttribute(BG_MARK));
     installStyle();
     enqueue(document.documentElement);
   }
