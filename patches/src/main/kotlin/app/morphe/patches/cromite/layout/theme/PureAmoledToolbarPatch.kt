@@ -40,7 +40,7 @@ val pureAmoledToolbarPatch = bytecodePatch(
 ) {
     compatibleWith("org.cromite.cromite"("153.0.8010.37"))
 
-    val browserTheme = recoveredBrowserThemeOption()
+    val browserTheme = recoveredBrowserThemeOption
 
     execute {
         toolbarTabletBackgroundFingerprint.method.addInstructions(
