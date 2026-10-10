@@ -1,3 +1,10 @@
+## [1.50.2](https://github.com/latanvillegas/modo-patches/compare/v1.50.1...v1.50.2) (2026-10-10)
+
+### 🐛 Bug Fixes
+
+* **ci:** repair YAML and enforce DEX bundle check ([d493d16](https://github.com/latanvillegas/modo-patches/commit/d493d165fc966da7d09a6fa39deeeacd06a781c5))
+* **ci:** supply D8 a JAR extension when dexing MPP classes ([2428625](https://github.com/latanvillegas/modo-patches/commit/2428625350948b66aea57206b9583787f415f312))
+
 ## [1.50.1](https://github.com/latanvillegas/modo-patches/compare/v1.50.0...v1.50.1) (2026-10-10)
 
 ### 🐛 Bug Fixes
