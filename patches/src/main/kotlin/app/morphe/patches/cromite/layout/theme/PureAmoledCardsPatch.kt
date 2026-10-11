@@ -37,7 +37,8 @@ val pureAmoledCardsPatch = resourcePatch(
                 document("res/${directory.name}/$fileName").use { document ->
                     val root = document.documentElement
                     if (root != null && root.tagName == "color" &&
-                        root.getAttribute("name") == resourceName
+                        (root.getAttribute("name").isEmpty() || root.getAttribute("name") == resourceName) &&
+                        root.textContent.trim().startsWith("#")
                     ) {
                         root.textContent = target
                         hits++
@@ -45,7 +46,7 @@ val pureAmoledCardsPatch = resourcePatch(
                         val items = document.getElementsByTagName("color")
                         for (i in 0 until items.length) {
                             val item = items.item(i) as? Element ?: continue
-                            if (item.getAttribute("name") == resourceName) {
+                            if (item.getAttribute("name") == resourceName && item.textContent.trim().startsWith("#")) {
                                 item.textContent = target
                                 hits++
                             }
