@@ -33,7 +33,7 @@ jobs:
 
       - name: Assert AMOLED patch was compiled
         run: |
-          CLASS='app/morphe/patches/cromite/layout/theme/PureAmoledNativeResourcesPatchKt.class'
+          CLASS='app/morphe/patches/cromite/misc/amoled/PureAmoledWebPatchKt.class'
           if ! find patches/build -type f -path "*/$CLASS" -print -quit | grep -q .; then
             echo "::error::Missing compiled AMOLED patch class: $CLASS"
             exit 1
@@ -43,6 +43,6 @@ jobs:
       - name: Inspect compiled patch list
         run: |
           find patches/build -type f \( -iname '*patch*list*' -o -iname '*.json' \) -print | head -40
-          if ! grep -R -l -F 'Pure AMOLED native theme resources' patches/build --include='*.json' --include='*.txt' --include='*.md' 2>/dev/null; then
+          if ! grep -R -l -F 'Pure AMOLED Web' patches/build --include='*.json' --include='*.txt' --include='*.md' 2>/dev/null; then
             echo 'NOTE: Patch list text was not found in generated JSON/TXT/MD; inspect build outputs and generator format.'
           fi
