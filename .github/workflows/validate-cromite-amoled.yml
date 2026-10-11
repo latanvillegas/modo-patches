@@ -2,6 +2,9 @@ name: Cromite AMOLED patch validation
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - cleanup/cromite-amoled-priority
 
 permissions:
   contents: read
