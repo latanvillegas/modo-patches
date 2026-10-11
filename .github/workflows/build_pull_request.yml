@@ -7,6 +7,7 @@ on:
       - dev
       - fix/appmenu-runtime-black
       - feat/amoled-web
+      - cleanup/cromite-amoled-priority
   pull_request:
     branches:
       - dev
