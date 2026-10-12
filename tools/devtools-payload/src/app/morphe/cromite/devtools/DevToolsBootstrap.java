@@ -1,6 +1,7 @@
 package app.morphe.cromite.devtools;
 
 import android.content.Context;
+import android.util.Log;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -23,6 +24,16 @@ public final class DevToolsBootstrap {
     private static final String DIRECTORY = "devtools-cromite-153";
     private static final String SWITCH = "custom-devtools-frontend";
     private DevToolsBootstrap() {}
+
+    /** Safe entry point for the early Chromium startup hook. Never abort browser startup. */
+    public static void initializeSafely(Context context) {
+        if (context == null) return;
+        try {
+            initialize(context);
+        } catch (Throwable failure) {
+            Log.e("MorpheDevTools", "Frontend bootstrap failed; continuing startup", failure);
+        }
+    }
 
     public static synchronized void initialize(Context context) throws Exception {
         File target = extract(context.getApplicationContext());
