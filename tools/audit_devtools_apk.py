@@ -22,7 +22,7 @@ def sha256(data):
 
 
 def dex_counts(data):
-    if len(data) < 0x70 or not data.startswith(b"dex\\n"):
+    if len(data) < 0x70 or not data.startswith(b"dex\n"):
         raise ValueError("Invalid DEX header")
     return struct.unpack_from("<I", data, 0x58)[0], struct.unpack_from("<I", data, 0x60)[0]
 
