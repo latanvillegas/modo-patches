@@ -81,8 +81,14 @@ internal object DevToolsFrontendInstaller {
             check(File(stage, "devtools_app.html").isFile)
             check(File(stage, "entrypoints/main/main.js").isFile)
             File(stage, ".archive-sha256").writeText(expectedSha256)
-            if (target.exists()) check(target.deleteRecursively())
-            check(stage.renameTo(target))
+            val backup = File(root, ".$DIRECTORY.backup")
+            if (backup.exists()) check(backup.deleteRecursively())
+            if (target.exists()) check(target.renameTo(backup))
+            if (!stage.renameTo(target)) {
+                if (backup.exists()) check(backup.renameTo(target))
+                error("Unable to activate DevTools frontend")
+            }
+            if (backup.exists()) backup.deleteRecursively()
             return target
         } finally {
             archive.delete()
