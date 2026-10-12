@@ -8,8 +8,15 @@ import java.util.zip.ZipInputStream
 
 /** Experimental runtime helper; not connected to a Morphe patch yet. */
 internal object DevToolsFrontendInstaller {
+    const val VERIFIED_ARCHIVE_SHA256 = "dadba37f7641d133423799c722c7d5136c05d246639b83c157c5f280f08c8840"
     private const val ARCHIVE = "devtools-cromite-153.zip"
     private const val DIRECTORY = "devtools-cromite-153"
+
+    fun install(context: Context): File = install(context, VERIFIED_ARCHIVE_SHA256)
+
+    fun frontendUrl(context: Context): String = install(context).toURI().toASCIIString().let {
+        if (it.endsWith("/")) it else "$it/"
+    }
 
     fun install(context: Context, expectedSha256: String): File {
         require(expectedSha256.matches(Regex("[a-f0-9]{64}")))
