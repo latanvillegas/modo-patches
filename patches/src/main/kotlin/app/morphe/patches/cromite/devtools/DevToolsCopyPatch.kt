@@ -4,6 +4,7 @@ import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.resourcePatch
+import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.reference.TypeReference
 import java.security.MessageDigest
@@ -72,12 +73,23 @@ val devToolsCopyPatch = bytecodePatch(
         }
         val method = startupFingerprint.method
         val implementation = method.implementation ?: error("Startup method has no code")
-        val candidates = implementation.instructions.withIndex().filter { (_, instruction) ->
-            instruction.opcode.name == "NEW_INSTANCE" &&
-                (instruction as? ReferenceInstruction)?.reference
-                    .let { (it as? TypeReference)?.type == "Le72;" }
+        val instructions = implementation.instructions.toList()
+        val newInstances = instructions.withIndex().filter { (_, instruction) ->
+            instruction.opcode == Opcode.NEW_INSTANCE
         }
-        check(candidates.size == 1) { "Unsupported Cromite startup anchor: Le72; count=${candidates.size}" }
+        val candidates = newInstances.filter { (_, instruction) ->
+            val reference = (instruction as? ReferenceInstruction)?.reference
+            (reference as? TypeReference)?.type == "Le72;"
+        }
+        check(candidates.size == 1) {
+            val descriptors = newInstances.take(12).joinToString { (_, instruction) ->
+                val reference = (instruction as? ReferenceInstruction)?.reference
+                (reference as? TypeReference)?.type ?: reference.toString()
+            }
+            "Unsupported Cromite startup anchor: Le72; " +
+                "matches=${candidates.size}, newInstances=${newInstances.size}, " +
+                "descriptors=[$descriptors], instructions=${instructions.size}"
+        }
         val anchor = candidates.single().index
 
         // Verified experimentally in the apktool Smali method with .locals 4:
