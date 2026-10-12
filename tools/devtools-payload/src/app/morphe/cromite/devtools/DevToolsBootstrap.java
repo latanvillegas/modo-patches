@@ -37,7 +37,7 @@ public final class DevToolsBootstrap {
         File root = context.getFilesDir().getCanonicalFile();
         File target = new File(root, DIRECTORY);
         File marker = new File(target, ".archive-sha256");
-        if (marker.isFile && HASH.equals(readSmall(marker)) &&
+        if (marker.isFile() && HASH.equals(readSmall(marker)) &&
                 new File(target, "devtools_app.html").isFile() &&
                 new File(target, "entrypoints/main/main.js").isFile()) return target;
 
