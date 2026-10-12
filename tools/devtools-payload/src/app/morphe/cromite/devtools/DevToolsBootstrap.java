@@ -26,7 +26,8 @@ public final class DevToolsBootstrap {
 
     public static synchronized void initialize(Context context) throws Exception {
         File target = extract(context.getApplicationContext());
-        String url = target.toURI().toASCIIString();
+        // Android File.toURI() may produce file:/path; Chromium expects file:///path.
+        String url = "file://" + target.getAbsolutePath().replace(" ", "%20");
         if (!url.endsWith("/")) url += "/";
         // Chromium 153 target API: org.chromium.base.CommandLine.d.a(String,String).
         // The direct call is deliberate: it must be resolved against the target APK.
