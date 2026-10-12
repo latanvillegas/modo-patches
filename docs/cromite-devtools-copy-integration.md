@@ -37,3 +37,11 @@ Status: **research only; not a functional Morphe patch**.
 - The GitHub `release.yml` workflow triggers on pushes to `main`, so exploratory changes must remain isolated on this feature branch.
 - Confirmed no frontend JavaScript is directly addressable as an individual APK ZIP entry from the user's listing. `.pak` substring checks alone are not proof of absent resources.
 - Next investigation should inspect the actual existing patch paths and the APK's DevTools loading behavior before any implementation or Actions build.
+
+## Termux API inspection — 2026-10-12
+
+The user inspected `morphe-patcher/src/main/kotlin/app/morphe/patcher/patch/ResourcePatchContext.kt` lines 99–145. Public context operations are `operator fun get(path: String, copy: Boolean = true)`, `fun listApkEntries(prefix: String = "")`, and `fun delete(name: String, packageName: String? = null)`. `get` delegates to `resourceCoder.getFile`; its write/create behavior must be verified before treating it as a supported file-add API. `listApkEntries` lists original APK entries, not staged modifications. `delete` supports removing APK entries including assets and native libraries. `ResourcePatchContext.get()` returns other resource files, uncompressed paths, and deleted files for rebuilding.
+
+The full frontend preflight initially failed because the original directory's `entrypoints/main/main.js` differed from the verified working file. The user made an independent copy at `~/amoled-test/devtools-audit/frontend-para-parche` containing 537 files, replacing `main.js` with SHA-256 `17db0138b7c9892f7e7849f0d007b8643aa9cefb6ba549d95a9cda33d5e2a9ed`; the copy operation reported PASS.
+
+`find "$HOME" -type f` found no local `PureAmoledPatch.kt` or `HideStatusBarPatch.kt`. These must be fetched from GitHub with their actual paths, not guessed. Next feasibility gate: inspect `ResourceCoder.getFile` and `getOtherResourceFiles`, then prove Chromium's loader can access a bundled asset without external files.
