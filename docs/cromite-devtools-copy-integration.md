@@ -29,3 +29,11 @@ Status: **research only; not a functional Morphe patch**.
 - Do not change `libchrome.so` by blind string replacement.
 - Do not alter the stable APK, existing AMOLED patches, or main branch.
 - Do not claim a functioning `.mpp` or remove the external frontend until an end-to-end patched APK passes validation.
+
+## Investigation update — 2026-10-12
+
+- The existing feature branch and this document were verified before any write; avoid duplicate branches.
+- `patches/build.gradle.kts` uses the Morphe patches DSL and `settings.gradle.kts` pins `app.morphe.patches` to `1.3.4`.
+- The GitHub `release.yml` workflow triggers on pushes to `main`, so exploratory changes must remain isolated on this feature branch.
+- Confirmed no frontend JavaScript is directly addressable as an individual APK ZIP entry from the user's listing. `.pak` substring checks alone are not proof of absent resources.
+- Next investigation should inspect the actual existing patch paths and the APK's DevTools loading behavior before any implementation or Actions build.
