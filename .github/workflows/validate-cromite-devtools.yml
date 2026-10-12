@@ -1,0 +1,76 @@
+name: Validate Cromite DevTools
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout development branch
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Configure Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Compile patches
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          chmod +x ./gradlew
+          ./gradlew :patches:compileKotlin :patches:buildAndroid --no-daemon --stacktrace
+
+      - name: Verify DevTools resources in bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          MPP="$(find patches/build/libs -maxdepth 1 \
+            -type f -name 'patches-*.mpp' \
+            ! -name '*-sources.mpp' \
+            ! -name '*-javadoc.mpp' \
+            -print -quit)"
+
+          test -n "$MPP"
+
+          python3 - "$MPP" <<'PY'
+          import hashlib
+          import sys
+          import zipfile
+
+          bundle = sys.argv[1]
+          expected = {
+              "cromite/devtools/bootstrap.dex":
+                  "32166284b26f08725e35b1c9f193a77469bb5e69869adde105f600b654518c50",
+              "cromite/devtools/devtools-cromite-153.zip":
+                  "dadba37f7641d133423799c722c7d5136c05d246639b83c157c5f280f08c8840",
+          }
+
+          with zipfile.ZipFile(bundle) as archive:
+              for name, digest in expected.items():
+                  data = archive.read(name)
+                  actual = hashlib.sha256(data).hexdigest()
+                  assert actual == digest, f"SHA-256 mismatch: {name}"
+                  print(f"PASS {name}: {len(data)} bytes")
+
+          print("PASS: DevTools resources bundled")
+          PY
+
+      - name: Upload patch bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: cromite-devtools-validation
+          path: patches/build/libs/*.mpp
+          if-no-files-found: error
