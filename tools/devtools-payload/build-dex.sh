@@ -7,7 +7,7 @@ SRC="$ROOT/tools/devtools-payload/src"
 OUT="${1:-$HOME/devtools-payload-build}"
 ANDROID_JAR="${ANDROID_JAR:-}"
 if [[ -z "$ANDROID_JAR" ]]; then
-  for candidate in "$PREFIX/share/aapt2/android.jar" "$PREFIX/share/android.jar" "$HOME/android-sdk/platforms/android-35/android.jar" "$ANDROID_HOME/platforms/android-35/android.jar"; do
+  for candidate in "$PREFIX/share/aapt2/android.jar" "$PREFIX/share/android.jar" "$HOME/android-sdk/platforms/android-35/android.jar" "${ANDROID_HOME:-/nonexistent}/platforms/android-35/android.jar"; do
     if [[ -f "$candidate" ]]; then ANDROID_JAR="$candidate"; break; fi
   done
 fi
