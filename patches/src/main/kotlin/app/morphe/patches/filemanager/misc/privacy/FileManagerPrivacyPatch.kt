@@ -33,14 +33,14 @@ val fileManagerPrivacyPatch = bytecodePatch(
     compatibleWith("com.alphainventor.filemanager"("3.8.2"))
 
     execute {
-        // No additional local register is required: p0 is a parameter and v0
-        // exists in the original method (the decompiled method returns a boolean).
-        // A single early return preserves the original body as unreachable code.
+        // Reuse p0, the method's only parameter register, so this injection
+        // does not depend on the original method's local-register count.
+        // The early return leaves the original implementation untouched.
         UsageDiagnosticsFingerprint.method.addInstructions(
             0,
             """
-                const/4 v0, 0x0
-                return v0
+                const/4 p0, 0x0
+                return p0
             """.trimIndent()
         )
     }
