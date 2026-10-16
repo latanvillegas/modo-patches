@@ -12,6 +12,10 @@ private data class ColorTarget(
 )
 
 private val colorTargets = listOf(
+    ColorTarget(0x7f0603a8, false, 0xff212121, 0xff000000),
+    ColorTarget(0x7f060454, true, 0xff1f1f1f, 0xff000000),
+    ColorTarget(0x7f060455, false, 0xff181818, 0xff000000),
+    ColorTarget(0x7f060455, true, 0xff080808, 0xff000000),
     ColorTarget(0x7f060087, false, 0xff0e1513, 0xff000000),
     ColorTarget(0x7f060088, false, 0xff222222, 0xff000000),
     ColorTarget(0x7f060089, false, 0xff2c2c2c, 0xff000000),
@@ -120,7 +124,7 @@ private fun patchFileManagerArsc(original: ByteArray): ByteArray {
 
     val targets = colorTargets.associateBy { it.id to it.night }
 
-    if (targets.size != 20) {
+    if (targets.size != 24) {
         throw PatchException("AMOLED: objetivos duplicados")
     }
 
@@ -285,7 +289,7 @@ private fun patchFileManagerArsc(original: ByteArray): ByteArray {
 @Suppress("unused")
 val fileManagerPureAmoledPatch = rawResourcePatch(
     name = "File Manager Plus - Pure AMOLED",
-    description = "Aplica negro puro a 18 colores de fondo y blanco a 2 colores de texto en File Manager Plus 3.8.2.",
+    description = "Aplica negro puro a 22 colores de fondo y blanco a 2 colores de texto en File Manager Plus 3.8.2.",
     default = false,
 ) {
     compatibleWith("com.alphainventor.filemanager"("3.8.2"))
