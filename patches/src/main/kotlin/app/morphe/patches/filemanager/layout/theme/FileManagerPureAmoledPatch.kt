@@ -12,6 +12,9 @@ private data class ColorTarget(
 )
 
 private val colorTargets = listOf(
+    ColorTarget(0x7f0600ea, true, 0xff1a1a1a, 0xff000000),
+    ColorTarget(0x7f06044e, false, 0xff222222, 0xff000000),
+    ColorTarget(0x7f06044f, false, 0xff222222, 0xff000000),
     ColorTarget(0x7f06034f, false, 0xfffafafa, 0xffffffff),
     ColorTarget(0x7f0603a8, false, 0xff212121, 0xff000000),
     ColorTarget(0x7f060454, true, 0xff1f1f1f, 0xff000000),
@@ -125,7 +128,7 @@ private fun patchFileManagerArsc(original: ByteArray): ByteArray {
 
     val targets = colorTargets.associateBy { it.id to it.night }
 
-    if (targets.size != 25) {
+    if (targets.size != 28) {
         throw PatchException("AMOLED: objetivos duplicados")
     }
 
