@@ -288,7 +288,7 @@ val fileManagerPureAmoledPatch = rawResourcePatch(
     description = "Aplica negro puro a 18 colores de fondo y blanco a 2 colores de texto en File Manager Plus 3.8.2.",
     default = false,
 ) {
-    compatibleWith("com.alphainventor.filemanager"(setOf("3.8.2")))
+    compatibleWith("com.alphainventor.filemanager"("3.8.2"))
 
     execute {
         val file = get("resources.arsc")
