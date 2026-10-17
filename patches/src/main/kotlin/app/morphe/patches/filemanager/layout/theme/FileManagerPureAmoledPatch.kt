@@ -331,6 +331,102 @@ private fun patchFileManagerArsc(original: ByteArray): ByteArray {
     return bytes
 }
 
+/**
+ * Selector original: #66ffffff (disabled) y #ffffffff (enabled).
+ * Redirige los dos android:color a main_secondary_text, que ya dispone
+ * de variantes day/night. No altera ToolbarStyle.Default ni otros colores.
+ */
+private fun patchToolbarForegroundXml(original: ByteArray): ByteArray {
+    val bytes = original.copyOf()
+
+    fun check(at: Int, length: Int) {
+        if (at < 0 || length < 0 || at.toLong() + length > bytes.size) {
+            throw PatchException("AMOLED: selector XML fuera de limites")
+        }
+    }
+    fun u16(at: Int): Int {
+        check(at, 2)
+        return (bytes[at].toInt() and 255) or
+            ((bytes[at + 1].toInt() and 255) shl 8)
+    }
+    fun u32(at: Int): Long =
+        u16(at).toLong() or (u16(at + 2).toLong() shl 16)
+    fun write32(at: Int, v: Long) {
+        check(at, 4)
+        for (i in 0..3) {
+            bytes[at + i] = ((v ushr (8 * i)) and 255).toByte()
+        }
+    }
+
+    // El primer chunk es XML (0x0003); su headerSize es 8.
+    // La tabla de cadenas empieza en el byte 8, no en el 0.
+    if (bytes.size < 8 || u16(0) != 0x0003 || u16(2) != 8 ||
+        u32(4) != bytes.size.toLong()
+    ) {
+        throw PatchException(
+            "AMOLED: cabecera XML inesperada (bytes=${bytes.size}, " +
+                "tipo=${if (bytes.size >= 2) u16(0) else -1})"
+        )
+    }
+
+    val expected = setOf(0x66ffffffL, 0xffffffffL)
+    val offsets = mutableMapOf<Long, Int>()
+    var cursor = 8
+    while (cursor < bytes.size) {
+        check(cursor, 8)
+        val kind = u16(cursor)
+        val headerSize = u16(cursor + 2)
+        val chunkSizeLong = u32(cursor + 4)
+        if (headerSize < 8 || chunkSizeLong > Int.MAX_VALUE ||
+            chunkSizeLong < headerSize ||
+            chunkSizeLong > bytes.size - cursor
+        ) {
+            throw PatchException("AMOLED: chunk XML invalido")
+        }
+        val chunkSize = chunkSizeLong.toInt()
+        if (kind == 0x0102) { // RES_XML_START_ELEMENT_TYPE
+            if (headerSize < 36) {
+                throw PatchException("AMOLED: start-element invalido")
+            }
+            // ResXMLTree_attrExt comienza en cursor+16.
+            val attributeStart = u16(cursor + 24)
+            val attributeSize = u16(cursor + 26)
+            val attributeCount = u16(cursor + 28)
+            val base = cursor + 16 + attributeStart
+            if (attributeStart < 20 || attributeSize < 20 ||
+                base.toLong() + attributeSize.toLong() * attributeCount >
+                cursor.toLong() + chunkSize
+            ) {
+                throw PatchException("AMOLED: atributos XML invalidos")
+            }
+            for (i in 0 until attributeCount) {
+                val at = base + i * attributeSize
+                val value = at + 12
+                if (u16(value) != 8) continue
+                val dataType = bytes[value + 3].toInt() and 255
+                val data = u32(value + 4)
+                if (dataType == 0x1c && data in expected) {
+                    if (offsets.put(data, value) != null) {
+                        throw PatchException("AMOLED: color selector duplicado")
+                    }
+                }
+            }
+        }
+        cursor += chunkSize
+    }
+    if (cursor != bytes.size || offsets.keys != expected) {
+        throw PatchException(
+            "AMOLED: selector no coincide (colores=${offsets.keys})"
+        )
+    }
+    // Validamos toda la estructura antes de escribir.
+    for (value in offsets.values) {
+        bytes[value + 3] = 0x01 // TYPE_REFERENCE
+        write32(value + 4, 0x7f060351L) // main_secondary_text
+    }
+    return bytes
+}
+
 @Suppress("unused")
 val fileManagerPureAmoledPatch = rawResourcePatch(
     name = "File Manager Plus - Pure AMOLED",
@@ -344,6 +440,12 @@ val fileManagerPureAmoledPatch = rawResourcePatch(
         val original = Files.readAllBytes(file.toPath())
         val modified = patchFileManagerArsc(original)
 
+        // Preparar ambos archivos antes de escribir cualquiera.
+        val toolbarFile = get("res/color/toolbar_dark_foreground.xml")
+        val toolbarOriginal = Files.readAllBytes(toolbarFile.toPath())
+        val toolbarModified = patchToolbarForegroundXml(toolbarOriginal)
+
         Files.write(file.toPath(), modified)
+        Files.write(toolbarFile.toPath(), toolbarModified)
     }
 }
