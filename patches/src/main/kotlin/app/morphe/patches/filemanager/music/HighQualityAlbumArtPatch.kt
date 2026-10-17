@@ -16,7 +16,7 @@ import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 @Suppress("unused")
 val fileManagerHighQualityAlbumArtPatch = bytecodePatch(
     name = "File Manager Plus - High Quality Album Art",
-    description = "Uses full-resolution embedded artwork and 32-bit color in the music player.",
+    description = "Prioritizes high-quality embedded artwork with 32-bit color and an 8 MiB decode budget.",
     default = false,
 ) {
     compatibleWith("com.alphainventor.filemanager"("3.8.2"))
@@ -86,7 +86,7 @@ val fileManagerHighQualityAlbumArtPatch = bytecodePatch(
         )
 
         // Use 32-bit bitmap color instead of RGB_565 for the embedded cover.
-        // The existing sample-size calculation and thumbnails remain in place.
+        // Preserve the existing sample-size calculation and thumbnails.
         val decoder = Fingerprint(
             definingClass = "Lax/V4/a\$b;",
             name = "r",
@@ -101,5 +101,22 @@ val fileManagerHighQualityAlbumArtPatch = bytecodePatch(
             configIndex,
             "sget-object v7, Landroid/graphics/Bitmap\$Config;->ARGB_8888:Landroid/graphics/Bitmap\$Config;",
         )
+
+        // The stock decoder passes a 1 MiB budget to k(). With ARGB_8888,
+        // that can downsample artwork even more aggressively than RGB_565.
+        // Override only this decoder call, not the global cache budget.
+        val budgetCallIndex = uniqueReferenceIndex(
+            decoder,
+            "Lax/V4/a;->d()I",
+        )
+        val budgetResult = decoder.implementation?.instructions?.elementAtOrNull(budgetCallIndex + 1)
+        if (budgetResult?.opcode != Opcode.MOVE_RESULT ||
+            (budgetResult as? OneRegisterInstruction)?.registerA != 8
+        ) {
+            throw PatchException("Album art: unexpected decode budget register")
+        }
+        // Keep the invoke-result pair structurally valid by replacing both.
+        decoder.replaceInstruction(budgetCallIndex + 1, "nop")
+        decoder.replaceInstruction(budgetCallIndex, "const v8, 0x800000")
     }
 }
