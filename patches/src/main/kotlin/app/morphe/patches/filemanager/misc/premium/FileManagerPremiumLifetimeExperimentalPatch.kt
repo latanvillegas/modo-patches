@@ -76,6 +76,7 @@ val fileManagerPremiumLifetimeExperimentalPatch = bytecodePatch(
     default = false,
 ) {
     compatibleWith("com.alphainventor.filemanager"("3.8.2"))
+    dependsOn(fileManagerPremiumLifetimeLabelPatch)
 
     execute {
         PremiumNoExpiryFingerprint.method.addInstructions(0, "const/4 v0, 0x1\nreturn v0")
