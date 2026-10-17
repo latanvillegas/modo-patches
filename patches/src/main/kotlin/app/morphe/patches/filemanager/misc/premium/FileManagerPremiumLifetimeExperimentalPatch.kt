@@ -5,16 +5,14 @@ import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.bytecodePatch
 
 /**
- * Experimental local Premium feature-gate override for File Manager Plus 3.8.2.
+ * Local Premium feature gate for File Manager Plus 3.8.2.
  *
- * JADX audit: ax.y3.h.g():boolean is an application-facing Premium gate,
- * consulted by MainActivity, PaymentActivity and other UI components.
+ * This gate is evaluated locally without a network request. It does not create
+ * a purchased entitlement, alter signed receipts, or modify Google Play Billing.
+ * PaymentActivity and license-manager paths remain separate and must not be
+ * described as disabled by this patch.
  *
- * This changes only the app-facing feature gate, not Google Play Billing,
- * purchase receipts, account entitlements, subscription records or server
- * verification. It may not unlock features controlled by other gates.
- *
- * Keep separate from Privacy and AMOLED patches to allow independent testing.
+ * Keep this patch independent of the eight existing privacy/AMOLED patches.
  */
 private object PremiumFeatureGateFingerprint : Fingerprint(
     definingClass = "Lax/y3/h;",
@@ -26,7 +24,7 @@ private object PremiumFeatureGateFingerprint : Fingerprint(
 @Suppress("unused")
 val fileManagerPremiumLifetimeExperimentalPatch = bytecodePatch(
     name = "File Manager Plus - Premium (local feature gate experimental)",
-    description = "Habilita el control local principal de funciones Premium; no simula compras ni garantiza todas las funciones. Experimental.",
+    description = "Activa el control local principal de funciones Premium sin consulta de red en ese control. No elimina Billing ni crea licencias oficiales.",
     default = false,
 ) {
     compatibleWith("com.alphainventor.filemanager"("3.8.2"))
