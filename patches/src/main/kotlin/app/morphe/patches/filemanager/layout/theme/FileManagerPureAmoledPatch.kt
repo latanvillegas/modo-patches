@@ -358,7 +358,8 @@ private fun patchToolbarForegroundText(original: ByteArray): ByteArray {
         throw PatchException(
             "AMOLED: colores toolbar inesperados " +
                 "(disabled=$disabledCount, enabled=$enabledCount, " +
-                "atributos=$colorAttributes, bytes=${original.size})"
+                "atributos=$colorAttributes, bytes=${original.size}, " +
+                "xml=${text.take(400).replace('\\n', ' ').replace('\\r', ' ')})"
         )
     }
     return enabled.replace(
