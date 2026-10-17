@@ -250,6 +250,16 @@ private fun patchFileManagerArsc(original: ByteArray): ByteArray {
                     throw PatchException("AMOLED: entrada fuera de límites")
                 }
 
+                val effectiveType = typeId.toLong() + typeIdOffset
+                if (effectiveType > 0xff) {
+                    throw PatchException("AMOLED: ID de tipo inválido")
+                }
+
+                val id =
+                    (packageId shl 24) or
+                    (effectiveType shl 16) or
+                    index.toLong()
+
                 val entrySize = u16(entry)
                 val entryFlags = u16(entry + 2)
 
@@ -293,16 +303,6 @@ private fun patchFileManagerArsc(original: ByteArray): ByteArray {
                 if (entryLong + entrySize + 8 > type.end) {
                     throw PatchException("AMOLED: Res_value fuera de límites")
                 }
-
-                val effectiveType = typeId.toLong() + typeIdOffset
-                if (effectiveType > 0xff) {
-                    throw PatchException("AMOLED: ID de tipo inválido")
-                }
-
-                val id =
-                    (packageId shl 24) or
-                    (effectiveType shl 16) or
-                    index.toLong()
 
                 val key = id to night
                 val target = targets[key] ?: continue
