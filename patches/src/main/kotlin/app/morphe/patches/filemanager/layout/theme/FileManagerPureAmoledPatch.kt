@@ -353,13 +353,13 @@ private fun patchToolbarForegroundText(original: ByteArray): ByteArray {
     if (disabledCount != 1 || enabledCount != 1) {
         // No exponer el XML completo: registrar solo las expresiones color.
         val colorAttributes = Regex(
-            """(?:android:)?color\\s*=\\s*["'][^"']+["']"""
+            """(?:android:)?color\s*=\s*["'][^"']+["']"""
         ).findAll(text).map { it.value }.take(8).toList()
         throw PatchException(
             "AMOLED: colores toolbar inesperados " +
                 "(disabled=$disabledCount, enabled=$enabledCount, " +
                 "atributos=$colorAttributes, bytes=${original.size}, " +
-                "xml=${text.take(400).replace('\\n', ' ').replace('\\r', ' ')})"
+                "xml=${text.take(400).replace(10.toChar(), ' ').replace(13.toChar(), ' ')})"
         )
     }
     return enabled.replace(
