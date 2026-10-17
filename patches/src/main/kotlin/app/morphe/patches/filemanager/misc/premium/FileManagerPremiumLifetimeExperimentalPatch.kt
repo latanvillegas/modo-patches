@@ -22,6 +22,13 @@ private object PaymentActivityOnCreateFingerprint : Fingerprint(
     parameters = listOf("Landroid/os/Bundle;"),
 )
 
+private object PremiumSettingsTitleFingerprint : Fingerprint(
+    definingClass = "Lax/g3/s0;",
+    name = "B3",
+    returnType = "V",
+    parameters = emptyList(),
+)
+
 private object PremiumNoExpiryFingerprint : Fingerprint(
     definingClass = "Lax/y3/h;",
     name = "j",
@@ -83,6 +90,22 @@ val fileManagerPremiumLifetimeExperimentalPatch = bytecodePatch(
     dependsOn(fileManagerPremiumLifetimeLabelPatch)
 
     execute {
+        // B3() resolves payment_screen into v2. Replace its title with a
+        // CharSequence after the original method has finished configuring it.
+        // This avoids relying on resource recompilation for the Settings label.
+        val settingsMethod = PremiumSettingsTitleFingerprint.method
+        val returnIndex = settingsMethod.implementation!!.instructions.size - 1
+        settingsMethod.addInstructions(
+            returnIndex,
+            """
+                iget-object v2, p0, Lax/g3/s0;->u1:Landroidx/preference/PreferenceScreen;
+                const-string v1, "payment_screen"
+                invoke-virtual {v2, v1}, Landroidx/preference/PreferenceGroup;->V0(Ljava/lang/CharSequence;)Landroidx/preference/Preference;
+                move-result-object v2
+                const-string v1, "Premium Vitalicio"
+                invoke-virtual {v2, v1}, Landroidx/preference/Preference;->M0(Ljava/lang/CharSequence;)V
+            """.trimIndent()
+        )
         PremiumNoExpiryFingerprint.method.addInstructions(0, "const/4 v0, 0x1\nreturn v0")
         PremiumNoSubscriptionManagementFingerprint.method.addInstructions(0, "const/4 v0, 0x0\nreturn v0")
         PremiumFeatureGateFingerprint.method.addInstructions(
