@@ -168,6 +168,7 @@ private fun patchFileManagerArsc(original: ByteArray): ByteArray {
     }
 
     val found = mutableMapOf<Pair<Long, Boolean>, Pair<Int, Long>>()
+    var popupStyleParentOffset: Int? = null
 
     val tableHeader = u16(2)
     if (tableHeader < 12) {
@@ -258,6 +259,34 @@ private fun patchFileManagerArsc(original: ByteArray): ByteArray {
                     throw PatchException("AMOLED: tamaño de entrada inválido")
                 }
 
+                // El popup oscuro es el que usa ToolbarStyle.Default.
+                // Su padre fijo Dark produce texto blanco invisible en modo claro.
+                // AppBaseTheme hereda de MaterialComponents.DayNight y mantiene
+                // los atributos locales de fondo y colorSurface del popup.
+                if (id == 0x7f1403a1L && !night) {
+                    if ((entryFlags and 1) == 0 || entrySize < 16 ||
+                        entryLong + entrySize + 2L * 12L > type.end
+                    ) {
+                        throw PatchException("AMOLED: estilo popup incompatible")
+                    }
+                    val parentOffset = entry + 8
+                    val mapCount = u32(entry + 12)
+                    if (u32(parentOffset) != 0x7f140385L || mapCount != 2L) {
+                        throw PatchException("AMOLED: padre o atributos popup inesperados")
+                    }
+                    val maps = entry + entrySize
+                    if (u32(maps) != 0x01010031L ||
+                        u32(maps + 4) != 0x7f060022L ||
+                        u32(maps + 12) != 0x7f04014aL ||
+                        u32(maps + 16) != 0x7f060022L ||
+                        u8(maps + 7) != 0x01 ||
+                        u8(maps + 19) != 0x01
+                    ) {
+                        throw PatchException("AMOLED: mapa popup inesperado")
+                    }
+                    popupStyleParentOffset = parentOffset
+                }
+
                 // Las entradas complejas no contienen un Res_value simple.
                 if ((entryFlags and 1) != 0) continue
 
@@ -323,7 +352,11 @@ private fun patchFileManagerArsc(original: ByteArray): ByteArray {
         )
     }
 
+    val popupOffset = popupStyleParentOffset
+        ?: throw PatchException("AMOLED: estilo ToobarPopupTheme.Dark no encontrado")
+
     // Todas las comprobaciones se completan antes de escribir.
+    write32(popupOffset, 0x7f140559L)
     for ((offset, replacement) in found.values) {
         write32(offset, replacement)
     }
