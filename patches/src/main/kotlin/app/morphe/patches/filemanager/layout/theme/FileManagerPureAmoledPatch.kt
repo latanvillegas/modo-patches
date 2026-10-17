@@ -331,6 +331,36 @@ private fun patchFileManagerArsc(original: ByteArray): ByteArray {
     return bytes
 }
 
+/**
+ * Morphe rawResourcePatch expone este selector como XML textual (cabecera "<?"),
+ * aunque dentro del APK original sea AXML binario.
+ * Conserva la sintaxis y sustituye exclusivamente los colores del selector.
+ */
+private fun patchToolbarForegroundText(original: ByteArray): ByteArray {
+    val text = original.toString(Charsets.UTF_8)
+    if (!text.trimStart().startsWith("<?xml") &&
+        !text.trimStart().startsWith("<selector")
+    ) {
+        throw PatchException("AMOLED: selector toolbar no es XML textual")
+    }
+    if (!Regex("<selector\\\\b").containsMatchIn(text) ||
+        !Regex("</selector\\\\s*>").containsMatchIn(text)
+    ) {
+        throw PatchException("AMOLED: estructura selector inesperada")
+    }
+    val disabled = Regex("#66ffffff\\\\b", RegexOption.IGNORE_CASE)
+    val enabled = Regex("#ffffffff\\\\b", RegexOption.IGNORE_CASE)
+    if (disabled.findAll(text).count() != 1 ||
+        enabled.findAll(text).count() != 1
+    ) {
+        throw PatchException("AMOLED: colores toolbar inesperados")
+    }
+    return enabled.replace(
+        disabled.replace(text, "@color/main_secondary_text"),
+        "@color/main_secondary_text",
+    ).toByteArray(Charsets.UTF_8)
+}
+
 @Suppress("unused")
 val fileManagerPureAmoledPatch = rawResourcePatch(
     name = "File Manager Plus - Pure AMOLED",
@@ -344,6 +374,11 @@ val fileManagerPureAmoledPatch = rawResourcePatch(
         val original = Files.readAllBytes(file.toPath())
         val modified = patchFileManagerArsc(original)
 
+        val toolbarFile = get("res/color/toolbar_dark_foreground.xml")
+        val toolbarOriginal = Files.readAllBytes(toolbarFile.toPath())
+        val toolbarModified = patchToolbarForegroundText(toolbarOriginal)
+
         Files.write(file.toPath(), modified)
+        Files.write(toolbarFile.toPath(), toolbarModified)
     }
 }
