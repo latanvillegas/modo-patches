@@ -22,6 +22,20 @@ private object PaymentActivityOnCreateFingerprint : Fingerprint(
     parameters = listOf("Landroid/os/Bundle;"),
 )
 
+private object PaymentActivityToolbarTitleFingerprint : Fingerprint(
+    definingClass = "Lcom/alphainventor/filemanager/activity/PaymentActivity;",
+    name = "j0",
+    returnType = "V",
+    parameters = emptyList(),
+)
+
+private object PaymentActivityPremiumStateFingerprint : Fingerprint(
+    definingClass = "Lcom/alphainventor/filemanager/activity/PaymentActivity;",
+    name = "y0",
+    returnType = "V",
+    parameters = listOf("Z"),
+)
+
 private object PremiumSettingsTitleFingerprint : Fingerprint(
     definingClass = "Lax/g3/s0;",
     name = "B3",
@@ -106,6 +120,42 @@ val fileManagerPremiumLifetimeExperimentalPatch = bytecodePatch(
                 invoke-virtual {v2, v1}, Landroidx/preference/Preference;->M0(Ljava/lang/CharSequence;)V
             """.trimIndent()
         )
+        // j0() and y0(Z) both have four local registers in File Manager
+        // Plus 3.8.2. Their Premium branches use the title_premium resource.
+        // Set the title directly after the existing UI initialization, so the
+        // resource fallback does not overwrite the desired local label.
+        val paymentToolbarMethod = PaymentActivityToolbarTitleFingerprint.method
+        paymentToolbarMethod.addInstructions(
+            paymentToolbarMethod.implementation!!.instructions.size - 1,
+            """
+                invoke-static {}, Lax/y3/h;->g()Z
+                move-result v0
+                if-eqz v0, :premium_title_done
+                const-string v0, "Premium Vitalicio"
+                invoke-virtual {p0, v0}, Landroid/app/Activity;->setTitle(Ljava/lang/CharSequence;)V
+                :premium_title_done
+            """.trimIndent()
+        )
+
+        // y0(Z) may run again after onCreate, resetting both the toolbar title
+        // and the feature-heading TextView. Its Premium branch is selected by
+        // the same local gate used in the original implementation.
+        val paymentStateMethod = PaymentActivityPremiumStateFingerprint.method
+        paymentStateMethod.addInstructions(
+            0,
+            """
+                invoke-static {}, Lax/y3/h;->g()Z
+                move-result v0
+                if-eqz v0, :premium_state_title_done
+                const-string v0, "Premium Vitalicio"
+                invoke-virtual {p0, v0}, Landroid/app/Activity;->setTitle(Ljava/lang/CharSequence;)V
+                iget-object v1, p0, Lcom/alphainventor/filemanager/activity/PaymentActivity;->w0:Landroid/widget/TextView;
+                if-eqz v1, :premium_state_title_done
+                invoke-virtual {v1, v0}, Landroid/widget/TextView;->setText(Ljava/lang/CharSequence;)V
+                :premium_state_title_done
+            """.trimIndent()
+        )
+
         PremiumNoExpiryFingerprint.method.addInstructions(0, "const/4 v0, 0x1\nreturn v0")
         PremiumNoSubscriptionManagementFingerprint.method.addInstructions(0, "const/4 v0, 0x0\nreturn v0")
         PremiumFeatureGateFingerprint.method.addInstructions(
