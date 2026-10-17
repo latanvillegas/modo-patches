@@ -80,6 +80,24 @@ PY
  else
   echo 'BAKSMALI_UNAVAILABLE: method code registers cannot be confirmed with this script.'
  fi
+ echo '=== APKTOOL SMALI VERIFICATION (IF INSTALLED) ==='
+ if command -v apktool >/dev/null 2>&1; then
+  if apktool d -f -r "$APK" -o "$TMP/apktool" >/dev/null 2>"$TMP/apktool.err"; then
+   MATCHES=0
+   while IFS= read -r CLASS; do
+    [[ -f "$CLASS" ]] || continue
+    MATCHES=$((MATCHES+1))
+    echo "CLASS_SMALI_FOUND $CLASS"
+    grep -n -A 30 -B 2 -E '^\\.method .* E\\(Landroid/content/Context;Z\\)V' "$CLASS" || true
+   done < <(find "$TMP/apktool" -type f \\( -path '*/ax/y3/d.smali' -o -path '*/ax/p387y3/d.smali' \\) -print)
+   if [[ "$MATCHES" == 0 ]]; then echo 'CLASS_SMALI_NOT_FOUND'; fi
+  else
+   echo 'APKTOOL_DECODE_FAILED'
+   tail -15 "$TMP/apktool.err" || true
+  fi
+ else
+  echo 'APKTOOL_UNAVAILABLE'
+ fi
  echo '=== END: READ ONLY, NO BUILD ==='
 } > "$OUT"
 echo "Saved $OUT"; wc -l "$OUT"
