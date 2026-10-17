@@ -346,22 +346,27 @@ private fun patchToolbarForegroundText(original: ByteArray): ByteArray {
     if (!text.contains("<selector") || !text.contains("</selector>")) {
         throw PatchException("AMOLED: estructura selector inesperada")
     }
-    // El decodificador de Morphe normaliza #ffffffff a #ffffff.
-    // Coincidir exclusivamente con los valores completos de android:color.
-    val colorAttribute = Regex(
-        """android:color\\s*=\\s*(["'])(#[0-9a-fA-F]{6,8})\\1"""
-    )
-    val values = colorAttribute.findAll(text).map { it.groupValues[2].lowercase() }.toList()
-    if (values != listOf("#66ffffff", "#ffffff")) {
+    // Morphe entrega XML textual y normaliza #ffffffff a #ffffff.
+    // Evitar regex: el XML real de File Manager Plus 3.8.2 ya fue
+    // identificado y sus dos atributos se verifican antes de escribir.
+    val disabled = """android:color="#66ffffff" """
+        .trimEnd()
+    val enabled = """android:color="#ffffff" """
+        .trimEnd()
+    if (text.split(disabled).size != 2 ||
+        text.split(enabled).size != 2 ||
+        text.indexOf(disabled) >= text.indexOf(enabled)
+    ) {
         throw PatchException(
-            "AMOLED: colores toolbar inesperados (valores=$values, bytes=${original.size})"
+            "AMOLED: selector toolbar distinto del original " +
+                "(disabled=${text.split(disabled).size - 1}, " +
+                "enabled=${text.split(enabled).size - 1}, " +
+                "bytes=${original.size})"
         )
     }
-    val modified = colorAttribute.replace(text) {
-        """android:color="@color/main_secondary_text" """
-            .trimEnd()
-    }
-    return modified.toByteArray(Charsets.UTF_8)
+    return text.replace(disabled, """android:color="@color/main_secondary_text" """.trimEnd())
+        .replace(enabled, """android:color="@color/main_secondary_text" """.trimEnd())
+        .toByteArray(Charsets.UTF_8)
 }
 
 @Suppress("unused")
