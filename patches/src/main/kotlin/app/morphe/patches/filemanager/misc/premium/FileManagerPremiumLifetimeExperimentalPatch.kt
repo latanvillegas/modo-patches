@@ -3,6 +3,8 @@ package app.morphe.patches.filemanager.misc.premium
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.bytecodePatch
+import app.morphe.patcher.patch.resourcePatch
+import org.w3c.dom.Element
 
 /**
  * Local Premium feature gate for File Manager Plus 3.8.2.
@@ -40,6 +42,32 @@ private object PremiumFeatureGateFingerprint : Fingerprint(
     returnType = "Z",
     parameters = emptyList(),
 )
+
+private val fileManagerPremiumLifetimeLabelPatch = resourcePatch(
+    name = "File Manager Plus - Premium lifetime label",
+    description = "Actualiza únicamente el título Premium para la interfaz local.",
+    default = false,
+) {
+    compatibleWith("com.alphainventor.filemanager"("3.8.2"))
+
+    execute {
+        // Android falls back to res/values when a locale has no override.
+        // Keep the original resource identifier used by Settings and PaymentActivity.
+        for (path in listOf("res/values/strings.xml", "res/values-es/strings.xml")) {
+            val resourceFile = get(path)
+            if (!resourceFile.exists()) continue
+            document(path).use { document ->
+                val nodes = document.documentElement.getElementsByTagName("string")
+                for (index in 0 until nodes.length) {
+                    val element = nodes.item(index) as? Element ?: continue
+                    if (element.getAttribute("name") == "title_premium") {
+                        element.textContent = "Premium Vitalicio"
+                    }
+                }
+            }
+        }
+    }
+}
 
 @Suppress("unused")
 val fileManagerPremiumLifetimeExperimentalPatch = bytecodePatch(
