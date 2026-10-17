@@ -334,7 +334,7 @@ private fun patchFileManagerArsc(original: ByteArray): ByteArray {
 /**
  * Morphe rawResourcePatch expone este selector como XML textual (cabecera "<?"),
  * aunque dentro del APK original sea AXML binario.
- * Conserva la sintaxis y sustituye exclusivamente los colores del selector.
+ * Conserva la sintaxis y usa texto primario opaco con variantes day/night.
  */
 private fun patchToolbarForegroundText(original: ByteArray): ByteArray {
     val text = original.toString(Charsets.UTF_8)
@@ -364,8 +364,8 @@ private fun patchToolbarForegroundText(original: ByteArray): ByteArray {
                 "bytes=${original.size})"
         )
     }
-    return text.replace(disabled, """android:color="@color/main_secondary_text" """.trimEnd())
-        .replace(enabled, """android:color="@color/main_secondary_text" """.trimEnd())
+    return text.replace(disabled, """android:color="@color/main_primary_text" """.trimEnd())
+        .replace(enabled, """android:color="@color/main_primary_text" """.trimEnd())
         .toByteArray(Charsets.UTF_8)
 }
 
