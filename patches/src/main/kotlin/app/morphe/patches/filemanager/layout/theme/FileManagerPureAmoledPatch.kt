@@ -13,6 +13,12 @@ private data class ColorTarget(
 )
 
 private val colorTargets = listOf(
+    // El modo claro usa blanco; la variante night de primary ya se fuerza a negro.
+    ColorTarget(0x7f060454, false, 0x7f0603a8, 0x7f06034f, 0x01),
+    // En Android 23+ s4()/E3() lee este recurso cuando no usa actionbar_color.
+    ColorTarget(0x7f0604a7, false, 0xff000000, 0xffffffff),
+    // Popup de la barra clara: eliminar el gris #f0f0f0.
+    ColorTarget(0x7f060024, false, 0xfff0f0f0, 0xffffffff),
     // Redirigir solo los fondos de los menus oscuros a primary (#000000).
     // 0x01 es TYPE_REFERENCE; el resto de objetivos conserva TYPE_INT_COLOR_ARGB8.
     ColorTarget(0x7f060022, false, 0x7f060036, 0x7f060454, 0x01),
@@ -157,7 +163,7 @@ private fun patchFileManagerArsc(original: ByteArray): ByteArray {
 
     val targets = colorTargets.associateBy { it.id to it.night }
 
-    if (targets.size != 54) {
+    if (targets.size != 57) {
         throw PatchException("AMOLED: objetivos duplicados")
     }
 
@@ -328,7 +334,7 @@ private fun patchFileManagerArsc(original: ByteArray): ByteArray {
 @Suppress("unused")
 val fileManagerPureAmoledPatch = rawResourcePatch(
     name = "File Manager Plus - Pure AMOLED",
-    description = "Aplica fondos AMOLED y menus oscuros negros con colores de alto contraste en File Manager Plus 3.8.2.",
+    description = "Separa superficies blancas en modo claro y negras AMOLED en modo oscuro; conserva la selección de tema en File Manager Plus 3.8.2.",
     default = false,
 ) {
     compatibleWith("com.alphainventor.filemanager"("3.8.2"))
