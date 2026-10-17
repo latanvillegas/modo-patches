@@ -27,6 +27,20 @@ private object PremiumManagedDisplayFingerprint : Fingerprint(
     parameters = emptyList(),
 )
 
+private object PremiumNoExpiryFingerprint : Fingerprint(
+    definingClass = "Lax/y3/h;",
+    name = "j",
+    returnType = "Z",
+    parameters = emptyList(),
+)
+
+private object PremiumNoSubscriptionManagementFingerprint : Fingerprint(
+    definingClass = "Lax/y3/h;",
+    name = "i",
+    returnType = "Z",
+    parameters = emptyList(),
+)
+
 private object PremiumFeatureGateFingerprint : Fingerprint(
     definingClass = "Lax/y3/h;",
     name = "g",
