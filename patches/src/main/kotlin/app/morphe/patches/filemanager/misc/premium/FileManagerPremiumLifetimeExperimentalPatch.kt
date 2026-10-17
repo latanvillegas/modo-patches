@@ -9,7 +9,7 @@ import app.morphe.patcher.patch.bytecodePatch
  *
  * This gate is evaluated locally without a network request. It does not create
  * a purchased entitlement, alter signed receipts, or modify Google Play Billing.
- * PaymentActivity and license-manager paths remain separate. The onCreate\n * fingerprint below is not applied until its superclass invocation is verified.
+ * PaymentActivity and license-manager paths remain separate.\n * The PaymentActivity fingerprint is intentionally not applied.
  *
  * Keep this patch independent of the eight existing privacy/AMOLED patches.
  */
@@ -18,13 +18,6 @@ private object PaymentActivityOnCreateFingerprint : Fingerprint(
     name = "onCreate",
     returnType = "V",
     parameters = listOf("Landroid/os/Bundle;"),
-)
-
-private object PremiumManagedDisplayFingerprint : Fingerprint(
-    definingClass = "Lax/y3/h;",
-    name = "j",
-    returnType = "Z",
-    parameters = emptyList(),
 )
 
 private object PremiumNoExpiryFingerprint : Fingerprint(
@@ -57,6 +50,8 @@ val fileManagerPremiumLifetimeExperimentalPatch = bytecodePatch(
     compatibleWith("com.alphainventor.filemanager"("3.8.2"))
 
     execute {
+        PremiumNoExpiryFingerprint.method.addInstructions(0, "const/4 v0, 0x1\nreturn v0")
+        PremiumNoSubscriptionManagementFingerprint.method.addInstructions(0, "const/4 v0, 0x0\nreturn v0")
         PremiumFeatureGateFingerprint.method.addInstructions(
             0,
             """
