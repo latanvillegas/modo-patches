@@ -51,20 +51,24 @@ private val fileManagerPremiumLifetimeLabelPatch = resourcePatch(
     compatibleWith("com.alphainventor.filemanager"("3.8.2"))
 
     execute {
-        // Android falls back to res/values when a locale has no override.
-        // Keep the original resource identifier used by Settings and PaymentActivity.
+        // Fail explicitly if the decoded resources do not contain the expected
+        // string; silently skipping missing files previously concealed failures.
+        var modified = 0
         for (path in listOf("res/values/strings.xml", "res/values-es/strings.xml")) {
-            val resourceFile = get(path)
-            if (!resourceFile.exists()) continue
+            if (!get(path).exists()) continue
             document(path).use { document ->
                 val nodes = document.documentElement.getElementsByTagName("string")
                 for (index in 0 until nodes.length) {
                     val element = nodes.item(index) as? Element ?: continue
                     if (element.getAttribute("name") == "title_premium") {
                         element.textContent = "Premium Vitalicio"
+                        modified++
                     }
                 }
             }
+        }
+        check(modified > 0) {
+            "File Manager Plus: title_premium not found in decoded resources; refusing silent no-op"
         }
     }
 }
