@@ -9,7 +9,7 @@ import app.morphe.patcher.patch.bytecodePatch
  *
  * Based on the File Manager Plus 3.8.2 JADX audit of ax.y3.d:
  * F analysis, G app-open, H desktop native, K exit,
- * N recycle bin, O rewarded.
+ * I desktop ads to all, N recycle bin, O rewarded, P toolbar rewarded.
  *
  * Keeps purchase/license state, theme preferences, local defaults, and
  * cloud/remote-file functionality untouched. This complements the existing
@@ -30,6 +30,9 @@ private object AppOpenAdsGate : Fingerprint(
 private object DesktopAdsGate : Fingerprint(
     definingClass = DYNAMIC_CONFIG, name = "H", returnType = "Z", parameters = emptyList(),
 )
+private object DesktopAdsToAllGate : Fingerprint(
+    definingClass = DYNAMIC_CONFIG, name = "I", returnType = "Z", parameters = emptyList(),
+)
 private object ExitAdsGate : Fingerprint(
     definingClass = DYNAMIC_CONFIG, name = "K", returnType = "Z", parameters = emptyList(),
 )
@@ -40,10 +43,14 @@ private object RewardedAdsGate : Fingerprint(
     definingClass = DYNAMIC_CONFIG, name = "O", returnType = "Z", parameters = emptyList(),
 )
 
+private object ToolbarRewardedAdsGate : Fingerprint(
+    definingClass = DYNAMIC_CONFIG, name = "P", returnType = "Z", parameters = emptyList(),
+)
+
 @Suppress("unused")
 val fileManagerPrivacyV4AdGatesPatch = bytecodePatch(
     name = "File Manager Plus - Privacy v4 (Ad placement gates experimental)",
-    description = "Desactiva seis categorías de anuncios sin eliminar bibliotecas ni alterar licencias o temas. Experimental.",
+    description = "Desactiva ocho controles de anuncios sin eliminar bibliotecas ni alterar licencias o temas. Experimental.",
     default = false,
 ) {
     compatibleWith("com.alphainventor.filemanager"("3.8.2"))
@@ -58,9 +65,11 @@ val fileManagerPrivacyV4AdGatesPatch = bytecodePatch(
             AnalysisAdsGate,
             AppOpenAdsGate,
             DesktopAdsGate,
+            DesktopAdsToAllGate,
             ExitAdsGate,
             RecycleBinAdsGate,
             RewardedAdsGate,
+            ToolbarRewardedAdsGate,
         ).forEach { it.method.addInstructions(0, returnDisabled) }
     }
 }
