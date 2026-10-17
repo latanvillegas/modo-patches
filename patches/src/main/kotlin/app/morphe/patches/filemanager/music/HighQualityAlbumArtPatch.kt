@@ -5,6 +5,8 @@ import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.extensions.InstructionExtensions.addInstruction
 import app.morphe.patcher.extensions.InstructionExtensions.replaceInstruction
 import app.morphe.patcher.patch.bytecodePatch
+import com.android.tools.smali.dexlib2.Opcode
+import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 
 /**
@@ -68,6 +70,16 @@ val fileManagerHighQualityAlbumArtPatch = bytecodePatch(
             player,
             "Lax/V4/a;->j(Ljava/lang/String;)Landroid/graphics/Bitmap;",
         )
+        // Avoid using a low-resolution bitmap from MediaDescriptionCompat.
+        // A cache miss must trigger the original embedded-art decoder.
+        val earlyExitIndex = cacheIndex - 2
+        val earlyExit = player.implementation?.instructions?.elementAtOrNull(earlyExitIndex)
+        if (earlyExit?.opcode != Opcode.IF_NEZ ||
+            (earlyExit as? OneRegisterInstruction)?.registerA != 0
+        ) {
+            throw PatchException("Album art: unexpected metadata shortcut in h3")
+        }
+        player.replaceInstruction(earlyExitIndex, "const/4 v0, 0x0")
         player.replaceInstruction(
             cacheIndex,
             "invoke-virtual {v2, v0}, Lax/V4/a;->g(Ljava/lang/String;)Landroid/graphics/Bitmap;",
