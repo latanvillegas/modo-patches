@@ -346,26 +346,22 @@ private fun patchToolbarForegroundText(original: ByteArray): ByteArray {
     if (!text.contains("<selector") || !text.contains("</selector>")) {
         throw PatchException("AMOLED: estructura selector inesperada")
     }
-    val disabled = Regex("#66ffffff", RegexOption.IGNORE_CASE)
-    val enabled = Regex("#ffffffff", RegexOption.IGNORE_CASE)
-    val disabledCount = disabled.findAll(text).count()
-    val enabledCount = enabled.findAll(text).count()
-    if (disabledCount != 1 || enabledCount != 1) {
-        // No exponer el XML completo: registrar solo las expresiones color.
-        val colorAttributes = Regex(
-            """(?:android:)?color\s*=\s*["'][^"']+["']"""
-        ).findAll(text).map { it.value }.take(8).toList()
+    // El decodificador de Morphe normaliza #ffffffff a #ffffff.
+    // Coincidir exclusivamente con los valores completos de android:color.
+    val colorAttribute = Regex(
+        """android:color\\s*=\\s*(["'])(#[0-9a-fA-F]{6,8})\\1"""
+    )
+    val values = colorAttribute.findAll(text).map { it.groupValues[2].lowercase() }.toList()
+    if (values != listOf("#66ffffff", "#ffffff")) {
         throw PatchException(
-            "AMOLED: colores toolbar inesperados " +
-                "(disabled=$disabledCount, enabled=$enabledCount, " +
-                "atributos=$colorAttributes, bytes=${original.size}, " +
-                "xml=${text.take(400).replace(10.toChar(), ' ').replace(13.toChar(), ' ')})"
+            "AMOLED: colores toolbar inesperados (valores=$values, bytes=${original.size})"
         )
     }
-    return enabled.replace(
-        disabled.replace(text, "@color/main_secondary_text"),
-        "@color/main_secondary_text",
-    ).toByteArray(Charsets.UTF_8)
+    val modified = colorAttribute.replace(text) {
+        """android:color="@color/main_secondary_text" """
+            .trimEnd()
+    }
+    return modified.toByteArray(Charsets.UTF_8)
 }
 
 @Suppress("unused")
