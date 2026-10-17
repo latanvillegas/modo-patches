@@ -167,7 +167,7 @@ private fun patchFileManagerArsc(original: ByteArray): ByteArray {
         throw PatchException("AMOLED: objetivos duplicados")
     }
 
-    val found = mutableMapOf<Pair<Long, Boolean>, Pair<Int, Long>>()\n    var popupParentOffset: Int? = null
+    val found = mutableMapOf<Pair<Long, Boolean>, Pair<Int, Long>>()
     var popupStyleParentOffset: Int? = null
 
     val tableHeader = u16(2)
@@ -287,31 +287,8 @@ private fun patchFileManagerArsc(original: ByteArray): ByteArray {
                     popupStyleParentOffset = parentOffset
                 }
 
-                // El popup predeterminado hereda un overlay oscuro incluso
-                // cuando AppCompat está en modo claro. Cambiar únicamente
-                // su padre a un tema DayNight existente permite resolver
-                // los colores de texto según uiMode, sin alterar Premium.
-                if ((entryFlags and 1) != 0) {
-                    if (id == 0x7f1403a1L && !night) {
-                        if (entrySize < 16 || entryLong + 16 > type.end) {
-                            throw PatchException("AMOLED: estilo popup truncado")
-                        }
-                        val parentOffset = entry + 8
-                        val parent = u32(parentOffset)
-                        if (parent != 0x7f140385L ||
-                            u32(entry + 12) != 2L
-                        ) {
-                            throw PatchException(
-                                "AMOLED: estructura del popup inesperada"
-                            )
-                        }
-                        if (popupParentOffset != null) {
-                            throw PatchException("AMOLED: popup duplicado")
-                        }
-                        popupParentOffset = parentOffset
-                    }
-                    continue
-                }
+                // Las entradas complejas se verifican arriba y no son colores simples.
+                if ((entryFlags and 1) != 0) continue
 
                 if (entryLong + entrySize + 8 > type.end) {
                     throw PatchException("AMOLED: Res_value fuera de límites")
@@ -378,7 +355,7 @@ private fun patchFileManagerArsc(original: ByteArray): ByteArray {
     val popupOffset = popupStyleParentOffset
         ?: throw PatchException("AMOLED: estilo ToobarPopupTheme.Dark no encontrado")
 
-    val popupOffset = popupParentOffset\n        ?: throw PatchException("AMOLED: estilo popup no encontrado")\n\n    // Todas las comprobaciones se completan antes de escribir.
+    // Todas las comprobaciones se completan antes de escribir.
     write32(popupOffset, 0x7f140559L)
     for ((offset, replacement) in found.values) {
         write32(offset, replacement)
