@@ -1,7 +1,7 @@
 package app.morphe.patches.filemanager.music
 
 import app.morphe.patcher.Fingerprint
-import app.morphe.patcher.PatchException
+import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.extensions.InstructionExtensions.addInstruction
 import app.morphe.patcher.extensions.InstructionExtensions.replaceInstruction
 import app.morphe.patcher.patch.bytecodePatch
