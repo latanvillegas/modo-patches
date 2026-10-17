@@ -1,0 +1,39 @@
+name: File Manager Privacy - Kotlin Validation
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  compile:
+    name: Compile Kotlin patches
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Confirm Privacy v1 source
+        run: |
+          test -f patches/src/main/kotlin/app/morphe/patches/filemanager/misc/privacy/FileManagerPrivacyPatch.kt
+          grep -q 'usage_diagnostics' patches/src/main/kotlin/app/morphe/patches/filemanager/misc/privacy/FileManagerPrivacyPatch.kt
+
+      - name: Compile Kotlin only
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.MORPHE_PACKAGES_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          chmod +x ./gradlew
+          ./gradlew :patches:compileKotlin --no-daemon --max-workers=2 --no-parallel --console=plain --stacktrace
