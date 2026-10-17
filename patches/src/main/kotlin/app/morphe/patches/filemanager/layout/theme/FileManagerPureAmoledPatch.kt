@@ -276,9 +276,9 @@ private fun patchFileManagerArsc(original: ByteArray): ByteArray {
                     }
                     val maps = entry + entrySize
                     if (u32(maps) != 0x01010031L ||
-                        u32(maps + 4) != 0x7f060022L ||
+                        u32(maps + 8) != 0x7f060022L ||
                         u32(maps + 12) != 0x7f04014aL ||
-                        u32(maps + 16) != 0x7f060022L ||
+                        u32(maps + 20) != 0x7f060022L ||
                         u8(maps + 7) != 0x01 ||
                         u8(maps + 19) != 0x01
                     ) {
