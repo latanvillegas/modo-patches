@@ -14,6 +14,13 @@ import app.morphe.patcher.patch.bytecodePatch
  *
  * Keep this patch independent of the eight existing privacy/AMOLED patches.
  */
+private object PaymentActivityOnCreateFingerprint : Fingerprint(
+    definingClass = "Lcom/alphainventor/filemanager/activity/PaymentActivity;",
+    name = "onCreate",
+    returnType = "V",
+    parameters = listOf("Landroid/os/Bundle;"),
+)
+
 private object PremiumFeatureGateFingerprint : Fingerprint(
     definingClass = "Lax/y3/h;",
     name = "g",
@@ -24,7 +31,7 @@ private object PremiumFeatureGateFingerprint : Fingerprint(
 @Suppress("unused")
 val fileManagerPremiumLifetimeExperimentalPatch = bytecodePatch(
     name = "File Manager Plus - Premium (local feature gate experimental)",
-    description = "Activa el control local principal de funciones Premium sin consulta de red en ese control. No elimina Billing ni crea licencias oficiales.",
+    description = "Activa el control local principal de funciones Premium sin consulta de red en ese control. Cierra la pantalla de compras antes de inicializarla; no elimina Billing globalmente ni crea licencias oficiales.",
     default = false,
 ) {
     compatibleWith("com.alphainventor.filemanager"("3.8.2"))
