@@ -343,13 +343,11 @@ private fun patchToolbarForegroundText(original: ByteArray): ByteArray {
     ) {
         throw PatchException("AMOLED: selector toolbar no es XML textual")
     }
-    if (!Regex("<selector\\\\b").containsMatchIn(text) ||
-        !Regex("</selector\\\\s*>").containsMatchIn(text)
-    ) {
+    if (!text.contains("<selector") || !text.contains("</selector>")) {
         throw PatchException("AMOLED: estructura selector inesperada")
     }
-    val disabled = Regex("#66ffffff\\\\b", RegexOption.IGNORE_CASE)
-    val enabled = Regex("#ffffffff\\\\b", RegexOption.IGNORE_CASE)
+    val disabled = Regex("#66ffffff", RegexOption.IGNORE_CASE)
+    val enabled = Regex("#ffffffff", RegexOption.IGNORE_CASE)
     if (disabled.findAll(text).count() != 1 ||
         enabled.findAll(text).count() != 1
     ) {
