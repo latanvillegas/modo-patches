@@ -25,7 +25,7 @@ with zipfile.ZipFile(apk) as z:
   if not (name.startswith('classes') and name.endswith('.dex')): continue
   d=z.read(name)
   print(name, 'size',len(d))
-  if d[:4]!=b'dex\\n': print('NOT_DEX');continue
+  if d[:4]!=b'dex\n': print('NOT_DEX');continue
   n=struct.unpack_from('<I',d,0x38)[0];off=struct.unpack_from('<I',d,0x3c)[0]
   strings=[]
   def uleb(pos):
@@ -37,7 +37,7 @@ with zipfile.ZipFile(apk) as z:
   for i in range(n):
    p=struct.unpack_from('<I',d,off+i*4)[0]
    _,p=uleb(p)
-   end=d.find(b'\\x00',p)
+   end=d.find(b'\x00',p)
    strings.append(d[p:end])
   s=set(strings)
   for t in targets: print('STRING',repr(t),t in s)
@@ -88,8 +88,8 @@ PY
     [[ -f "$CLASS" ]] || continue
     MATCHES=$((MATCHES+1))
     echo "CLASS_SMALI_FOUND $CLASS"
-    grep -n -A 30 -B 2 -E '^\\.method .* E\\(Landroid/content/Context;Z\\)V' "$CLASS" || true
-   done < <(find "$TMP/apktool" -type f \\( -path '*/ax/y3/d.smali' -o -path '*/ax/p387y3/d.smali' \\) -print)
+    grep -n -A 30 -B 2 -E '^\\.method .* E\(Landroid/content/Context;Z\)V' "$CLASS" || true
+   done < <(find "$TMP/apktool" -type f \( -path '*/ax/y3/d.smali' -o -path '*/ax/p387y3/d.smali' \) -print)
    if [[ "$MATCHES" == 0 ]]; then echo 'CLASS_SMALI_NOT_FOUND'; fi
   else
    echo 'APKTOOL_DECODE_FAILED'
