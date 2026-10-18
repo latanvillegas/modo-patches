@@ -10,7 +10,6 @@ import org.w3c.dom.Element
 
 private object MovieStatusBarSpacerMeasureFingerprint : Fingerprint(
     definingClass = "Lcom/mgs/carparking/libutils/statusbar/StatusBarHeightView;",
-    methodName = "onMeasure",
     returnType = "V",
     parameters = listOf("I", "I"),
 )
