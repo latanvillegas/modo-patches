@@ -3,7 +3,7 @@ package app.morphe.patches.movie.misc.fullscreen
 import app.morphe.patcher.patch.resourcePatch
 import org.w3c.dom.Element
 
-/** Enables fullscreen only for Movie-owned activity themes. */
+/** Enables fullscreen only for Movie-owned activity themes; runtime overrides are out of scope. */
 @Suppress("unused")
 val movieHideStatusBarPatch = resourcePatch(
     name = "Movie - Hide status bar",
