@@ -12,7 +12,7 @@ import org.w3c.dom.Element
 /**
  * Shared by Movie's MainActivity and VideoPlayDetailActivity.
  * Hide the status bar and lay out Movie's content through its former top inset.
- * Do not request layout behind or hiding of the bottom navigation bar.
+ * Enable edge-to-edge window layout while keeping system navigation visible.
  */
 private object MovieBaseActivityOnCreateFingerprint : Fingerprint(
     definingClass = "Lcom/mgs/carparking/app/BaseActivity;",
@@ -46,6 +46,10 @@ private val movieRuntimeFullscreenPatch = bytecodePatch {
                     move-result-object v0
                     const/16 p1, 0x500
                     invoke-virtual {v0, p1}, Landroid/view/View;->setSystemUiVisibility(I)V
+                    invoke-virtual {p0}, Landroid/app/Activity;->getWindow()Landroid/view/Window;
+                    move-result-object v0
+                    const/4 p1, 0x0
+                    invoke-virtual {v0, p1}, Landroid/view/Window;->setDecorFitsSystemWindows(Z)V
                 """.trimIndent()
             )
         }
