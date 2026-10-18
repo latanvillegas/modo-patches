@@ -125,6 +125,21 @@ val movieRemoveStatusBarInsetsPatch = resourcePatch(
             }
         }
 
+        // Category header needs a small top safe area for its title/search control.
+        // Its 40dp placeholder remains unchanged, so filters and posters do not shift.
+        document("res/layout/fragment_category.xml").use { doc ->
+            val layouts = doc.getElementsByTagName("RelativeLayout")
+            var matches = 0
+            for (index in 0 until layouts.length) {
+                val layout = layouts.item(index) as? Element ?: continue
+                if (layout.getAttribute("android:layout_marginTop") != "0.0dp") continue
+                if (layout.getElementsByTagName("com.google.android.material.tabs.TabLayout").length != 1) continue
+                layout.setAttribute("android:layout_marginTop", "8.0dp")
+                matches++
+            }
+            check(matches == 1) { "Movie: expected one category header; found $matches" }
+        }
+
         document("res/layout/fragment_home.xml").use { doc ->
             val nodes = doc.getElementsByTagName("RelativeLayout")
             var matches = 0
