@@ -16,7 +16,7 @@ val moviePureAmoledPatch = resourcePatch(
         val surfaces = setOf(
             "color_202023", "color_272b30", "color_343940",
             "color_38383A", "color_commen_editbg", "color_home_but_bg",
-            "color_home_gusslike_bg", "main_tab_bg",
+            "color_home_gusslike_bg", "main_tab_bg", "theme_bg_color",
         )
         document("res/values/colors.xml").use { doc ->
             val found = mutableSetOf<String>()
@@ -25,6 +25,11 @@ val moviePureAmoledPatch = resourcePatch(
                 val color = colors.item(index) as? Element ?: continue
                 val name = color.getAttribute("name")
                 if (name !in surfaces) continue
+                if (name == "theme_bg_color") {
+                    check(color.textContent.trim().equals("#020d19", ignoreCase = true)) {
+                        "Movie: unexpected theme_bg_color value: ${color.textContent.trim()}"
+                    }
+                }
                 found += name
                 color.textContent = "#FF000000"
             }
