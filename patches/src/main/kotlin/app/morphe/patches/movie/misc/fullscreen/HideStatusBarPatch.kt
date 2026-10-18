@@ -39,21 +39,29 @@ val movieHideStatusBarPatch = resourcePatch(
                     val style = styles.item(index) as? Element ?: continue
                     if (style.getAttribute("name") !in targets) continue
                     found += style.getAttribute("name")
-                    val items = style.getElementsByTagName("item")
-                    var fullscreen: Element? = null
-                    for (itemIndex in 0 until items.length) {
-                        val item = items.item(itemIndex) as? Element ?: continue
-                        if (item.getAttribute("name") == "android:windowFullscreen") {
-                            fullscreen = item
-                            break
+                    val attributes = mapOf(
+                        "android:windowFullscreen" to "true",
+                        "android:windowBackground" to "@android:color/black",
+                        "android:statusBarColor" to "@android:color/black",
+                        "android:windowLightStatusBar" to "false",
+                    )
+                    for ((name, value) in attributes) {
+                        val items = style.getElementsByTagName("item")
+                        var target: Element? = null
+                        for (itemIndex in 0 until items.length) {
+                            val item = items.item(itemIndex) as? Element ?: continue
+                            if (item.getAttribute("name") == name) {
+                                target = item
+                                break
+                            }
                         }
+                        if (target == null) {
+                            target = doc.createElement("item")
+                            target.setAttribute("name", name)
+                            style.appendChild(target)
+                        }
+                        target.textContent = value
                     }
-                    if (fullscreen == null) {
-                        fullscreen = doc.createElement("item")
-                        fullscreen.setAttribute("name", "android:windowFullscreen")
-                        style.appendChild(fullscreen)
-                    }
-                    fullscreen.textContent = "true"
                 }
                 check(found.isNotEmpty()) { "Movie: no target themes in $path" }
             }
