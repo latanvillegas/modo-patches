@@ -286,7 +286,7 @@ val fileManagerHighQualityAlbumArtPatch = bytecodePatch(
             pictureIndex + 2,
             """
                 if-nez v2, :morphe_picture_available
-                invoke-direct {p0}, Lax/V4/a${'[B
+                invoke-direct {p0}, Lax/V4/a${'$'}b;->morpheWavApic()[B
                 move-result-object v2
                 :morphe_picture_available
                 nop
