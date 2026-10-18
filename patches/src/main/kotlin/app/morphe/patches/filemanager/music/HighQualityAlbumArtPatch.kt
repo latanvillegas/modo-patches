@@ -119,7 +119,7 @@ val fileManagerHighQualityAlbumArtPatch = bytecodePatch(
                 addInstructions(0, """
                     # Only local files are handled by this first fallback.
                     # Other URI schemes continue through the original pipeline.
-                    iget-object v1, p0, Lax/V4/a\\$b;->r0:Ljava/lang/String;
+                    iget-object v1, p0, Lax/V4/a${'$'}b;->r0:Ljava/lang/String;
                     invoke-static {v1}, Landroid/net/Uri;->parse(Ljava/lang/String;)Landroid/net/Uri;
                     move-result-object v4
                     invoke-virtual {v4}, Landroid/net/Uri;->getScheme()Ljava/lang/String;
