@@ -44,13 +44,13 @@ val fileManagerAudioCoverThumbnailsPatch = bytecodePatch(
             return hits.single().index
         }
         val extract = uniqueRef("Lax/z3/B;->k(Landroid/content/Context;Ljava/lang/String;Ljava/io/FileDescriptor;)[B")
-        // The original terminal return uses p1 (register 9), not v1.
-        // v1 is reserved for the source filename until the fallback is called.
+        // The actual terminal return is return-object v1 (register 1).
+        // The original path is retained in v1 until fallback replaces its value.
         val terminal = instructions.indexOfLast {
             it.opcode == Opcode.RETURN_OBJECT
         }
         val terminalRegister = (instructions.getOrNull(terminal) as? OneRegisterInstruction)?.registerA
-        if (terminal <= extract || extract < 1 || terminalRegister != 9) {
+        if (terminal <= extract || extract < 1 || terminalRegister != 1) {
             throw PatchException(
                 "Audio cover thumbnails: invalid s0 terminal return " +
                     "(extract=$extract, terminal=$terminal, register=$terminalRegister, count=${instructions.size})"
@@ -73,7 +73,7 @@ val fileManagerAudioCoverThumbnailsPatch = bytecodePatch(
                 } == true
         }
         if (nullMove.size != 1) throw PatchException("Audio cover thumbnails: MediaStore null path changed (hits=${nullMove.size})")
-        if (init >= extract || nullMove.single().index >= terminal) {
+        if (init >= extract || nullMove.single().index >= terminal || terminal != instructions.lastIndex) {
             throw PatchException("Audio cover thumbnails: unexpected instruction ordering (init=$init, extract=$extract, nullMove=${nullMove.single().index}, terminal=$terminal)")
         }
 
