@@ -10,9 +10,9 @@ if ! grep -Eq '(^|[[:space:]])(build|assembleRelease|assembleDebug)([[:space:]]|
 fi
 ./gradlew :extensions:filemanager:build --no-daemon
 
-mapfile -d '' mpe_files < <(find extensions/filemanager -type f -name '*.mpe' -print0)
+mapfile -d '' mpe_files < <(find extensions/filemanager/build patches/build -type f -name '*.mpe' -print0 2>/dev/null || true)
 if [ "${#mpe_files[@]}" -eq 0 ]; then
-  echo "ERROR: no .mpe artifact generated under extensions/filemanager" >&2
+  echo "ERROR: no .mpe artifact found in module or patches build outputs" >&2
   exit 1
 fi
 for file in "${mpe_files[@]}"; do
