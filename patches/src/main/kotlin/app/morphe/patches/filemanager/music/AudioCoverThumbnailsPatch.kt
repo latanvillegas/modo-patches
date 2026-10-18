@@ -5,6 +5,7 @@ import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.extensions.InstructionExtensions.addInstruction
 import app.morphe.patcher.extensions.InstructionExtensions.replaceInstruction
 import app.morphe.patcher.patch.bytecodePatch
+import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 
@@ -46,7 +47,7 @@ val fileManagerAudioCoverThumbnailsPatch = bytecodePatch(
         // The original terminal return uses p1 (register 9), not v1.
         // v1 is reserved for the source filename until the fallback is called.
         val terminal = instructions.indexOfLast {
-            it.opcode.name == "RETURN_OBJECT"
+            it.opcode == Opcode.RETURN_OBJECT
         }
         val terminalRegister = (instructions.getOrNull(terminal) as? OneRegisterInstruction)?.registerA
         if (terminal <= extract || extract < 1 || terminalRegister != 9) {
@@ -59,19 +60,22 @@ val fileManagerAudioCoverThumbnailsPatch = bytecodePatch(
         // The original s0 has a single const/4 v1, 0 before the embedded-art
         // extraction. Save the original filename in v1 instead.
         val init = (0 until extract).lastOrNull {
-            instructions[it].opcode.name == "CONST_4" &&
+            instructions[it].opcode == Opcode.CONST_4 &&
                 (instructions[it] as? OneRegisterInstruction)?.registerA == 1
         } ?: throw PatchException("Audio cover thumbnails: null initialization not found")
 
         // The original provider uses move-object p1, v1 on the MediaStore
         // failure path. That must now use v7 (the zero sentinel).
         val nullMove = instructions.withIndex().filter {
-            it.value.opcode.name == "MOVE_OBJECT" &&
+            it.value.opcode == Opcode.MOVE_OBJECT &&
                 (it.value as? com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction)?.let { i ->
                     i.registerA == 9 && i.registerB == 1
                 } == true
         }
-        if (nullMove.size != 1) throw PatchException("Audio cover thumbnails: MediaStore null path changed")
+        if (nullMove.size != 1) throw PatchException("Audio cover thumbnails: MediaStore null path changed (hits=${nullMove.size})")
+        if (init >= extract || nullMove.single().index >= terminal) {
+            throw PatchException("Audio cover thumbnails: unexpected instruction ordering (init=$init, extract=$extract, nullMove=${nullMove.single().index}, terminal=$terminal)")
+        }
 
         method.replaceInstruction(nullMove.single().index, "move-object p1, v7")
         method.replaceInstruction(extract, "invoke-static {v0, p1, v7}, Lax/z3/B;->k(Landroid/content/Context;Ljava/lang/String;Ljava/io/FileDescriptor;)[B")
