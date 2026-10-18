@@ -87,9 +87,8 @@ val fileManagerHighQualityAlbumArtPatch = bytecodePatch(
             returnType = "[Landroid/graphics/Bitmap;",
             parameters = listOf("[Ljava/lang/Void;"),
         ).method
-        // Safety rollback: the experimental WAV fallback is disabled until
-        // its bytecode is verifier-safe and exceptions are handled. The
-        // original Android extractor remains active.
+        // Preserve the ARGB_8888 decoder configuration.
+        // The WAV/APIC helper remains connected to the original extractor.
 
         val configIndex = uniqueReferenceIndex(
             decoder,
@@ -100,6 +99,17 @@ val fileManagerHighQualityAlbumArtPatch = bytecodePatch(
             "sget-object v7, Landroid/graphics/Bitmap\$Config;->ARGB_8888:Landroid/graphics/Bitmap\$Config;",
         )
 
+
+        // Increase the album-art decode budget to 8 MiB without
+        // modifying the global thumbnail cache or changing branch offsets.
+        val sampleIndex = uniqueReferenceIndex(
+            decoder,
+            "Lax/V4/a;->k(IILandroid/graphics/Bitmap\$Config;I)I",
+        )
+        decoder.replaceInstruction(
+            sampleIndex,
+            "invoke-static {v5, v6, v7, v8}, Lapp/morphe/extension/filemanager/WavApic;->calculateSampleSize(IILandroid/graphics/Bitmap\$Config;I)I",
+        )
 
         // Replace only the original three-code-unit invoke.
         // v1 = MediaMetadataRetriever; v9 = album task (this).
@@ -113,8 +123,7 @@ val fileManagerHighQualityAlbumArtPatch = bytecodePatch(
             "invoke-static {v1, v9}, Lapp/morphe/extension/filemanager/WavApic;->getEmbeddedPicture(Landroid/media/MediaMetadataRetriever;Ljava/lang/Object;)[B",
         )
 
-        // Preserve the original invoke / move-result pair and its code size.
-        // The 8 MiB budget override is suspended pending a verifier-safe
-        // implementation that does not invalidate DEX branch targets.
+        // Preserve the original invoke / move-result structure and code size.
+        // The 8 MiB sample-size calculation is handled by the extension.
     }
 }

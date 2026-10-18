@@ -168,4 +168,34 @@ public final class WavApic {
         }
         return true;
     }
+
+    /**
+     * Calculates album-art sampling with an 8 MiB bitmap budget.
+     * Does not change the original thumbnail cache.
+     */
+    public static int calculateSampleSize(
+            int width,
+            int height,
+            android.graphics.Bitmap.Config config,
+            int originalBudget) {
+
+        if (width <= 0 || height <= 0) {
+            return 1;
+        }
+
+        final long budget = 8L * 1024L * 1024L;
+        final int bytesPerPixel =
+                config == android.graphics.Bitmap.Config.RGB_565 ? 2 : 4;
+
+        long bytes = (long) width * height * bytesPerPixel;
+        int sampleSize = 1;
+
+        while (bytes > budget && sampleSize < (1 << 29)) {
+            bytes /= 4;
+            sampleSize *= 2;
+        }
+
+        return sampleSize;
+    }
+
 }
