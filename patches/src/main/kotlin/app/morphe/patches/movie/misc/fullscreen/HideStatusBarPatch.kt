@@ -1,9 +1,51 @@
 package app.morphe.patches.movie.misc.fullscreen
 
+import app.morphe.patcher.Fingerprint
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.extensions.InstructionExtensions.instructions
+import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.resourcePatch
+import com.android.tools.smali.dexlib2.Opcode
 import org.w3c.dom.Element
 
-/** Enables fullscreen only for Movie-owned activity themes; runtime overrides are out of scope. */
+/**
+ * Shared by Movie's MainActivity and VideoPlayDetailActivity.
+ * Set FLAG_FULLSCREEN after the original activity initialization, where both
+ * temporary registers v0 and p1 are no longer needed.
+ */
+private object MovieBaseActivityOnCreateFingerprint : Fingerprint(
+    definingClass = "Lcom/mgs/carparking/app/BaseActivity;",
+    methodName = "onCreate",
+    returnType = "V",
+    parameters = listOf("Landroid/os/Bundle;"),
+)
+
+private val movieRuntimeFullscreenPatch = bytecodePatch {
+    compatibleWith("com.movievn.cinevi"("4.0.0"))
+
+    execute {
+        MovieBaseActivityOnCreateFingerprint.method.apply {
+            val returnIndices = instructions.withIndex()
+                .filter { it.value.opcode == Opcode.RETURN_VOID }
+                .map { it.index }
+            check(returnIndices.size == 2) {
+                "Movie: unexpected BaseActivity.onCreate return structure"
+            }
+            // Only the normal completion path; the earlier return redirects to Splash.
+            addInstructions(
+                returnIndices.last(),
+                """
+                    invoke-virtual {p0}, Landroid/app/Activity;->getWindow()Landroid/view/Window;
+                    move-result-object v0
+                    const/16 p1, 0x400
+                    invoke-virtual {v0, p1}, Landroid/view/Window;->addFlags(I)V
+                """.trimIndent()
+            )
+        }
+    }
+}
+
+/** Enables fullscreen in Movie-owned themes and the shared activity base. */
 @Suppress("unused")
 val movieHideStatusBarPatch = resourcePatch(
     name = "Movie - Hide status bar",
@@ -11,6 +53,7 @@ val movieHideStatusBarPatch = resourcePatch(
     default = false,
 ) {
     compatibleWith("com.movievn.cinevi"("4.0.0"))
+    dependsOn(movieRuntimeFullscreenPatch)
 
     execute {
         val targets = setOf("BrowserTheme", "AppTheme_Main", "AppTheme_Splash")
