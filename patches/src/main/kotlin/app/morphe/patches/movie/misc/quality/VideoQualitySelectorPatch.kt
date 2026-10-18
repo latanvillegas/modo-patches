@@ -18,7 +18,6 @@ import org.w3c.dom.Element
 private const val ACTIVITY = "Lcom/mgs/carparking/ui/homecontent/videodetail/VideoPlayDetailActivity;"
 private const val SELECTOR = "Lcom/google/android/exoplayer/trackselection/DefaultTrackSelector;"
 private const val GROUPS = "Lcom/google/android/exoplayer/source/TrackGroupArray;"
-private const val OVERRIDE = "Lcom/google/android/exoplayer/trackselection/DefaultTrackSelector\$SelectionOverride;"
 
 private val movieQualityRuntimePatch = bytecodePatch {
     compatibleWith("com.movievn.cinevi"("4.0.0"))
@@ -155,6 +154,7 @@ private val movieQualityRuntimePatch = bytecodePatch {
             :manual
             invoke-virtual {v1}, Lcom/google/android/exoplayer/trackselection/b\$a;->c()I
             move-result v6
+            if-ltz v2, :fail
             if-ge v2, v6, :fail
             invoke-virtual {v1, v2}, Lcom/google/android/exoplayer/trackselection/b\$a;->d(I)I
             move-result v6
@@ -166,10 +166,12 @@ private val movieQualityRuntimePatch = bytecodePatch {
             invoke-virtual {v1, v2}, Lcom/google/android/exoplayer/trackselection/b\$a;->e(I)$GROUPS
             move-result-object v8
             iget v9, v8, $GROUPS->b:I
+            if-ltz v6, :fail
             if-ge v6, v9, :fail
             invoke-virtual {v8, v6}, $GROUPS->b(I)Lcom/google/android/exoplayer/source/TrackGroup;
             move-result-object v9
             iget v10, v9, Lcom/google/android/exoplayer/source/TrackGroup;->b:I
+            if-ltz v7, :fail
             if-ge v7, v10, :fail
             invoke-virtual {v9, v7}, Lcom/google/android/exoplayer/source/TrackGroup;->b(I)Lcom/google/android/exoplayer/Format;
             move-result-object v9
@@ -181,8 +183,13 @@ private val movieQualityRuntimePatch = bytecodePatch {
             const/4 v11, 0x0
             aput v7, v10, v11
             invoke-direct {v9, v6, v10}, Lcom/google/android/exoplayer/trackselection/DefaultTrackSelector\$SelectionOverride;-><init>(I[I)V
+            invoke-virtual {v5, v2}, Landroid/util/SparseArray;->get(I)Ljava/lang/Object;
+            move-result-object v10
+            check-cast v10, Ljava/util/Map;
+            if-nez v10, :existing_map
             new-instance v10, Ljava/util/HashMap;
             invoke-direct {v10}, Ljava/util/HashMap;-><init>()V
+            :existing_map
             invoke-interface {v10, v8, v9}, Ljava/util/Map;->put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
             invoke-virtual {v5, v2, v10}, Landroid/util/SparseArray;->put(ILjava/lang/Object;)V
             :apply
