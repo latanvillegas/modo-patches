@@ -25,3 +25,17 @@ Status: **design only; runtime fallback NOT enabled**. Branch: `feature/filemana
 ## Gate
 
 Do not activate WAV/APIC fallback or run an APK build merely because the host-side extractor compiles. First establish and validate target-side DEX inclusion. Preserve the existing working patch until that gate is passed.
+
+## Confirmed Morphe extension API (2026-10-17)
+
+Official Morphe Patcher documentation at https://github.com/MorpheApp/morphe-patcher/blob/main/docs/2_2_patch_anatomy.md confirms `extendWith("file.mpe")` inside a `bytecodePatch`. The `.mpe` is a precompiled DEX resource in the patches bundle, merged into `context.classes` **before** `execute`. This is the preferred injection mechanism, not copying host-side Kotlin into the APK.
+
+Implementation sequence:
+
+1. Add a minimal Android Java/Kotlin runtime helper module for File Manager Plus with a distinct package and a public static `extract(Context, String): byte[]` method. Avoid dependencies on the patcher JVM classes.
+2. Compile the helper to DEX and package it as an `.mpe` resource in the patch bundle using the repository's extension build conventions (must be verified against its Gradle configuration).
+3. Register `extendWith("...mpe")` in the tenth patch, and assert that the expected class and method descriptor exist in the patch context. Only then add a call site.
+4. Retain the stable `getEmbeddedPicture` invoke/move-result sequence. Plan a null-only fallback, with a URI-aware source resolver and bounded parsing.
+5. Audit control-flow and exception tables in the resulting DEX and perform one controlled build/test after the above checks.
+
+**Compatibility note:** The documented API is present in Morphe Patcher's current documentation, but the exact extension packaging conventions and compatibility with the project's pinned patcher dependency still need confirmation. No runtime hook is enabled by this documentation update.
