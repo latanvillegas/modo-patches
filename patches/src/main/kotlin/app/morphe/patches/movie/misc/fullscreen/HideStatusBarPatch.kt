@@ -60,7 +60,7 @@ val movieHideStatusBarPatch = resourcePatch(
     default = false,
 ) {
     compatibleWith("com.movievn.cinevi"("4.0.0"))
-    dependsOn(movieRuntimeFullscreenPatch)
+    dependsOn(movieRuntimeFullscreenPatch, movieRemoveStatusBarInsetsPatch)
 
     execute {
         val targets = setOf("BrowserTheme", "AppTheme_Main", "AppTheme_Splash")
