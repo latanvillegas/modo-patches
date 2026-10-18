@@ -1,7 +1,42 @@
 package app.morphe.patches.movie.misc.fullscreen
 
+import app.morphe.patcher.Fingerprint
+import app.morphe.patcher.extensions.InstructionExtensions.addInstruction
+import app.morphe.patcher.methodCall
+import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.resourcePatch
+import app.morphe.util.indexOfFirstInstructionOrThrow
 import org.w3c.dom.Element
+
+private object MovieStatusBarSpacerMeasureFingerprint : Fingerprint(
+    definingClass = "Lcom/mgs/carparking/libutils/statusbar/StatusBarHeightView;",
+    methodName = "onMeasure",
+    returnType = "V",
+    parameters = listOf("I", "I"),
+)
+
+/**
+ * The custom spacer overrides XML height during onMeasure. Force the height
+ * argument to zero immediately before setMeasuredDimension(width, height).
+ */
+private val movieZeroStatusBarSpacerMeasurePatch = bytecodePatch {
+    compatibleWith("com.movievn.cinevi"("4.0.0"))
+
+    execute {
+        MovieStatusBarSpacerMeasureFingerprint.method.apply {
+            val measureIndex = indexOfFirstInstructionOrThrow(
+                methodCall(
+                    name = "setMeasuredDimension",
+                    returnType = "V",
+                    parameters = listOf("I", "I"),
+                )
+            )
+            // In Movie 4.0.0 onMeasure(II)V uses p2 as the height argument.
+            // No extra register is needed and the measured width remains intact.
+            addInstruction(measureIndex, "const/4 p2, 0x0")
+        }
+    }
+}
 
 /**
  * Removes Movie's own status-bar-height spacers and the home header's 38dp top margin.
@@ -10,10 +45,11 @@ import org.w3c.dom.Element
 @Suppress("unused")
 val movieRemoveStatusBarInsetsPatch = resourcePatch(
     name = "Movie - Remove status bar spacing",
-    description = "Removes Movie-owned status bar spacers and home header top spacing.",
+    description = "Removes Movie-owned status bar spacers, including their runtime measured height, and home header top spacing.",
     default = false,
 ) {
     compatibleWith("com.movievn.cinevi"("4.0.0"))
+    dependsOn(movieZeroStatusBarSpacerMeasurePatch)
 
     execute {
         val spacerTag = "com.mgs.carparking.libutils.statusbar.StatusBarHeightView"
