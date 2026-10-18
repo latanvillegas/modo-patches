@@ -47,8 +47,8 @@ val fileManagerAudioCoverThumbnailsPatch = bytecodePatch(
             it.opcode.name == "RETURN_OBJECT" &&
                 (it as? OneRegisterInstruction)?.registerA == 1
         }
-        if (terminal != instructions.lastIndex || extract < 1) {
-            throw PatchException("Audio cover thumbnails: unexpected s0 control flow")
+        if (terminal <= extract || extract < 1) {
+            throw PatchException("Audio cover thumbnails: invalid s0 extraction/return ordering (extract=$extract, terminal=$terminal, count=${instructions.size})")
         }
 
         // The original s0 has a single const/4 v1, 0 before the embedded-art
