@@ -38,7 +38,7 @@ private val movieQualityRuntimePatch = bytecodePatch {
                 ).toMutable().apply { addInstructions(0, code.trimIndent()) }
             )
         }
-        addMethod("morpheShowQuality", "Landroid/view/View;", "V", 13, """
+        addMethod("morpheShowQuality", "Landroid/view/View;", "V", 15, """
             iget-object v0, p0, $ACTIVITY->p:Lw/a;
             if-eqz v0, :done
             invoke-virtual {v0}, Lw/a;->D()Lf4/u0;
@@ -115,7 +115,7 @@ private val movieQualityRuntimePatch = bytecodePatch {
             :done
             return-void
         """)
-        addMethod("onMenuItemClick", "Landroid/view/MenuItem;", "Z", 12, """
+        addMethod("onMenuItemClick", "Landroid/view/MenuItem;", "Z", 14, """
             iget-object v0, p0, $ACTIVITY->p:Lw/a;
             if-eqz v0, :fail
             invoke-virtual {v0}, Lw/a;->D()Lf4/u0;
