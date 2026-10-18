@@ -114,7 +114,7 @@ val fileManagerHighQualityAlbumArtPatch = bytecodePatch(
                 AccessFlags.PRIVATE.value,
                 null,
                 null,
-                MutableMethodImplementation(14),
+                MutableMethodImplementation(16),
             ).toMutable().apply {
                 addInstructions(0, """
                     # Only local files are handled by this first fallback.
@@ -163,8 +163,9 @@ val fileManagerHighQualityAlbumArtPatch = bytecodePatch(
                     move-result v4
                     invoke-static {v4}, Ljava/lang/Integer;->reverseBytes(I)I
                     move-result v4
-                    invoke-static {v4}, Ljava/lang/Integer;->toUnsignedLong(I)J
-                    move-result-wide v6
+                    int-to-long v6, v4
+                    const-wide v12, 0xffffffffL
+                    and-long/2addr v6, v12
                     add-long v2, v8, v6
                     cmp-long v4, v2, v10
                     if-gtz v4, :morphe_close_null
@@ -180,7 +181,7 @@ val fileManagerHighQualityAlbumArtPatch = bytecodePatch(
                     const-wide/16 v4, 0xa
                     cmp-long v4, v6, v4
                     if-ltz v4, :morphe_close_null
-                    const-wide v4, 0x1000000
+                    const-wide/32 v4, 0x1000000
                     cmp-long v4, v6, v4
                     if-gtz v4, :morphe_close_null
                     long-to-int v4, v6
@@ -287,41 +288,6 @@ val fileManagerHighQualityAlbumArtPatch = bytecodePatch(
             """
                 if-nez v2, :morphe_picture_available
                 invoke-direct {p0}, Lax/V4/a${'$'}b;->morpheWavApic()[B
-                move-result-object v2
-                :morphe_picture_available
-                nop
-            """.trimIndent(),
-        )
-
-
-        val configIndex = uniqueReferenceIndex(
-            decoder,
-            "Landroid/graphics/Bitmap\$Config;->RGB_565:Landroid/graphics/Bitmap\$Config;",
-        )
-        decoder.replaceInstruction(
-            configIndex,
-            "sget-object v7, Landroid/graphics/Bitmap\$Config;->ARGB_8888:Landroid/graphics/Bitmap\$Config;",
-        )
-
-        // The stock decoder passes a 1 MiB budget to k(). With ARGB_8888,
-        // that can downsample artwork even more aggressively than RGB_565.
-        // Override only this decoder call, not the global cache budget.
-        val budgetCallIndex = uniqueReferenceIndex(
-            decoder,
-            "Lax/V4/a;->d()I",
-        )
-        val budgetResult = decoder.implementation?.instructions?.elementAtOrNull(budgetCallIndex + 1)
-        if (budgetResult?.opcode != Opcode.MOVE_RESULT ||
-            (budgetResult as? OneRegisterInstruction)?.registerA != 8
-        ) {
-            throw PatchException("Album art: unexpected decode budget register")
-        }
-        // Keep the invoke-result pair structurally valid by replacing both.
-        decoder.replaceInstruction(budgetCallIndex + 1, "nop")
-        decoder.replaceInstruction(budgetCallIndex, "const v8, 0x800000")
-    }
-}
-}b;->morpheWavApic()[B
                 move-result-object v2
                 :morphe_picture_available
                 nop
