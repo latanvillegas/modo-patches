@@ -30,10 +30,11 @@ internal object WavApicExtractor {
                     if (size < 10 || size > MAX_TAG_BYTES) return@use null
                     val bytes = ByteArray(size.toInt())
                     input.readFully(bytes)
-                    return@use extractFromId3(bytes)
+                    val image = extractFromId3(bytes)
+                    if (image != null) return@use image
                 }
                 val next = dataStart + size + (size and 1L)
-                if (next <= offset) return@use null
+                if (next <= offset || next > length) return@use null
                 offset = next
             }
             null
@@ -46,7 +47,9 @@ internal object WavApicExtractor {
         val flags = tag[5].toInt() and 0xff
         if ((flags and 0x80) != 0) return null // Unsynchronisation needs dedicated decoding
         val declared = syncsafe(tag, 6) ?: return null
-        val end = minOf(tag.size.toLong(), 10L + declared).toInt()
+        // Reject truncated ID3 tags instead of parsing incomplete frames.
+        if (declared > tag.size - 10L) return null
+        val end = (10L + declared).toInt()
         var cursor = 10
         if ((flags and 0x40) != 0) {
             if (cursor + 4 > end) return null
@@ -62,7 +65,8 @@ internal object WavApicExtractor {
             val flagsHi = tag[cursor + 8].toInt() and 0xff
             val flagsLo = tag[cursor + 9].toInt() and 0xff
             if (frameId == "APIC" && flagsHi == 0 && flagsLo == 0) {
-                return parseApic(tag, cursor + 10, size.toInt())
+                val image = parseApic(tag, cursor + 10, size.toInt())
+                if (image != null) return image
             }
             cursor += 10 + size.toInt()
         }
