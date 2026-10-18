@@ -43,12 +43,17 @@ val fileManagerAudioCoverThumbnailsPatch = bytecodePatch(
             return hits.single().index
         }
         val extract = uniqueRef("Lax/z3/B;->k(Landroid/content/Context;Ljava/lang/String;Ljava/io/FileDescriptor;)[B")
+        // The original terminal return uses p1 (register 9), not v1.
+        // v1 is reserved for the source filename until the fallback is called.
         val terminal = instructions.indexOfLast {
-            it.opcode.name == "RETURN_OBJECT" &&
-                (it as? OneRegisterInstruction)?.registerA == 1
+            it.opcode.name == "RETURN_OBJECT"
         }
-        if (terminal <= extract || extract < 1) {
-            throw PatchException("Audio cover thumbnails: invalid s0 extraction/return ordering (extract=$extract, terminal=$terminal, count=${instructions.size})")
+        val terminalRegister = (instructions.getOrNull(terminal) as? OneRegisterInstruction)?.registerA
+        if (terminal <= extract || extract < 1 || terminalRegister != 9) {
+            throw PatchException(
+                "Audio cover thumbnails: invalid s0 terminal return " +
+                    "(extract=$extract, terminal=$terminal, register=$terminalRegister, count=${instructions.size})"
+            )
         }
 
         // The original s0 has a single const/4 v1, 0 before the embedded-art
