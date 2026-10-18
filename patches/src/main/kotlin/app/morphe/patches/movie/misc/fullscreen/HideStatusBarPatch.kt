@@ -1,6 +1,7 @@
 package app.morphe.patches.movie.misc.fullscreen
 
 import app.morphe.patcher.Fingerprint
+import app.morphe.patcher.methodCall
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.extensions.InstructionExtensions.instructions
 import app.morphe.patcher.patch.bytecodePatch
@@ -17,6 +18,7 @@ private object MovieBaseActivityOnCreateFingerprint : Fingerprint(
     definingClass = "Lcom/mgs/carparking/app/BaseActivity;",
     returnType = "V",
     parameters = listOf("Landroid/os/Bundle;"),
+    filters = listOf(methodCall(name = "initParam")),
 )
 
 private val movieRuntimeFullscreenPatch = bytecodePatch {
