@@ -80,6 +80,29 @@ val movieRemoveStatusBarInsetsPatch = resourcePatch(
             }
         }
 
+        // Top offsets in secondary tabs are independent of StatusBarHeightView.
+        // Match the exact original values to avoid silently changing unrelated layouts.
+        val secondaryTopOffsets = listOf(
+            Triple("res/layout/fragment_category.xml", "RelativeLayout", "@dimen/dp_35"),
+            Triple("res/layout/fragment_rank_new.xml", "TextView", "@dimen/dp_40"),
+            Triple("res/layout/fragment_mine.xml", "androidx.constraintlayout.widget.ConstraintLayout", "@dimen/dp_50"),
+        )
+        for ((path, tag, originalMargin) in secondaryTopOffsets) {
+            document(path).use { doc ->
+                val nodes = doc.getElementsByTagName(tag)
+                var matches = 0
+                for (index in 0 until nodes.length) {
+                    val view = nodes.item(index) as? Element ?: continue
+                    if (view.getAttribute("android:layout_marginTop") != originalMargin) continue
+                    view.setAttribute("android:layout_marginTop", "0.0dp")
+                    matches++
+                }
+                check(matches == 1) {
+                    "Movie: expected one secondary tab top offset in $path; found $matches"
+                }
+            }
+        }
+
         document("res/layout/fragment_home.xml").use { doc ->
             val nodes = doc.getElementsByTagName("RelativeLayout")
             var matches = 0
