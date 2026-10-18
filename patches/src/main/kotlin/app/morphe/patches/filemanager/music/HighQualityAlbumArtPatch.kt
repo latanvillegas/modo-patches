@@ -14,7 +14,7 @@ import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 @Suppress("unused")
 val fileManagerHighQualityAlbumArtPatch = bytecodePatch(
     name = "File Manager Plus - High Quality Album Art",
-    description = "Prioritizes high-quality embedded artwork with 32-bit color and an 8 MiB decode budget.",
+    description = "Uses full-resolution album artwork in playback and cache, with ARGB_8888 decoding; WAV/APIC fallback is not yet enabled.",
     default = false,
 ) {
     compatibleWith("com.alphainventor.filemanager"("3.8.2"))
