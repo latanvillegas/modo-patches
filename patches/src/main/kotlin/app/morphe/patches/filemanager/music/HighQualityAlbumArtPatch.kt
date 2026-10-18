@@ -14,10 +14,12 @@ import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 @Suppress("unused")
 val fileManagerHighQualityAlbumArtPatch = bytecodePatch(
     name = "File Manager Plus - High Quality Album Art",
-    description = "Uses full-resolution album artwork in playback and cache, with ARGB_8888 decoding; WAV/APIC fallback is not yet enabled.",
+    description = "Uses full-resolution album artwork, ARGB_8888 decoding, and WAV/ID3v2.3 APIC fallback when Android finds no embedded cover.",
     default = false,
 ) {
     compatibleWith("com.alphainventor.filemanager"("3.8.2"))
+
+    extendWith("extensions/filemanager.mpe")
 
     execute {
         fun uniqueReferenceIndex(
@@ -96,6 +98,19 @@ val fileManagerHighQualityAlbumArtPatch = bytecodePatch(
         decoder.replaceInstruction(
             configIndex,
             "sget-object v7, Landroid/graphics/Bitmap\$Config;->ARGB_8888:Landroid/graphics/Bitmap\$Config;",
+        )
+
+
+        // Replace only the original three-code-unit invoke.
+        // v1 = MediaMetadataRetriever; v9 = album task (this).
+        // The following move-result-object v2 and if-eqz remain intact.
+        val artworkIndex = uniqueReferenceIndex(
+            decoder,
+            "Landroid/media/MediaMetadataRetriever;->getEmbeddedPicture()[B",
+        )
+        decoder.replaceInstruction(
+            artworkIndex,
+            "invoke-static {v1, v9}, Lapp/morphe/extension/filemanager/WavApic;->getEmbeddedPicture(Landroid/media/MediaMetadataRetriever;Ljava/lang/Object;)[B",
         )
 
         // Preserve the original invoke / move-result pair and its code size.

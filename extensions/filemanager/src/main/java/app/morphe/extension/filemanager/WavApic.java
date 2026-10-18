@@ -12,6 +12,38 @@ public final class WavApic {
     private static final int MAX_IMAGE = 10 * 1024 * 1024;
     private WavApic() {}
 
+
+    /**
+     * Preserves Android's original embedded artwork extraction.
+     * Only falls back to WAV/APIC when Android returns no image.
+     */
+    public static byte[] getEmbeddedPicture(
+            android.media.MediaMetadataRetriever retriever,
+            Object albumTask) {
+
+        byte[] original = retriever.getEmbeddedPicture();
+        if (original != null) return original;
+
+        try {
+            Class<?> cls = albumTask.getClass();
+
+            java.lang.reflect.Field contextField =
+                    cls.getDeclaredField("q0");
+            java.lang.reflect.Field sourceField =
+                    cls.getDeclaredField("r0");
+
+            contextField.setAccessible(true);
+            sourceField.setAccessible(true);
+
+            Context context = (Context) contextField.get(albumTask);
+            String source = (String) sourceField.get(albumTask);
+
+            return extract(context, source);
+        } catch (Exception | LinkageError ignored) {
+            return null;
+        }
+    }
+
     public static byte[] extract(Context context, String source) {
         if (context == null || source == null) return null;
         try {
