@@ -5,8 +5,6 @@ import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.extensions.InstructionExtensions.addInstruction
 import app.morphe.patcher.extensions.InstructionExtensions.replaceInstruction
 import app.morphe.patcher.patch.bytecodePatch
-import com.android.tools.smali.dexlib2.Opcode
-import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 
 /**
@@ -70,16 +68,9 @@ val fileManagerHighQualityAlbumArtPatch = bytecodePatch(
             player,
             "Lax/V4/a;->j(Ljava/lang/String;)Landroid/graphics/Bitmap;",
         )
-        // Avoid using a low-resolution bitmap from MediaDescriptionCompat.
-        // A cache miss must trigger the original embedded-art decoder.
-        val earlyExitIndex = cacheIndex - 2
-        val earlyExit = player.implementation?.instructions?.elementAtOrNull(earlyExitIndex)
-        if (earlyExit?.opcode != Opcode.IF_NEZ ||
-            (earlyExit as? OneRegisterInstruction)?.registerA != 0
-        ) {
-            throw PatchException("Album art: unexpected metadata shortcut in h3")
-        }
-        player.replaceInstruction(earlyExitIndex, "const/4 v0, 0x0")
+        // Preserve the original conditional branch and its DEX target.
+        // Replacing a branch with a differently sized instruction can
+        // invalidate target addresses and cause VerifyError on Android 15.
         player.replaceInstruction(
             cacheIndex,
             "invoke-virtual {v2, v0}, Lax/V4/a;->g(Ljava/lang/String;)Landroid/graphics/Bitmap;",
@@ -107,21 +98,8 @@ val fileManagerHighQualityAlbumArtPatch = bytecodePatch(
             "sget-object v7, Landroid/graphics/Bitmap\$Config;->ARGB_8888:Landroid/graphics/Bitmap\$Config;",
         )
 
-        // The stock decoder passes a 1 MiB budget to k(). With ARGB_8888,
-        // that can downsample artwork even more aggressively than RGB_565.
-        // Override only this decoder call, not the global cache budget.
-        val budgetCallIndex = uniqueReferenceIndex(
-            decoder,
-            "Lax/V4/a;->d()I",
-        )
-        val budgetResult = decoder.implementation?.instructions?.elementAtOrNull(budgetCallIndex + 1)
-        if (budgetResult?.opcode != Opcode.MOVE_RESULT ||
-            (budgetResult as? OneRegisterInstruction)?.registerA != 8
-        ) {
-            throw PatchException("Album art: unexpected decode budget register")
-        }
-        // Keep the invoke-result pair structurally valid by replacing both.
-        decoder.replaceInstruction(budgetCallIndex + 1, "nop")
-        decoder.replaceInstruction(budgetCallIndex, "const v8, 0x800000")
+        // Preserve the original invoke / move-result pair and its code size.
+        // The 8 MiB budget override is suspended pending a verifier-safe
+        // implementation that does not invalidate DEX branch targets.
     }
 }
