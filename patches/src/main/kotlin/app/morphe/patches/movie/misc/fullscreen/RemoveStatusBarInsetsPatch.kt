@@ -103,6 +103,28 @@ val movieRemoveStatusBarInsetsPatch = resourcePatch(
             }
         }
 
+        // These gradient/header placeholders retain 77dp even after the status bar is hidden.
+        // Keep a compact 40dp header region so tab controls remain below the title.
+        for (path in listOf(
+            "res/layout/fragment_rank_new.xml",
+            "res/layout/fragment_category.xml",
+        )) {
+            document(path).use { doc ->
+                val views = doc.getElementsByTagName("View")
+                var matches = 0
+                for (index in 0 until views.length) {
+                    val view = views.item(index) as? Element ?: continue
+                    if (view.getAttribute("android:id") != "@id/view_top") continue
+                    check(view.getAttribute("android:layout_height") == "@dimen/dp_77") {
+                        "Movie: unexpected top placeholder height in $path"
+                    }
+                    view.setAttribute("android:layout_height", "40.0dp")
+                    matches++
+                }
+                check(matches == 1) { "Movie: expected one top placeholder in $path; found $matches" }
+            }
+        }
+
         document("res/layout/fragment_home.xml").use { doc ->
             val nodes = doc.getElementsByTagName("RelativeLayout")
             var matches = 0
