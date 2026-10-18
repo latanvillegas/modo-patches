@@ -2,16 +2,19 @@ package app.morphe.patches.movie.misc.fullscreen
 
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.addInstruction
+import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.methodCall
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.resourcePatch
 import app.morphe.util.indexOfFirstInstructionOrThrow
+import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
 import org.w3c.dom.Element
 
 private object MovieStatusBarSpacerMeasureFingerprint : Fingerprint(
     definingClass = "Lcom/mgs/carparking/libutils/statusbar/StatusBarHeightView;",
     returnType = "V",
     parameters = listOf("I", "I"),
+    filters = listOf(methodCall(name = "setMeasuredDimension", returnType = "V")),
 )
 
 /**
@@ -30,9 +33,12 @@ private val movieZeroStatusBarSpacerMeasurePatch = bytecodePatch {
                     parameters = listOf("I", "I"),
                 )
             )
-            // In Movie 4.0.0 onMeasure(II)V uses p2 as the height argument.
-            // No extra register is needed and the measured width remains intact.
-            addInstruction(measureIndex, "const/4 p2, 0x0")
+            val call = getInstruction<FiveRegisterInstruction>(measureIndex)
+            check(call.registerCount == 3) {
+                "Movie: unexpected setMeasuredDimension argument count"
+            }
+            // Third invoke argument is measured height; registerE in format 35c.
+            addInstruction(measureIndex, "const/4 v${call.registerE}, 0x0")
         }
     }
 }
