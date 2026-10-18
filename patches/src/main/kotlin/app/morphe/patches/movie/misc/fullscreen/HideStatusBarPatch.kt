@@ -15,7 +15,6 @@ import org.w3c.dom.Element
  */
 private object MovieBaseActivityOnCreateFingerprint : Fingerprint(
     definingClass = "Lcom/mgs/carparking/app/BaseActivity;",
-    methodName = "onCreate",
     returnType = "V",
     parameters = listOf("Landroid/os/Bundle;"),
 )
