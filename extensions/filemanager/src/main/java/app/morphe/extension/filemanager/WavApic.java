@@ -2,10 +2,8 @@ package app.morphe.extension.filemanager;
 
 import android.content.Context;
 import android.net.Uri;
-import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.FileInputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 /** Target-side, bounded WAV/ID3v2.3/APIC artwork reader. Never throws to player. */
@@ -35,10 +33,14 @@ public final class WavApic {
     private static byte[] readWave(InputStream in) throws Exception {
         byte[] header = new byte[12];
         if (!read(in, header) || !ascii(header, 0, "RIFF") || !ascii(header, 8, "WAVE")) return null;
+        long riffRemaining = le32(header, 4) - 4;
+        if (riffRemaining < 0) return null;
         byte[] chunk = new byte[8];
-        while (read(in, chunk)) {
+        while (riffRemaining >= 8 && read(in, chunk)) {
+            riffRemaining -= 8;
             long size = le32(chunk, 4);
-            if (size > Integer.MAX_VALUE) return null;
+            long padded = size + (size & 1L);
+            if (size > Integer.MAX_VALUE || padded > riffRemaining) return null;
             boolean id3 = ascii(chunk, 0, "id3 ") || ascii(chunk, 0, "ID3 ");
             if (id3 && size >= 10 && size <= MAX_TAG) {
                 byte[] tag = new byte[(int) size];
@@ -47,6 +49,7 @@ public final class WavApic {
                 if (image != null) return image;
             } else if (!skip(in, size)) return null;
             if ((size & 1) != 0 && !skip(in, 1)) return null;
+            riffRemaining -= padded;
         }
         return null;
     }
@@ -118,7 +121,7 @@ public final class WavApic {
         while (p < data.length) {
             int n = in.read(data, p, data.length - p);
             if (n < 0) return false;
-            if (n == 0) { if (in.read() < 0) return false; p++; continue; }
+            if (n == 0) { int one = in.read(); if (one < 0) return false; data[p++] = (byte) one; continue; }
             p += n;
         }
         return true;
