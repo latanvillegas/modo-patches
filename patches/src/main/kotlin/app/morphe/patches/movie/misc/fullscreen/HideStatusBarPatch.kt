@@ -11,8 +11,8 @@ import org.w3c.dom.Element
 
 /**
  * Shared by Movie's MainActivity and VideoPlayDetailActivity.
- * Set FLAG_FULLSCREEN after the original activity initialization, where both
- * temporary registers v0 and p1 are no longer needed.
+ * Hide the status bar and lay out Movie's content through its former top inset.
+ * Do not request layout behind or hiding of the bottom navigation bar.
  */
 private object MovieBaseActivityOnCreateFingerprint : Fingerprint(
     definingClass = "Lcom/mgs/carparking/app/BaseActivity;",
@@ -40,6 +40,12 @@ private val movieRuntimeFullscreenPatch = bytecodePatch {
                     move-result-object v0
                     const/16 p1, 0x400
                     invoke-virtual {v0, p1}, Landroid/view/Window;->addFlags(I)V
+                    invoke-virtual {p0}, Landroid/app/Activity;->getWindow()Landroid/view/Window;
+                    move-result-object v0
+                    invoke-virtual {v0}, Landroid/view/Window;->getDecorView()Landroid/view/View;
+                    move-result-object v0
+                    const/16 p1, 0x500
+                    invoke-virtual {v0, p1}, Landroid/view/View;->setSystemUiVisibility(I)V
                 """.trimIndent()
             )
         }
@@ -50,7 +56,7 @@ private val movieRuntimeFullscreenPatch = bytecodePatch {
 @Suppress("unused")
 val movieHideStatusBarPatch = resourcePatch(
     name = "Movie - Hide status bar",
-    description = "Hides the Android status bar in Movie-owned screens without hiding navigation.",
+    description = "Hides the Android status bar and removes the window's top layout reservation without hiding bottom navigation.",
     default = false,
 ) {
     compatibleWith("com.movievn.cinevi"("4.0.0"))
