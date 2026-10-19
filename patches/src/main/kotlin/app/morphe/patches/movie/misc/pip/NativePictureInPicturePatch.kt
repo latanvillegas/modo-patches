@@ -4,6 +4,7 @@ import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.resourcePatch
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod.Companion.toMutable
+import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
 import com.android.tools.smali.dexlib2.builder.MutableMethodImplementation
@@ -49,7 +50,7 @@ private val moviePipBytecodePatch = bytecodePatch {
         val pauseCalls = pause.implementation!!.instructions
             .withIndex()
             .filter { (_, instruction) ->
-                instruction.toString().contains("Lw/a;->L()V")
+                (instruction as? ReferenceInstruction)?.reference?.toString() == "Lw/a;->L()V"
             }
         check(pauseCalls.size == 1) {
             "Movie PiP: expected one player pause invocation, found ${pauseCalls.size}"
