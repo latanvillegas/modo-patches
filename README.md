@@ -35,7 +35,33 @@ All modifications made by Morphe, along with their dates, can be found in the Gi
 ## 🩹 Patches list
 
 <!-- PATCHES_START -->
-> **[v1.50.2](https://github.com/latanvillegas/modo-patches/releases/tag/v1.50.2)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;153 patches total
+> **[v1.51.0](https://github.com/latanvillegas/modo-patches/releases/tag/v1.51.0)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;178 patches total
+<details>
+<summary>📦 org.cromite.cromite&nbsp;&nbsp;•&nbsp;&nbsp;12 patches</summary>
+<br>
+
+**🎯 Supported versions:**
+
+| 153.0.8010.37 |
+| :---: |
+
+| 💊&nbsp;Patch | 📜&nbsp;Description | ⚙️&nbsp;Options |
+|----------|----------------|-----------|
+| [AMOLED - App menu](#amoled-app-menu) | Restores native AppMenu resources and three verified bytecode injections. |  |
+| [AMOLED - Context menu](#amoled-context-menu) | Applies Device default / Pure Black / Pure White to the verified Cromite context-menu content surface while preserving the transparent outer dialog window. |  |
+| [AMOLED - New Tab Page (tile resources)](#amoled-new-tab-page-tile-resources) | Recovers original NTP tile icon background resources; NewTabPageLayout and Most Visited DEX changes remain pending. |  |
+| [AMOLED - Omnibox and search UI](#amoled-omnibox-and-search-ui) | Applies Device default / Pure Black / Pure White to verified LocationBarTablet background setters without adding control-flow branches. |  |
+| [AMOLED - Settings](#amoled-settings) | Recovers SettingsActivity, preference backgrounds, and the original containment-card color override. |  |
+| [AMOLED - Tabs and tab strip](#amoled-tabs-and-tab-strip) | Applies Device default / Pure Black / Pure White directly to verified Cromite TabGridView and TabGridDialogView backgrounds. |  |
+| [AMOLED - Toolbar](#amoled-toolbar) | Applies Device default / Pure Black / Pure White directly to the verified Cromite ToolbarTablet background setter. |  |
+| [Cromite DevTools: native COPY button (experimental)](#cromite-devtools-native-copy-button-experimental) | Embed verified DevTools frontend and bootstrap for Cromite 153; runtime behavior unverified. |  |
+| [Hide Android status bar](#hide-android-status-bar) | Hides the Android status bar in Cromite (clock, battery, signal and notification icons). |  |
+| [Hide status bar in Settings](#hide-status-bar-in-settings) | Independent Cromite Settings patch. Hides the Android status bar only in SettingsActivity and does not modify the working main-browser status-bar patch. |  |
+| [Pure AMOLED / Pure White system theme](#pure-amoled-pure-white-system-theme) | Follows Android system theme: true black (#000000) in dark mode and true white (#FFFFFF) in light mode for Cromite 153 native UI surfaces. |  |
+| [Pure AMOLED web content](#pure-amoled-web-content) | Makes Cromite web-content darkening follow the system theme: enabled in dark mode and disabled in light mode. |  |
+
+</details>
+
 <details>
 <summary>📦 YouTube&nbsp;&nbsp;•&nbsp;&nbsp;84 patches</summary>
 <br>
@@ -225,19 +251,46 @@ All modifications made by Morphe, along with their dates, can be found in the Gi
 </details>
 
 <details>
-<summary>📦 org.cromite.cromite&nbsp;&nbsp;•&nbsp;&nbsp;3 patches</summary>
+<summary>📦 com.alphainventor.filemanager&nbsp;&nbsp;•&nbsp;&nbsp;11 patches</summary>
 <br>
 
 **🎯 Supported versions:**
 
-| 153.0.8010.37 |
+| 3.8.2 |
 | :---: |
 
 | 💊&nbsp;Patch | 📜&nbsp;Description | ⚙️&nbsp;Options |
 |----------|----------------|-----------|
-| [Hide Android status bar](#hide-android-status-bar) | Hides the Android status bar in Cromite (clock, battery, signal and notification icons). |  |
-| [Pure AMOLED / Pure White system theme](#pure-amoled-pure-white-system-theme) | Follows Android system theme: true black (#000000) in dark mode and true white (#FFFFFF) in light mode for Cromite 153 native UI surfaces. |  |
-| [Pure AMOLED web content](#pure-amoled-web-content) | Makes Cromite web-content darkening follow the system theme: enabled in dark mode and disabled in light mode. |  |
+| [File Manager Plus - Audio Cover Thumbnails](#file-manager-plus-audio-cover-thumbnails) | Adds WAV/APIC cover thumbnails after native and MediaStore lookup fail; other audio formats retain their original artwork. |  |
+| [File Manager Plus - High Quality Album Art](#file-manager-plus-high-quality-album-art) | Uses full-resolution album artwork, ARGB_8888 decoding, and WAV/ID3v2.3 APIC fallback when Android finds no embedded cover. |  |
+| [File Manager Plus - Premium (local feature gate experimental)](#file-manager-plus-premium-local-feature-gate-experimental) | Activa el control local principal de funciones Premium sin consulta de red en ese control. Oculta controles de caducidad/suscripción en la interfaz Premium; no crea una licencia vitalicia firmada ni elimina Billing. |  |
+| [File Manager Plus - Privacy](#file-manager-plus-privacy) | Desactiva las estadísticas de uso y los eventos de Analytics controlados por usage_diagnostics en File Manager Plus 3.8.2. |  |
+| [File Manager Plus - Privacy v2 (Sessions experimental)](#file-manager-plus-privacy-v2-sessions-experimental) | Desactiva Firebase Sessions mediante su control de configuración; requiere pruebas en Android. |  |
+| [File Manager Plus - Privacy v3 (Ad requests experimental)](#file-manager-plus-privacy-v3-ad-requests-experimental) | Evita solicitudes de banners y anuncios nativos, notificando fallo a la interfaz. Requiere pruebas en Android. |  |
+| [File Manager Plus - Privacy v3 (App Open Ads experimental)](#file-manager-plus-privacy-v3-app-open-ads-experimental) | Impide iniciar y solicitar anuncios de apertura. No desactiva banners ni anuncios nativos. |  |
+| [File Manager Plus - Privacy v3 (Crashlytics experimental)](#file-manager-plus-privacy-v3-crashlytics-experimental) | Desactiva la recopilación automática de Crashlytics mediante su control interno. No bloquea todavía AdMob. |  |
+| [File Manager Plus - Privacy v4 (Ad placement gates experimental)](#file-manager-plus-privacy-v4-ad-placement-gates-experimental) | Desactiva ocho controles de anuncios sin eliminar bibliotecas ni alterar licencias o temas. Experimental. |  |
+| [File Manager Plus - Privacy v4 (Remote Config experimental)](#file-manager-plus-privacy-v4-remote-config-experimental) | Evita la descarga de Firebase Remote Config y conserva los valores locales. Experimental. |  |
+| [File Manager Plus - Pure AMOLED](#file-manager-plus-pure-amoled) | Separa superficies blancas en modo claro y negras AMOLED en modo oscuro; conserva la selección de tema en File Manager Plus 3.8.2. |  |
+
+</details>
+
+<details>
+<summary>📦 com.movievn.cinevi&nbsp;&nbsp;•&nbsp;&nbsp;5 patches</summary>
+<br>
+
+**🎯 Supported versions:**
+
+| 4.0.0 |
+| :---: |
+
+| 💊&nbsp;Patch | 📜&nbsp;Description | ⚙️&nbsp;Options |
+|----------|----------------|-----------|
+| [Movie - Hide status bar](#movie-hide-status-bar) | Hides the Android status bar and removes the window's top layout reservation without hiding bottom navigation. |  |
+| [Movie - Native Picture-in-Picture](#movie-native-picture-in-picture) | Enter native Android PiP when leaving the Movie video player. |  |
+| [Movie - Pure AMOLED](#movie-pure-amoled) | Makes verified Movie interface surfaces pure black. |  |
+| [Movie - Remove status bar spacing](#movie-remove-status-bar-spacing) | Removes Movie-owned status bar spacers, including their runtime measured height, and home header top spacing. |  |
+| [Movie - Video Quality Selector](#movie-video-quality-selector) | Adds a fullscreen video quality popup using real ExoPlayer tracks and preserves audio/subtitle overrides. |  |
 
 </details>
 

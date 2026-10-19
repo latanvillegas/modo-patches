@@ -1,3 +1,9 @@
+## [1.51.0](https://github.com/latanvillegas/modo-patches/compare/v1.50.2...v1.51.0) (2026-10-19)
+
+### ✨ New Features
+
+* integrate Movie, Cromite and File Manager Plus patches ([012177b](https://github.com/latanvillegas/modo-patches/commit/012177ba88bfbdb45af1af1e9e59be8ac27e5d37))
+
 ## [1.50.2](https://github.com/latanvillegas/modo-patches/compare/v1.50.1...v1.50.2) (2026-10-10)
 
 ### 🐛 Bug Fixes
