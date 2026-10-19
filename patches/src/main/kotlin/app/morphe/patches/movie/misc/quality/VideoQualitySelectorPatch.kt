@@ -186,10 +186,18 @@ private val movieQualityRuntimePatch = bytecodePatch {
             iget-object v6, p0, $ACTIVITY->p:Lw/a;
             if-eqz v6, :fail
             const-string v7, "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
+            const-string v8, "MorpheMovieQuality"
+            const-string v9, "HLS_TEST: before Z(url)"
+            invoke-static {v8, v9}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
             invoke-virtual {v6, v7}, Lw/a;->Z(Ljava/lang/String;)V
+            const-string v9, "HLS_TEST: after Z(url)"
+            invoke-static {v8, v9}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
             const/4 v0, 0x1
             return v0
             :normal_quality_selection
+            const-string v12, "MorpheMovieQuality"
+            const-string v13, "QUALITY_CLICK: selection requested"
+            invoke-static {v12, v13}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
             invoke-virtual {v0}, $SELECTOR->v()Lcom/google/android/exoplayer/trackselection/DefaultTrackSelector${'$'}Parameters;
             move-result-object v4
             invoke-virtual {v4}, Lcom/google/android/exoplayer/trackselection/DefaultTrackSelector${'$'}Parameters;->g()Lcom/google/android/exoplayer/trackselection/DefaultTrackSelector${'$'}d;
@@ -251,6 +259,9 @@ private val movieQualityRuntimePatch = bytecodePatch {
             invoke-interface {v10, v8, v9}, Ljava/util/Map;->put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
             invoke-virtual {v5, v2, v10}, Landroid/util/SparseArray;->put(ILjava/lang/Object;)V
             :apply
+            const-string v12, "MorpheMovieQuality"
+            const-string v13, "QUALITY_APPLY: applying track selector parameters"
+            invoke-static {v12, v13}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
             invoke-virtual {v0, v4}, $SELECTOR->L(Lcom/google/android/exoplayer/trackselection/DefaultTrackSelector${'$'}d;)V
             const/4 v0, 0x1
             return v0
