@@ -81,6 +81,17 @@ private val movieQualityRuntimePatch = bytecodePatch {
             invoke-virtual {v2, p0}, Landroid/widget/PopupMenu;->setOnMenuItemClickListener(Landroid/widget/PopupMenu${'$'}OnMenuItemClickListener;)V
             invoke-virtual {v2}, Landroid/widget/PopupMenu;->getMenu()Landroid/view/Menu;
             move-result-object v3
+            # Read-only P2P port diagnostic; does not access or alter playback URLs.
+            sget v13, Lcom/mgs/carparking/app/AppApplication;->port:I
+            new-instance v14, Ljava/lang/StringBuilder;
+            invoke-direct {v14}, Ljava/lang/StringBuilder;-><init>()V
+            const-string v12, "P2P_PORT: "
+            invoke-virtual {v14, v12}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+            invoke-virtual {v14, v13}, Ljava/lang/StringBuilder;->append(I)Ljava/lang/StringBuilder;
+            invoke-virtual {v14}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+            move-result-object v14
+            const-string v12, "MorpheMovieQuality"
+            invoke-static {v12, v14}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
             # Explicit, opt-in HLS diagnostic stream. Never replaces normal Movie URLs automatically.
             const/4 v4, -0x1
             const-string v5, "Probar HLS multicalidad"
