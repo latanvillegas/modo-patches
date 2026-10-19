@@ -24,19 +24,13 @@ private val moviePipRuntimePatch = bytecodePatch {
             "Movie PiP: unexpected onResume register layout"
         }
 
-        // Enable auto-enter only when an ExoPlayer instance exists and is playing.
+        // Android 12+: configure auto-enter on every resume. At the start of
+        // onResume the player may not exist yet, so checking ExoPlayer here
+        // permanently prevents PiP from being armed for this playback session.
         resume.addInstructionsWithLabels(0, """
             sget v0, Landroid/os/Build${'$'}VERSION;->SDK_INT:I
             const/16 v1, 0x1f
             if-lt v0, v1, :morphe_pip_resume_done
-            iget-object v0, p0, $ACTIVITY->p:Lw/a;
-            if-eqz v0, :morphe_pip_resume_done
-            invoke-virtual {v0}, Lw/a;->D()Lf4/u0;
-            move-result-object v0
-            if-eqz v0, :morphe_pip_resume_done
-            invoke-virtual {v0}, Lf4/u0;->getPlayWhenReady()Z
-            move-result v1
-            if-eqz v1, :morphe_pip_resume_done
             new-instance v0, Landroid/app/PictureInPictureParams${'$'}Builder;
             invoke-direct {v0}, Landroid/app/PictureInPictureParams${'$'}Builder;-><init>()V
             const/4 v1, 0x1
