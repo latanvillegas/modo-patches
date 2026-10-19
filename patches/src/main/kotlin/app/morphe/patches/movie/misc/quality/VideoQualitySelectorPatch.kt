@@ -81,6 +81,10 @@ private val movieQualityRuntimePatch = bytecodePatch {
             invoke-virtual {v2, p0}, Landroid/widget/PopupMenu;->setOnMenuItemClickListener(Landroid/widget/PopupMenu${'$'}OnMenuItemClickListener;)V
             invoke-virtual {v2}, Landroid/widget/PopupMenu;->getMenu()Landroid/view/Menu;
             move-result-object v3
+            # Explicit, opt-in HLS diagnostic stream. Never replaces normal Movie URLs automatically.
+            const/4 v4, -0x1
+            const-string v5, "Probar HLS multicalidad"
+            invoke-interface {v3, v4, v4, v4, v5}, Landroid/view/Menu;->add(IIILjava/lang/CharSequence;)Landroid/view/MenuItem;
             const/4 v4, 0x0
             const-string v5, "Auto"
             invoke-interface {v3, v4, v4, v4, v5}, Landroid/view/Menu;->add(IIILjava/lang/CharSequence;)Landroid/view/MenuItem;
@@ -176,6 +180,15 @@ private val movieQualityRuntimePatch = bytecodePatch {
             move-result v2
             invoke-interface {p1}, Landroid/view/MenuItem;->getItemId()I
             move-result v3
+            const/4 v6, -0x1
+            if-ne v3, v6, :normal_quality_selection
+            iget-object v6, p0, $ACTIVITY->p:Lw/a;
+            if-eqz v6, :fail
+            const-string v7, "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
+            invoke-virtual {v6, v7}, Lw/a;->Z(Ljava/lang/String;)V
+            const/4 v0, 0x1
+            return v0
+            :normal_quality_selection
             invoke-virtual {v0}, $SELECTOR->v()Lcom/google/android/exoplayer/trackselection/DefaultTrackSelector${'$'}Parameters;
             move-result-object v4
             invoke-virtual {v4}, Lcom/google/android/exoplayer/trackselection/DefaultTrackSelector${'$'}Parameters;->g()Lcom/google/android/exoplayer/trackselection/DefaultTrackSelector${'$'}d;
