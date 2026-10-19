@@ -84,7 +84,8 @@ private val movieQualityRuntimePatch = bytecodePatch {
             # Explicit, opt-in HLS diagnostic stream. Never replaces normal Movie URLs automatically.
             const/4 v4, -0x1
             const-string v5, "Probar HLS multicalidad"
-            invoke-interface {v3, v4, v4, v4, v5}, Landroid/view/Menu;->add(IIILjava/lang/CharSequence;)Landroid/view/MenuItem;
+            const/4 v6, 0x0
+            invoke-interface {v3, v4, v4, v6, v5}, Landroid/view/Menu;->add(IIILjava/lang/CharSequence;)Landroid/view/MenuItem;
             const/4 v4, 0x0
             const-string v5, "Auto"
             invoke-interface {v3, v4, v4, v4, v5}, Landroid/view/Menu;->add(IIILjava/lang/CharSequence;)Landroid/view/MenuItem;
