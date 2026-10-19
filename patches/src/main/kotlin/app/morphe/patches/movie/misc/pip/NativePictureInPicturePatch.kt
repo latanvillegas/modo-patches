@@ -1,6 +1,6 @@
 package app.morphe.patches.movie.misc.pip
 
-import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.extensions.InstructionExtensions.replaceInstruction
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.resourcePatch
@@ -24,7 +24,7 @@ private val moviePipRuntimePatch = bytecodePatch {
         }
 
         // Enable auto-enter only when an ExoPlayer instance exists and is playing.
-        resume.addInstructions(0, """
+        resume.addInstructionsWithLabels(0, """
             sget v0, Landroid/os/Build${'$'}VERSION;->SDK_INT:I
             const/16 v1, 0x1f
             if-lt v0, v1, :morphe_pip_resume_done
@@ -72,7 +72,7 @@ private val moviePipRuntimePatch = bytecodePatch {
             AccessFlags.PRIVATE.value or AccessFlags.STATIC.value,
             null, null, MutableMethodImplementation(4)
         ).toMutable()
-        pauseHelper.addInstructions(0, """
+        pauseHelper.addInstructionsWithLabels(0, """
             sget v0, Landroid/os/Build${'$'}VERSION;->SDK_INT:I
             const/16 v1, 0x1a
             if-lt v0, v1, :morphe_pip_pause_player
@@ -93,7 +93,7 @@ private val moviePipRuntimePatch = bytecodePatch {
             ACTIVITY, "onUserLeaveHint", emptyList(), "V",
             AccessFlags.PROTECTED.value, null, null, MutableMethodImplementation(3)
         ).toMutable()
-        leave.addInstructions(0, """
+        leave.addInstructionsWithLabels(0, """
             invoke-super {p0}, $BASE->onUserLeaveHint()V
             sget v0, Landroid/os/Build${'$'}VERSION;->SDK_INT:I
             const/16 v1, 0x1a
