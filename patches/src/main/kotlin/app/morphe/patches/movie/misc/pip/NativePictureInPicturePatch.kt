@@ -57,18 +57,34 @@ private val moviePipRuntimePatch = bytecodePatch {
         }
         check(calls.size == 1) { "Movie PiP: expected one player pause call, found ${calls.size}" }
         val index = calls.single().index
-        // Replace the original invocation with a conditional block. Both labels
-        // are assembled in the same call, so no unplaced label is referenced.
-        pause.replaceInstruction(index, "nop")
-        pause.addInstructions(index, """
+        // Preserve all existing onPause branch offsets: replace one invoke with
+        // another invoke of the same DEX width (35c, three code units).
+        // The helper performs the conditional check in a separate method.
+        pause.replaceInstruction(
+            index,
+            "invoke-static {p0, v0}, $ACTIVITY->morphePauseUnlessPip(Landroid/app/Activity;Lw/a;)V"
+        )
+
+        check(activity.methods.none { it.name == "morphePauseUnlessPip" })
+        val pauseHelper = ImmutableMethod(
+            ACTIVITY, "morphePauseUnlessPip",
+            listOf("Landroid/app/Activity;", "Lw/a;"), "V",
+            AccessFlags.PRIVATE.value or AccessFlags.STATIC.value,
+            null, null, MutableMethodImplementation(4)
+        ).toMutable()
+        pauseHelper.addInstructions(0, """
+            sget v0, Landroid/os/Build${'$'}VERSION;->SDK_INT:I
+            const/16 v1, 0x1a
+            if-lt v0, v1, :morphe_pip_pause_player
             invoke-virtual {p0}, Landroid/app/Activity;->isInPictureInPictureMode()Z
             move-result v0
-            if-nez v0, :morphe_pip_skip_pause
-            iget-object v0, p0, $ACTIVITY->p:Lw/a;
-            invoke-virtual {v0}, Lw/a;->L()V
-            :morphe_pip_skip_pause
-            nop
+            if-nez v0, :morphe_pip_pause_done
+            :morphe_pip_pause_player
+            invoke-virtual {p1}, Lw/a;->L()V
+            :morphe_pip_pause_done
+            return-void
         """.trimIndent())
+        activity.methods.add(pauseHelper)
 
         check(activity.methods.none { it.name == "onUserLeaveHint" }) {
             "Movie PiP: onUserLeaveHint already exists"
