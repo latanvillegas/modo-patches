@@ -1,6 +1,7 @@
 package app.morphe.patches.movie.misc.pip
 
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.extensions.InstructionExtensions.replaceInstruction
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.resourcePatch
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod.Companion.toMutable
@@ -56,15 +57,17 @@ private val moviePipRuntimePatch = bytecodePatch {
         }
         check(calls.size == 1) { "Movie PiP: expected one player pause call, found ${calls.size}" }
         val index = calls.single().index
-        pause.addInstructions(index + 1, """
-            :morphe_pip_after_pause
-            nop
-        """.trimIndent())
+        // Replace the original invocation with a conditional block. Both labels
+        // are assembled in the same call, so no unplaced label is referenced.
+        pause.replaceInstruction(index, "nop")
         pause.addInstructions(index, """
             invoke-virtual {p0}, Landroid/app/Activity;->isInPictureInPictureMode()Z
             move-result v0
-            if-nez v0, :morphe_pip_after_pause
+            if-nez v0, :morphe_pip_skip_pause
             iget-object v0, p0, $ACTIVITY->p:Lw/a;
+            invoke-virtual {v0}, Lw/a;->L()V
+            :morphe_pip_skip_pause
+            nop
         """.trimIndent())
 
         check(activity.methods.none { it.name == "onUserLeaveHint" }) {
