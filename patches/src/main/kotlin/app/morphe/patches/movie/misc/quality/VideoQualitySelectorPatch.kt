@@ -37,7 +37,17 @@ private val movieQualityRuntimePatch = bytecodePatch {
             move-result v0
             const/4 v1, 0x2
             if-ne v0, v1, :morphe_progressive_source
-            new-instance v0, Lk5/j${'
+            new-instance v0, Lk5/j${'$'}b;
+            invoke-virtual {p0}, Lw/c;->b()Lcom/google/android/exoplayer/upstream/a${'$'}a;
+            move-result-object v1
+            invoke-direct {v0, v1}, Lk5/j${'$'}b;-><init>(Lcom/google/android/exoplayer/upstream/a${'$'}a;)V
+            invoke-virtual {v0, p1}, Lk5/j${'$'}b;->a(Landroid/net/Uri;)Lk5/j;
+            move-result-object v0
+            return-object v0
+            :morphe_progressive_source
+            nop
+        """.trimIndent())
+        val activity = mutableClassDefBy(ACTIVITY)
         check(activity.methods.none { it.name == "morpheShowQuality" || it.name == "onMenuItemClick" }) {
             "Movie: quality selector methods already exist"
         }
