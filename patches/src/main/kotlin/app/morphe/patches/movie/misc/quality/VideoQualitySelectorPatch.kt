@@ -108,6 +108,25 @@ private val movieQualityRuntimePatch = bytecodePatch {
             invoke-virtual {v7, v8}, Lcom/google/android/exoplayer/source/TrackGroup;->b(I)Lcom/google/android/exoplayer/Format;
             move-result-object v9
             iget v9, v9, Lcom/google/android/exoplayer/Format;->p:I
+            # MORPHE_QUALITY_DIAGNOSTIC: log every mapped video track, including unknown heights.
+            new-instance v13, Ljava/lang/StringBuilder;
+            invoke-direct {v13}, Ljava/lang/StringBuilder;-><init>()V
+            const-string v14, "renderer="
+            invoke-virtual {v13, v14}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+            invoke-virtual {v13, v4}, Ljava/lang/StringBuilder;->append(I)Ljava/lang/StringBuilder;
+            const-string v14, " group="
+            invoke-virtual {v13, v14}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+            invoke-virtual {v13, v6}, Ljava/lang/StringBuilder;->append(I)Ljava/lang/StringBuilder;
+            const-string v14, " track="
+            invoke-virtual {v13, v14}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+            invoke-virtual {v13, v8}, Ljava/lang/StringBuilder;->append(I)Ljava/lang/StringBuilder;
+            const-string v14, " height="
+            invoke-virtual {v13, v14}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+            invoke-virtual {v13, v9}, Ljava/lang/StringBuilder;->append(I)Ljava/lang/StringBuilder;
+            invoke-virtual {v13}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+            move-result-object v13
+            const-string v14, "MorpheMovieQuality"
+            invoke-static {v14, v13}, Landroid/util/Log;->d(Ljava/lang/String;Ljava/lang/String;)I
             if-lez v9, :next_track
             const/16 v10, 0x63
             if-gt v6, v10, :next_track
