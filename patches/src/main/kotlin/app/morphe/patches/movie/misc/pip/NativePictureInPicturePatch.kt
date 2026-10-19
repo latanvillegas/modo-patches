@@ -8,6 +8,7 @@ import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod.Companion.toMuta
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
+import com.android.tools.smali.dexlib2.immutable.ImmutableMethodParameter
 import com.android.tools.smali.dexlib2.builder.MutableMethodImplementation
 import org.w3c.dom.Element
 
@@ -68,7 +69,10 @@ private val moviePipRuntimePatch = bytecodePatch {
         check(activity.methods.none { it.name == "morphePauseUnlessPip" })
         val pauseHelper = ImmutableMethod(
             ACTIVITY, "morphePauseUnlessPip",
-            listOf("Landroid/app/Activity;", "Lw/a;"), "V",
+            listOf(
+                ImmutableMethodParameter("Landroid/app/Activity;", null, null),
+                ImmutableMethodParameter("Lw/a;", null, null)
+            ), "V",
             AccessFlags.PRIVATE.value or AccessFlags.STATIC.value,
             null, null, MutableMethodImplementation(4)
         ).toMutable()
