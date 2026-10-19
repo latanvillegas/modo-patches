@@ -187,10 +187,10 @@ private val movieQualityRuntimePatch = bytecodePatch {
             if-eqz v6, :fail
             const-string v7, "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
             const-string v8, "MorpheMovieQuality"
-            const-string v9, "HLS_TEST: before Z(url)"
+            const-string v9, "HLS_TEST: before g0(url)"
             invoke-static {v8, v9}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
-            invoke-virtual {v6, v7}, Lw/a;->Z(Ljava/lang/String;)V
-            const-string v9, "HLS_TEST: after Z(url)"
+            invoke-virtual {v6, v7}, Lw/a;->g0(Ljava/lang/String;)V
+            const-string v9, "HLS_TEST: after g0(url)"
             invoke-static {v8, v9}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
             const/4 v0, 0x1
             return v0
