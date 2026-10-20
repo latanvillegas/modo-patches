@@ -887,16 +887,15 @@ val lawnchairAmoledArrowTipsPatch = resourcePatch(
     }
 }
 
-// The Android 12+ settings toolbar theme enables Material elevation tint,
-// which can lighten a black surface. Disable only this toolbar overlay.
-@Suppress("unused")
-val lawnchairAmoledSettingsElevationPatch = resourcePatch(
-    name = "Lawnchair - AMOLED Settings elevation",
-    description = "Disable the audited settings toolbar elevation overlay without changing icons or geometry.",
+val lawnchairAmoledSettingsHeaderPatch = resourcePatch(
+    name = "Lawnchair - AMOLED Settings header",
+    description = "Blackens verified Android 12+ Home Settings header colors; leaves titles, icons, accents and switches unchanged.",
     default = false,
 ) {
     compatibleWith("app.lawnchair"("15.Beta 3"))
     execute {
+        // Keep these settings-only surface corrections in the existing
+        // registered Settings header patch, avoiding unregistered patch entries.
         document("res/values-v31/styles.xml").use { doc ->
             val styles = doc.getElementsByTagName("style")
             var found = false
@@ -920,19 +919,6 @@ val lawnchairAmoledSettingsElevationPatch = resourcePatch(
             }
             check(found) { "Lawnchair: missing HomeSettings.CollapsingToolbar" }
         }
-    }
-}
-
-// Android 12+ Home Settings app bar uses the system primary background.
-// Scope the change to this one verified layout attribute.
-@Suppress("unused")
-val lawnchairAmoledSettingsAppBarPatch = resourcePatch(
-    name = "Lawnchair - AMOLED Settings app bar",
-    description = "Set the Android 12+ settings app bar background to pure black without changing its layout.",
-    default = false,
-) {
-    compatibleWith("app.lawnchair"("15.Beta 3"))
-    execute {
         document("res/layout-v31/settings_activity.xml").use { doc ->
             val bars = doc.getElementsByTagName("com.google.android.material.appbar.AppBarLayout")
             check(bars.length == 1) { "Lawnchair: expected one settings AppBarLayout" }
@@ -945,16 +931,7 @@ val lawnchairAmoledSettingsAppBarPatch = resourcePatch(
             }
             bar.setAttributeNS(ns, "android:background", "#FF000000")
         }
-    }
-}
 
-val lawnchairAmoledSettingsHeaderPatch = resourcePatch(
-    name = "Lawnchair - AMOLED Settings header",
-    description = "Blackens verified Android 12+ Home Settings header colors; leaves titles, icons, accents and switches unchanged.",
-    default = false,
-) {
-    compatibleWith("app.lawnchair"("15.Beta 3"))
-    execute {
         // The Settings page background is opaque white in the default
         // configuration and already pure black in the night configuration.
         // Do not alter its text, accents, or switch colors.
