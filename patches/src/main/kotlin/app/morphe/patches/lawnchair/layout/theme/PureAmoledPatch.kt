@@ -77,13 +77,29 @@ val lawnchairPureAmoledPatch = resourcePatch(
                         "Lawnchair: expected one selector item in $path; found ${items.length}"
                     }
                     val item = items.item(0) as Element
-                    val color = item.getAttributeNS(androidNs, "color")
+                    // Some Morphe DOM decoders preserve the android: prefix but
+                    // do not expose namespace-aware attributes.
+                    val namespaceAware = item.hasAttributeNS(androidNs, "color")
+                    val color = if (namespaceAware) {
+                        item.getAttributeNS(androidNs, "color")
+                    } else {
+                        item.getAttribute("android:color")
+                    }
                     check(color == "@android:color/system_neutral1_100" ||
                           color == "@0x01060024") {
                         "Lawnchair: unexpected dynamic color reference in $path: $color"
                     }
-                    val lStar = item.getAttributeNS(androidNs, "lStar")
-                    check(item.hasAttributeNS(androidNs, "lStar") &&
+                    val lStarPresent = if (namespaceAware) {
+                        item.hasAttributeNS(androidNs, "lStar")
+                    } else {
+                        item.hasAttribute("android:lStar")
+                    }
+                    val lStar = if (namespaceAware) {
+                        item.getAttributeNS(androidNs, "lStar")
+                    } else {
+                        item.getAttribute("android:lStar")
+                    }
+                    check(lStarPresent &&
                           lStar.toFloatOrNull()?.let { it in 0f..100f } == true) {
                         "Lawnchair: missing or invalid lStar in $path: $lStar"
                     }
@@ -124,8 +140,13 @@ val lawnchairPureAmoledPatch = resourcePatch(
                     check(root.getElementsByTagName("*").length == 1) {
                         "Lawnchair: unexpected nested selector elements in $path"
                     }
-                    item.setAttributeNS(androidNs, "android:color", "#FF000000")
-                    item.removeAttributeNS(androidNs, "lStar")
+                    if (namespaceAware) {
+                        item.setAttributeNS(androidNs, "android:color", "#FF000000")
+                        item.removeAttributeNS(androidNs, "lStar")
+                    } else {
+                        item.setAttribute("android:color", "#FF000000")
+                        item.removeAttribute("android:lStar")
+                    }
                 }
             }
         }
