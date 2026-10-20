@@ -3,6 +3,7 @@ package app.morphe.patches.lawnchair.layout.theme
 import app.morphe.patcher.patch.resourcePatch
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.extensions.InstructionExtensions.replaceInstruction
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.util.findMutableMethodOf
 import com.android.tools.smali.dexlib2.Opcode
@@ -638,6 +639,68 @@ val lawnchairAmoledPopupMenusPatch = resourcePatch(
 }
 
 @Suppress("unused")
+// Original Lawnchair 15 Beta 3: Snackbar.show(ActivityContext, CharSequence, int,
+// Runnable, Runnable) obtains u9.n.j's rounded Drawable and assigns it to its layout.
+// Tint that one Drawable only, preserving its XML corners and foreground colors.
+@Suppress("unused")
+val lawnchairAmoledSnackbarPatch = bytecodePatch(
+    name = "Lawnchair - AMOLED Snackbar",
+    description = "Tint only the Snackbar rounded background pure black.",
+    default = false,
+) {
+    compatibleWith("app.lawnchair"("15.Beta 3"))
+    execute {
+        val target = "Lcom/android/launcher3/views/Snackbar;"
+        var matches = 0
+        classDefForEach { classDef ->
+            if (classDef.type != target) return@classDefForEach
+            val mutableClass = mutableClassDefBy(classDef)
+            classDef.methods.forEach { method ->
+                if (method.name != "show" || method.parameterTypes.map { it.toString() } != listOf(
+                    "Lcom/android/launcher3/views/ActivityContext;",
+                    "Ljava/lang/CharSequence;",
+                    "I", "Ljava/lang/Runnable;", "Ljava/lang/Runnable;"
+                )) return@forEach
+                val instructions = method.implementation?.instructions?.toList() ?: return@forEach
+                for (index in 2 until instructions.size - 1) {
+                    val call = instructions[index - 1]
+                    val move = instructions[index]
+                    val assign = instructions[index + 1]
+                    if (call.opcode != Opcode.INVOKE_VIRTUAL ||
+                        move.opcode != Opcode.MOVE_RESULT_OBJECT ||
+                        assign.opcode != Opcode.INVOKE_VIRTUAL) continue
+                    val callRef = (call as? ReferenceInstruction)?.reference as? MethodReference ?: continue
+                    val assignRef = (assign as? ReferenceInstruction)?.reference as? MethodReference ?: continue
+                    if (callRef.definingClass != "Lu9/o;" || callRef.name != "g" ||
+                        callRef.returnType != "Landroid/graphics/drawable/Drawable;" ||
+                        assignRef.definingClass != "Landroid/widget/LinearLayout;" ||
+                        assignRef.name != "setBackground") continue
+                    val drawableRegister = (move as? OneRegisterInstruction)?.registerA ?: continue
+                    // The original method uses v7 for u9.n.j and v3 for the
+                    // resulting Drawable. Reusing v7 needs no extra registers.
+                    check(drawableRegister == 3) { "Lawnchair: unexpected Snackbar drawable register" }
+                    val hasFactory = instructions.subList(0, index - 1).any { ins ->
+                        val ref = (ins as? ReferenceInstruction)?.reference as? FieldReference
+                        ins.opcode == Opcode.SGET_OBJECT && ref?.definingClass == "Lu9/n;" &&
+                            ref.name == "j" && ref.type == "Lu9/o;"
+                    }
+                    check(hasFactory) { "Lawnchair: Snackbar factory not found" }
+                    matches++
+                    check(matches == 1) { "Lawnchair: ambiguous Snackbar background" }
+                    mutableClass.findMutableMethodOf(method).addInstructions(
+                        index + 1,
+                        """
+                        const v7, -0x1000000
+                        invoke-virtual {v3, v7}, Landroid/graphics/drawable/Drawable;->setTint(I)V
+                        """.trimIndent()
+                    )
+                }
+            }
+        }
+        check(matches == 1) { "Lawnchair: expected one Snackbar background; found $matches" }
+    }
+}
+
 // Target only ArrowTip backgrounds. Preserve text and taskbar foregrounds.
 @Suppress("unused")
 val lawnchairAmoledArrowTipsPatch = resourcePatch(
