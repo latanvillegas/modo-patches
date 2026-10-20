@@ -742,6 +742,45 @@ val lawnchairAmoledCardsPatch = resourcePatch(
     }
 }
 
+// This overlay drawable layers an 11%-alpha elevation tint over ?colorSurface.
+// Replacing only the base surface leaves the second gray overlay visible.
+@Suppress("unused")
+val lawnchairAmoledPopupOverlayPatch = resourcePatch(
+    name = "Lawnchair - AMOLED Popup overlay",
+    description = "Blacken both layers of the audited Material popup overlay drawable.",
+    default = false,
+) {
+    compatibleWith("app.lawnchair"("15.Beta 3"))
+    execute {
+        val path = "res/drawable/mtrl_popupmenu_background_overlay.xml"
+        document(path).use { doc ->
+            val root = doc.documentElement
+            check(root.tagName == "layer-list") { "Lawnchair: unexpected popup overlay root" }
+            val items = root.getElementsByTagName("item")
+            check(items.length == 2) { "Lawnchair: expected two popup overlay layers" }
+            val expected = listOf("?colorSurface", "@color/mtrl_popupmenu_overlay_color")
+            for (i in 0 until 2) {
+                val item = items.item(i) as Element
+                val shapes = item.getElementsByTagName("shape")
+                check(shapes.length == 1) { "Lawnchair: unexpected shape in popup overlay layer $i" }
+                val solids = (shapes.item(0) as Element).getElementsByTagName("solid")
+                check(solids.length == 1) { "Lawnchair: unexpected solid in popup overlay layer $i" }
+                val solid = solids.item(0) as Element
+                val actual = solid.getAttributeNS("http://schemas.android.com/apk/res/android", "color")
+                    .ifEmpty { solid.getAttribute("android:color") }
+                check(actual == expected[i]) {
+                    "Lawnchair: unexpected popup overlay layer $i: $actual"
+                }
+                solid.setAttributeNS(
+                    "http://schemas.android.com/apk/res/android",
+                    "android:color",
+                    "#FF000000"
+                )
+            }
+        }
+    }
+}
+
 // Target only ArrowTip backgrounds. Preserve text and taskbar foregrounds.
 @Suppress("unused")
 val lawnchairAmoledArrowTipsPatch = resourcePatch(
