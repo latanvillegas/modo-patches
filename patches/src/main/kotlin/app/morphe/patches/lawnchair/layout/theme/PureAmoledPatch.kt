@@ -638,6 +638,47 @@ val lawnchairAmoledPopupMenusPatch = resourcePatch(
 }
 
 @Suppress("unused")
+// Target only ArrowTip backgrounds. Preserve text and taskbar foregrounds.
+@Suppress("unused")
+val lawnchairAmoledArrowTipsPatch = resourcePatch(
+    name = "Lawnchair - AMOLED ArrowTip backgrounds",
+    description = "Pure-black ArrowTip and taskbar tooltip backgrounds without altering text.",
+    default = false,
+) {
+    compatibleWith("app.lawnchair"("15.Beta 3"))
+    execute {
+        val expected = mapOf(
+            "ArrowTipStyle" to "@color/arrow_tip_view_bg",
+            "ArrowTipTaskbarStyle" to "?materialColorSurfaceContainer",
+        )
+        document("res/values/styles.xml").use { doc ->
+            val matched = mutableSetOf<String>()
+            val styles = doc.getElementsByTagName("style")
+            for (i in 0 until styles.length) {
+                val style = styles.item(i) as? Element ?: continue
+                val name = style.getAttribute("name")
+                val original = expected[name] ?: continue
+                val items = style.getElementsByTagName("item")
+                val targets = (0 until items.length).mapNotNull { j ->
+                    (items.item(j) as? Element)?.takeIf {
+                        it.getAttribute("name") == "arrowTipBackground"
+                    }
+                }
+                check(targets.size == 1) { "Lawnchair: ambiguous arrowTipBackground in $name" }
+                val item = targets.single()
+                check(item.textContent.trim() == original) {
+                    "Lawnchair: unexpected arrowTipBackground in $name: ${item.textContent.trim()}"
+                }
+                check(matched.add(name)) { "Lawnchair: duplicate ArrowTip style $name" }
+                item.textContent = "#FF000000"
+            }
+            check(matched == expected.keys) {
+                "Lawnchair: missing ArrowTip styles: ${expected.keys - matched}"
+            }
+        }
+    }
+}
+
 val lawnchairAmoledSettingsHeaderPatch = resourcePatch(
     name = "Lawnchair - AMOLED Settings header",
     description = "Blackens verified Android 12+ Home Settings header colors; leaves titles, icons, accents and switches unchanged.",
