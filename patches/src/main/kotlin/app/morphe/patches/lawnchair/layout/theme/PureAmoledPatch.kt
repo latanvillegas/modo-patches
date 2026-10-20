@@ -887,12 +887,60 @@ val lawnchairAmoledArrowTipsPatch = resourcePatch(
     }
 }
 
+// Compose preferenceGroupColor (Color.kt:62), audited in Lawnchair 15 Beta 3.
+// Replace only the two color results; retain the theme reads, shape and content colors.
+private val lawnchairAmoledPreferenceGroupDexPatch = bytecodePatch {
+    compatibleWith("app.lawnchair"("15.Beta 3"))
+    execute {
+        val type = "Lna/a;"
+        var targetCount = 0
+        classDefForEach { classDef ->
+            if (classDef.type != type) return@classDefForEach
+            val mutableClass = mutableClassDefBy(classDef)
+            classDef.methods.forEach { method ->
+                if (method.name != "g" ||
+                    method.returnType != "J" ||
+                    method.parameterTypes.map { it.toString() } != listOf("Lm1/r;", "I")) return@forEach
+                targetCount++
+                val instructions = method.implementation?.instructions?.toList()
+                    ?: error("Lawnchair: missing preferenceGroupColor implementation")
+                val replacements = mutableListOf<Int>()
+                for (i in 1 until instructions.size) {
+                    val call = instructions[i - 1]
+                    val result = instructions[i]
+                    if (call.opcode != Opcode.INVOKE_VIRTUAL ||
+                        result.opcode != Opcode.MOVE_RESULT_WIDE) continue
+                    val ref = (call as? ReferenceInstruction)?.reference as? MethodReference ?: continue
+                    if (ref.definingClass != "Li1/j1;" ||
+                        ref.name !in setOf("X", "Y") ||
+                        ref.returnType != "J" ||
+                        ref.parameterTypes.isNotEmpty()) continue
+                    val dest = (result as? OneRegisterInstruction)?.registerA ?: continue
+                    check(dest == 0) { "Lawnchair: unexpected preferenceGroupColor register v$dest" }
+                    replacements.add(i)
+                }
+                check(replacements.size == 2) {
+                    "Lawnchair: expected two preferenceGroupColor color reads; found ${replacements.size}"
+                }
+                val mutableMethod = mutableClass.findMutableMethodOf(method)
+                for (index in replacements) {
+                    mutableMethod.replaceInstruction(index, "const-wide v0, -0x100000000000000")
+                }
+            }
+        }
+        check(targetCount == 1) {
+            "Lawnchair: expected one preferenceGroupColor method; found $targetCount"
+        }
+    }
+}
+
 val lawnchairAmoledSettingsHeaderPatch = resourcePatch(
     name = "Lawnchair - AMOLED Settings header",
     description = "Blackens verified Android 12+ Home Settings header colors; leaves titles, icons, accents and switches unchanged.",
     default = false,
 ) {
     compatibleWith("app.lawnchair"("15.Beta 3"))
+    dependsOn(lawnchairAmoledPreferenceGroupDexPatch)
     execute {
         // Keep these settings-only surface corrections in the existing
         // registered Settings header patch, avoiding unregistered patch entries.
