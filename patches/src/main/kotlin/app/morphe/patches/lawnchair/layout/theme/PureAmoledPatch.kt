@@ -701,6 +701,48 @@ val lawnchairAmoledSnackbarPatch = bytecodePatch(
     }
 }
 
+// CardView has its own background attribute; Material surface resource
+// overrides do not cover android:colorBackgroundFloating.
+@Suppress("unused")
+val lawnchairAmoledCardsPatch = resourcePatch(
+    name = "Lawnchair - AMOLED CardView backgrounds",
+    description = "Set only audited CardView background style items to OLED black.",
+    default = false,
+) {
+    compatibleWith("app.lawnchair"("15.Beta 3"))
+    execute {
+        val expected = mapOf(
+            "CardView" to "?android:colorBackgroundFloating",
+            "Widget.MaterialComponents.CardView" to "?colorSurface",
+        )
+        document("res/values/styles.xml").use { doc ->
+            val found = mutableSetOf<String>()
+            val styles = doc.getElementsByTagName("style")
+            for (i in 0 until styles.length) {
+                val style = styles.item(i) as? Element ?: continue
+                val name = style.getAttribute("name")
+                val original = expected[name] ?: continue
+                val items = style.getElementsByTagName("item")
+                val matches = (0 until items.length).mapNotNull { j ->
+                    (items.item(j) as? Element)?.takeIf {
+                        it.getAttribute("name") == "cardBackgroundColor"
+                    }
+                }
+                check(matches.size == 1) { "Lawnchair: ambiguous CardView background in $name" }
+                val item = matches.single()
+                check(item.textContent.trim() == original) {
+                    "Lawnchair: unexpected CardView background in $name: ${item.textContent.trim()}"
+                }
+                check(found.add(name)) { "Lawnchair: duplicate CardView style $name" }
+                item.textContent = "#FF000000"
+            }
+            check(found == expected.keys) {
+                "Lawnchair: missing CardView styles: ${expected.keys - found}"
+            }
+        }
+    }
+}
+
 // Target only ArrowTip backgrounds. Preserve text and taskbar foregrounds.
 @Suppress("unused")
 val lawnchairAmoledArrowTipsPatch = resourcePatch(
