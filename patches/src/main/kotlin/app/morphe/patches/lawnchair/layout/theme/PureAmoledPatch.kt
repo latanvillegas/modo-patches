@@ -42,7 +42,16 @@ val lawnchairPureAmoledPatch = resourcePatch(
                 val name = color.getAttribute("name")
                 val original = expected[name] ?: continue
                 check(found.add(name)) { "Lawnchair: duplicate $name in $basePath" }
-                check(color.textContent.trim().equals(original, ignoreCase = true)) {
+                // Android resource decoding may omit opaque FF alpha (#AARRGGBB -> #RRGGBB).
+                // Normalize only these two valid formats; do not accept other values.
+                fun normalizeOpaqueHex(value: String): String {
+                    val hex = value.trim().removePrefix("#").lowercase()
+                    check(hex.matches(Regex("[0-9a-f]{6}|[0-9a-f]{8}"))) {
+                        "Lawnchair: invalid color literal for $name in $basePath: $value"
+                    }
+                    return if (hex.length == 6) "ff$hex" else hex
+                }
+                check(normalizeOpaqueHex(color.textContent) == normalizeOpaqueHex(original)) {
                     "Lawnchair: unexpected $name in $basePath: ${color.textContent.trim()}"
                 }
                 color.textContent = "#FF000000"
