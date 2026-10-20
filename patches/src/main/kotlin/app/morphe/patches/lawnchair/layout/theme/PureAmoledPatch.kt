@@ -686,9 +686,13 @@ val lawnchairAmoledSnackbarPatch = bytecodePatch(
                     check(hasFactory) { "Lawnchair: Snackbar factory not found" }
                     matches++
                     check(matches == 1) { "Lawnchair: ambiguous Snackbar background" }
+                    // Avoid modifying a potentially shared Drawable constant state.
+                    // mutate() returns the isolated drawable in v3 before tinting.
                     mutableClass.findMutableMethodOf(method).addInstructions(
                         index + 1,
                         """
+                        invoke-virtual {v3}, Landroid/graphics/drawable/Drawable;->mutate()Landroid/graphics/drawable/Drawable;
+                        move-result-object v3
                         const v7, -0x1000000
                         invoke-virtual {v3, v7}, Landroid/graphics/drawable/Drawable;->setTint(I)V
                         """.trimIndent()
