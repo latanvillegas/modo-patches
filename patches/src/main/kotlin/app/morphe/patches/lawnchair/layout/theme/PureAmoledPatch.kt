@@ -722,6 +722,19 @@ val lawnchairAmoledSnackbarPatch = bytecodePatch(
 // CardView has its own background attribute; Material surface resource
 // overrides do not cover android:colorBackgroundFloating.
 @Suppress("unused")
+
+// Android resource decoding may qualify an attribute with "attr/".
+// These two spellings identify the same attribute; preserve the namespace
+// and attribute name, and reject unrelated resources.
+private fun sameAmoledResourceReference(actual: String, expected: String): Boolean {
+    fun canonical(value: String): String {
+        val trimmed = value.trim()
+        if (!trimmed.startsWith("?")) return trimmed
+        return trimmed.replaceFirst(Regex("^\\?(android:)?attr/"), "?$1")
+    }
+    return canonical(actual) == canonical(expected)
+}
+
 val lawnchairAmoledCardsPatch = resourcePatch(
     name = "Lawnchair - AMOLED CardView backgrounds",
     description = "Set only audited CardView background style items to OLED black.",
@@ -731,7 +744,7 @@ val lawnchairAmoledCardsPatch = resourcePatch(
     execute {
         val expected = mapOf(
             "CardView" to "?android:attr/colorBackgroundFloating",
-            "Widget.MaterialComponents.CardView" to "?colorSurface",
+            "Widget.MaterialComponents.CardView" to "?attr/colorSurface",
         )
         document("res/values/styles.xml").use { doc ->
             val found = mutableSetOf<String>()
@@ -748,7 +761,7 @@ val lawnchairAmoledCardsPatch = resourcePatch(
                 }
                 check(matches.size == 1) { "Lawnchair: ambiguous CardView background in $name" }
                 val item = matches.single()
-                check(item.textContent.trim() == original) {
+                check(sameAmoledResourceReference(item.textContent, original)) {
                     "Lawnchair: unexpected CardView background in $name: ${item.textContent.trim()}"
                 }
                 check(found.add(name)) { "Lawnchair: duplicate CardView style $name" }
@@ -787,7 +800,7 @@ val lawnchairAmoledPopupOverlayPatch = resourcePatch(
                 val solid = solids.item(0) as Element
                 val actual = solid.getAttributeNS("http://schemas.android.com/apk/res/android", "color")
                     .ifEmpty { solid.getAttribute("android:color") }
-                check(actual == expected[i]) {
+                check(sameAmoledResourceReference(actual, expected[i])) {
                     "Lawnchair: unexpected popup overlay layer $i: $actual"
                 }
                 solid.setAttributeNS(
@@ -825,7 +838,7 @@ val lawnchairAmoledDialogBackgroundPatch = resourcePatch(
             val ns = "http://schemas.android.com/apk/res/android"
             val actual = solid.getAttributeNS(ns, "color")
                 .ifEmpty { solid.getAttribute("android:color") }
-            check(actual == "?colorSurface") {
+            check(sameAmoledResourceReference(actual, "?colorSurface")) {
                 "Lawnchair: unexpected dialog background color: $actual"
             }
             solid.setAttributeNS(ns, "android:color", "#FF000000")
