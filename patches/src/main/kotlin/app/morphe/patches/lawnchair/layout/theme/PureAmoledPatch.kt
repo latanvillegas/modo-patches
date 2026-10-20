@@ -70,7 +70,44 @@ val lawnchairPureAmoledPatch = resourcePatch(
             }
         }
 
-        // Android 12+ uses single-item selectors with a system dynamic color
+        // The APK also defines independent night resources. Without this
+        // override, dark and system-following-dark themes retain gray surfaces.
+        val expectedNight = mapOf(
+            "material_color_surface" to "#ff121316",
+            "material_color_surface_bright" to "#ff38393c",
+            "material_color_surface_container" to "#ff1f1f23",
+            "material_color_surface_container_high" to "#ff292a2d",
+            "material_color_surface_container_highest" to "#ff343538",
+            "material_color_surface_container_low" to "#ff1b1b1f",
+            "material_color_surface_container_lowest" to "#ff0d0e11",
+            "material_color_surface_dim" to "#ff121316",
+            "material_color_surface_variant" to "#ff44474f",
+        )
+        val nightPath = "res/values-night/colors.xml"
+        document(nightPath).use { doc ->
+            val foundNight = mutableSetOf<String>()
+            val colors = doc.getElementsByTagName("color")
+            for (index in 0 until colors.length) {
+                val color = colors.item(index) as? Element ?: continue
+                val name = color.getAttribute("name")
+                val original = expectedNight[name] ?: continue
+                check(foundNight.add(name)) { "Lawnchair: duplicate $name in $nightPath" }
+                val hex = color.textContent.trim().removePrefix("#").lowercase()
+                check(hex.matches(Regex("[0-9a-f]{6}|[0-9a-f]{8}"))) {
+                    "Lawnchair: invalid night color $name in $nightPath"
+                }
+                val normalized = if (hex.length == 6) "ff$hex" else hex
+                check(normalized == original.removePrefix("#")) {
+                    "Lawnchair: unexpected night color $name in $nightPath: ${color.textContent.trim()}"
+                }
+                color.textContent = "#FF000000"
+            }
+            check(foundNight == expectedNight.keys) {
+                "Lawnchair: missing night colors in $nightPath: ${expectedNight.keys - foundNight}"
+            }
+        }
+
+                // Android 12+ uses single-item selectors with a system dynamic color
         // and android:lStar. Validate the shape and reference before rewriting.
         val androidNs = "http://schemas.android.com/apk/res/android"
         for (directory in listOf("res/color-v31", "res/color-night-v31")) {
