@@ -107,6 +107,68 @@ val lawnchairPureAmoledPatch = resourcePatch(
             }
         }
 
+                // Lawnchair-specific Android 12+ backgrounds from the Termux XMLTREE
+        // audit. Only selectors with verified single opaque background items.
+        // Do not change text, icon, preview accent or switch colors.
+        val auditedBackgroundSelectors = mapOf(
+            "res/color-night-v31/all_apps_tabs_background.xml" to Pair("@0x01060027", "22"),
+            "res/color-v31/all_apps_tabs_background.xml" to Pair("@0x01060020", null),
+            "res/color-night-v31/folder_background_dark.xml" to Pair("@0x01060035", "12"),
+            "res/color-night-v31/folder_preview_dark.xml" to Pair("@0x01060028", "12"),
+            "res/color-v31/folder_background_light.xml" to Pair("@0x0106001f", "94"),
+            "res/color-night-v31/popup_color_background.xml" to Pair("@0x01060028", "12"),
+            "res/color-v31/popup_color_background.xml" to Pair("@0x0106001f", "94"),
+            "res/color-v31/surface_light.xml" to Pair("@0x7f0604b3", "98"),
+        )
+        val androidNsForBackgrounds = "http://schemas.android.com/apk/res/android"
+        for ((path, expectedAttributes) in auditedBackgroundSelectors) {
+            document(path).use { doc ->
+                val root = doc.documentElement
+                check(root.localName == "selector" || root.nodeName == "selector") {
+                    "Lawnchair: unexpected background selector root in $path"
+                }
+                val items = root.getElementsByTagName("item")
+                check(items.length == 1 && root.getElementsByTagName("*").length == 1) {
+                    "Lawnchair: expected one background selector item in $path"
+                }
+                val item = items.item(0) as Element
+                val nsAware = item.hasAttributeNS(androidNsForBackgrounds, "color")
+                val originalColor = if (nsAware) {
+                    item.getAttributeNS(androidNsForBackgrounds, "color")
+                } else {
+                    item.getAttribute("android:color")
+                }
+                // Resource decoders may resolve the audited ID to its symbolic name.
+                val expectedId = expectedAttributes.first
+                val validColor = originalColor == expectedId ||
+                    (expectedId == "@0x7f0604b3" &&
+                     originalColor == "@color/system_neutral1_500")
+                check(validColor) {
+                    "Lawnchair: unexpected background reference in $path: $originalColor"
+                }
+                val originalLStar = if (nsAware) {
+                    item.getAttributeNS(androidNsForBackgrounds, "lStar")
+                } else {
+                    item.getAttribute("android:lStar")
+                }
+                val expectedLStar = expectedAttributes.second
+                check(if (expectedLStar == null) originalLStar.isEmpty()
+                      else originalLStar.toFloatOrNull() == expectedLStar.toFloat()) {
+                    "Lawnchair: unexpected background lStar in $path: $originalLStar"
+                }
+                check(item.attributes.length == if (expectedLStar == null) 1 else 2) {
+                    "Lawnchair: unexpected background selector attributes in $path"
+                }
+                if (nsAware) {
+                    item.setAttributeNS(androidNsForBackgrounds, "android:color", "#FF000000")
+                    item.removeAttributeNS(androidNsForBackgrounds, "lStar")
+                } else {
+                    item.setAttribute("android:color", "#FF000000")
+                    item.removeAttribute("android:lStar")
+                }
+            }
+        }
+
                 // Android 12+ uses single-item selectors with a system dynamic color
         // and android:lStar. Validate the shape and reference before rewriting.
         val androidNs = "http://schemas.android.com/apk/res/android"
