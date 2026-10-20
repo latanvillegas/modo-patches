@@ -26,3 +26,21 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./gradlew :patches:buildAndroid --no-daemon
+
+      - name: Verify compiled patch bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          find patches/build/libs -maxdepth 1 -type f -print
+          if ! find patches/build/libs -maxdepth 1 -type f -name '*.mpp' | grep -q .; then
+            echo "::error::No .mpp bundle found in patches/build/libs"
+            exit 1
+          fi
+
+      - name: Upload Morphe patch bundle
+        uses: actions/upload-artifact@v7
+        with:
+          name: lawnchair-amoled-patches
+          archive: false
+          path: patches/build/libs/*.mpp
+          if-no-files-found: error
