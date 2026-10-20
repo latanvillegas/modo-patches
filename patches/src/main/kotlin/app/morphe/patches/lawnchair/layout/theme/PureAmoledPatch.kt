@@ -4,16 +4,16 @@ import app.morphe.patcher.patch.resourcePatch
 import org.w3c.dom.Element
 
 /**
- * Conservative first-stage AMOLED patch for Lawnchair 15 Beta 3.
+ * AMOLED surfaces for Lawnchair 15 Beta 3.
  *
- * Only verified opaque Material surfaces in the default colors table are
- * changed. Night-qualified and Android 12+ dynamic resources are intentionally
- * out of scope until their actual editable paths have been verified.
+ * Patches nine verified opaque Material surface resources and their Android
+ * 12+ dynamic selectors. Accent, text and inverse surface colors are untouched.
+ * Unexpected XML shapes fail closed rather than being modified blindly.
  */
 @Suppress("unused")
 val lawnchairPureAmoledPatch = resourcePatch(
     name = "Lawnchair - Pure AMOLED surfaces",
-    description = "Blackens verified opaque Material surfaces; preserves accents, text and dynamic colors.",
+    description = "Makes verified Material surfaces black in default, night and Android 12+ dynamic themes.",
     default = false,
 ) {
     compatibleWith("app.lawnchair"("15.Beta 3"))
@@ -31,28 +31,55 @@ val lawnchairPureAmoledPatch = resourcePatch(
             "material_color_surface_variant" to "#ffe1e2ec",
         )
 
-        // This path follows the verified Movie resource-patch API pattern.
-        // If the target APK exposes a different resource structure, fail
-        // instead of silently modifying an unintended value.
-        val path = "res/values/colors.xml"
-        document(path).use { doc ->
+        // Morphe's decoded resources expose the default color table as XML.
+        // Verify every original value before replacing it.
+        val basePath = "res/values/colors.xml"
+        document(basePath).use { doc ->
             val found = mutableSetOf<String>()
             val colors = doc.getElementsByTagName("color")
             for (index in 0 until colors.length) {
                 val color = colors.item(index) as? Element ?: continue
                 val name = color.getAttribute("name")
-                val expectedValue = expected[name] ?: continue
-                check(found.add(name)) {
-                    "Lawnchair: duplicate color resource $name in $path"
-                }
-                val actual = color.textContent.trim()
-                check(actual.equals(expectedValue, ignoreCase = true)) {
-                    "Lawnchair: unexpected $name in $path: $actual (expected $expectedValue)"
+                val original = expected[name] ?: continue
+                check(found.add(name)) { "Lawnchair: duplicate $name in $basePath" }
+                check(color.textContent.trim().equals(original, ignoreCase = true)) {
+                    "Lawnchair: unexpected $name in $basePath: ${color.textContent.trim()}"
                 }
                 color.textContent = "#FF000000"
             }
             check(found == expected.keys) {
-                "Lawnchair: missing verified surface resources in $path: ${expected.keys - found}"
+                "Lawnchair: missing colors in $basePath: ${expected.keys - found}"
+            }
+        }
+
+        // Android 12+ uses single-item selectors with a system dynamic color
+        // and android:lStar. Validate the shape and reference before rewriting.
+        val androidNs = "http://schemas.android.com/apk/res/android"
+        for (directory in listOf("res/color-v31", "res/color-night-v31")) {
+            for (name in expected.keys) {
+                val path = "$directory/$name.xml"
+                document(path).use { doc ->
+                    val root = doc.documentElement
+                    check(root.localName == "selector" || root.nodeName == "selector") {
+                        "Lawnchair: unexpected selector root in $path"
+                    }
+                    val items = root.getElementsByTagName("item")
+                    check(items.length == 1) {
+                        "Lawnchair: expected one selector item in $path; found ${items.length}"
+                    }
+                    val item = items.item(0) as Element
+                    val color = item.getAttributeNS(androidNs, "color")
+                    check(color == "@android:color/system_neutral1_100" ||
+                          color == "@0x01060024" ||
+                          color == "@android:color/system_neutral1_10") {
+                        "Lawnchair: unexpected dynamic color reference in $path: $color"
+                    }
+                    check(item.hasAttributeNS(androidNs, "lStar")) {
+                        "Lawnchair: missing android:lStar in $path"
+                    }
+                    item.setAttributeNS(androidNs, "android:color", "#FF000000")
+                    item.removeAttributeNS(androidNs, "lStar")
+                }
             }
         }
     }
