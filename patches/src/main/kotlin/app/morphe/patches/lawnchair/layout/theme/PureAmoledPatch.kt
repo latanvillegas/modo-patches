@@ -923,6 +923,31 @@ val lawnchairAmoledSettingsElevationPatch = resourcePatch(
     }
 }
 
+// Android 12+ Home Settings app bar uses the system primary background.
+// Scope the change to this one verified layout attribute.
+@Suppress("unused")
+val lawnchairAmoledSettingsAppBarPatch = resourcePatch(
+    name = "Lawnchair - AMOLED Settings app bar",
+    description = "Set the Android 12+ settings app bar background to pure black without changing its layout.",
+    default = false,
+) {
+    compatibleWith("app.lawnchair"("15.Beta 3"))
+    execute {
+        document("res/layout-v31/settings_activity.xml").use { doc ->
+            val bars = doc.getElementsByTagName("com.google.android.material.appbar.AppBarLayout")
+            check(bars.length == 1) { "Lawnchair: expected one settings AppBarLayout" }
+            val bar = bars.item(0) as Element
+            val ns = "http://schemas.android.com/apk/res/android"
+            val original = bar.getAttributeNS(ns, "background")
+                .ifEmpty { bar.getAttribute("android:background") }
+            check(original == "?android:colorPrimary" || original == "?android:attr/colorPrimary") {
+                "Lawnchair: unexpected settings app bar background: $original"
+            }
+            bar.setAttributeNS(ns, "android:background", "#FF000000")
+        }
+    }
+}
+
 val lawnchairAmoledSettingsHeaderPatch = resourcePatch(
     name = "Lawnchair - AMOLED Settings header",
     description = "Blackens verified Android 12+ Home Settings header colors; leaves titles, icons, accents and switches unchanged.",
