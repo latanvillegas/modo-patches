@@ -13,7 +13,7 @@ import org.w3c.dom.Element
 @Suppress("unused")
 val lawnchairPureAmoledPatch = resourcePatch(
     name = "Lawnchair - Pure AMOLED surfaces",
-    description = "Blackens verified default Material surfaces and Android 12+ dynamic selectors.",
+    description = "Blackens verified Material surfaces, dark card/folder backgrounds and Android 12+ dynamic selectors.",
     default = false,
 ) {
     compatibleWith("app.lawnchair"("15.Beta 3"))
@@ -31,6 +31,15 @@ val lawnchairPureAmoledPatch = resourcePatch(
             "material_color_surface_variant" to "#ffe1e2ec",
         )
 
+        // Additional opaque backgrounds confirmed in the APK resource table.
+        // They have no corresponding Material dynamic selector loop.
+        val additionalOpaqueBackgrounds = mapOf(
+            "cardview_dark_background" to "#ff424242",
+            "folder_background_dark" to "#ff1f2020",
+            "folder_preview_dark" to "#ff1e1f20",
+        )
+        val baseExpected = expected + additionalOpaqueBackgrounds
+
         // Morphe's decoded resources expose the default color table as XML.
         // Verify every original value before replacing it.
         val basePath = "res/values/colors.xml"
@@ -40,7 +49,7 @@ val lawnchairPureAmoledPatch = resourcePatch(
             for (index in 0 until colors.length) {
                 val color = colors.item(index) as? Element ?: continue
                 val name = color.getAttribute("name")
-                val original = expected[name] ?: continue
+                val original = baseExpected[name] ?: continue
                 check(found.add(name)) { "Lawnchair: duplicate $name in $basePath" }
                 // Android resource decoding may omit opaque FF alpha (#AARRGGBB -> #RRGGBB).
                 // Normalize only these two valid formats; do not accept other values.
@@ -56,8 +65,8 @@ val lawnchairPureAmoledPatch = resourcePatch(
                 }
                 color.textContent = "#FF000000"
             }
-            check(found == expected.keys) {
-                "Lawnchair: missing colors in $basePath: ${expected.keys - found}"
+            check(found == baseExpected.keys) {
+                "Lawnchair: missing colors in $basePath: ${baseExpected.keys - found}"
             }
         }
 
