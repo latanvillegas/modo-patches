@@ -85,7 +85,7 @@ val lawnchairPureAmoledPatch = resourcePatch(
                     } else {
                         item.getAttribute("android:color")
                     }
-                    check(color == "@android:color/system_neutral1_100" ||
+                    check(color == "@android:color/system_neutral1_500" ||
                           color == "@0x01060024") {
                         "Lawnchair: unexpected dynamic color reference in $path: $color"
                     }
@@ -131,7 +131,7 @@ val lawnchairPureAmoledPatch = resourcePatch(
                     check(expectedLStar != null) {
                         "Lawnchair: no audited lStar for $path"
                     }
-                    check(lStar == expectedLStar) {
+                    check(lStar.toFloatOrNull() == expectedLStar.toFloat()) {
                         "Lawnchair: unexpected lStar in $path: $lStar (expected $expectedLStar)"
                     }
                     check(item.attributes.length == 2) {
