@@ -228,6 +228,13 @@ val lawnchairAmoledLauncherPatch = resourcePatch(
             "cardview_dark_background" to "#ff424242",
             "folder_background_dark" to "#ff1f2020",
             "folder_preview_dark" to "#ff1e1f20",
+            "folder_background_light" to "#ffefeded",
+            "popup_shade_first_dark" to "#ff303030",
+            "popup_shade_second_dark" to "#ff262626",
+            "popup_shade_third_dark" to "#ff1b1b1b",
+            "popup_shade_first_light" to "#fff9f9f9",
+            "popup_shade_second_light" to "#fff1f1f1",
+            "popup_shade_third_light" to "#ffe2e2e2",
         )
         val baseExpected = additionalOpaqueBackgrounds
 
@@ -345,6 +352,26 @@ val lawnchairAmoledSettingsHeaderPatch = resourcePatch(
 ) {
     compatibleWith("app.lawnchair"("15.Beta 3"))
     execute {
+        // The Settings page background is opaque white in the default
+        // configuration and already pure black in the night configuration.
+        // Do not alter its text, accents, or switch colors.
+        document("res/values/colors.xml").use { doc ->
+            val colors = doc.getElementsByTagName("color")
+            var found = false
+            for (i in 0 until colors.length) {
+                val color = colors.item(i) as? Element ?: continue
+                if (color.getAttribute("name") != "all_set_page_background") continue
+                check(!found) { "Lawnchair: duplicate all_set_page_background" }
+                val original = color.textContent.trim().lowercase()
+                check(original == "#ffffffff" || original == "#ffffff") {
+                    "Lawnchair: unexpected all_set_page_background: ${color.textContent.trim()}"
+                }
+                color.textContent = "#FF000000"
+                found = true
+            }
+            check(found) { "Lawnchair: missing all_set_page_background" }
+        }
+
         val expected = mapOf(
             "res/values-v31/colors.xml" to mapOf(
                 "home_settings_header_collapsed" to "@android:color/system_neutral1_100",
