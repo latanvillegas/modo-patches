@@ -73,9 +73,6 @@ val lawnchairPureAmoledPatch = resourcePatch(
                           color == "@0x01060024") {
                         "Lawnchair: unexpected dynamic color reference in $path: $color"
                     }
-                    check(item.hasAttributeNS(androidNs, "lStar")) {
-                        "Lawnchair: missing android:lStar in $path"
-                    }
                     val lStar = item.getAttributeNS(androidNs, "lStar")
                     check(item.hasAttributeNS(androidNs, "lStar") &&
                           lStar.toFloatOrNull()?.let { it in 0f..100f } == true) {
@@ -93,6 +90,9 @@ val lawnchairPureAmoledPatch = resourcePatch(
                     }
                     check(item.attributes.length == 2) {
                         "Lawnchair: unexpected selector attributes in $path"
+                    }
+                    check(root.getElementsByTagName("*").length == 1) {
+                        "Lawnchair: unexpected nested selector elements in $path"
                     }
                     item.setAttributeNS(androidNs, "android:color", "#FF000000")
                     item.removeAttributeNS(androidNs, "lStar")
