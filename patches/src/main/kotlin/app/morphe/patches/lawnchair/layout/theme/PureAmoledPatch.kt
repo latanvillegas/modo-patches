@@ -887,6 +887,42 @@ val lawnchairAmoledArrowTipsPatch = resourcePatch(
     }
 }
 
+// The Android 12+ settings toolbar theme enables Material elevation tint,
+// which can lighten a black surface. Disable only this toolbar overlay.
+@Suppress("unused")
+val lawnchairAmoledSettingsElevationPatch = resourcePatch(
+    name = "Lawnchair - AMOLED Settings elevation",
+    description = "Disable the audited settings toolbar elevation overlay without changing icons or geometry.",
+    default = false,
+) {
+    compatibleWith("app.lawnchair"("15.Beta 3"))
+    execute {
+        document("res/values-v31/styles.xml").use { doc ->
+            val styles = doc.getElementsByTagName("style")
+            var found = false
+            for (i in 0 until styles.length) {
+                val style = styles.item(i) as? Element ?: continue
+                if (style.getAttribute("name") != "HomeSettings.CollapsingToolbar") continue
+                check(!found) { "Lawnchair: duplicate HomeSettings.CollapsingToolbar" }
+                val items = style.getElementsByTagName("item")
+                val matches = (0 until items.length).mapNotNull { j ->
+                    (items.item(j) as? Element)?.takeIf {
+                        it.getAttribute("name") == "elevationOverlayEnabled"
+                    }
+                }
+                check(matches.size == 1) { "Lawnchair: missing settings elevation overlay flag" }
+                val item = matches.single()
+                check(item.textContent.trim() == "true") {
+                    "Lawnchair: unexpected settings elevation overlay: ${item.textContent.trim()}"
+                }
+                item.textContent = "false"
+                found = true
+            }
+            check(found) { "Lawnchair: missing HomeSettings.CollapsingToolbar" }
+        }
+    }
+}
+
 val lawnchairAmoledSettingsHeaderPatch = resourcePatch(
     name = "Lawnchair - AMOLED Settings header",
     description = "Blackens verified Android 12+ Home Settings header colors; leaves titles, icons, accents and switches unchanged.",
