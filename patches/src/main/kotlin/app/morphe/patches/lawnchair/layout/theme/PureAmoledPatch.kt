@@ -499,6 +499,40 @@ val lawnchairAmoledPopupMenusPatch = resourcePatch(
 ) {
     compatibleWith("app.lawnchair"("15.Beta 3"))
     execute {
+
+        // LauncherTheme declares literal popup colors. Editing color resources
+        // alone cannot override these values.
+        document("res/values/styles.xml").use { doc ->
+            val expectedPopup = mapOf(
+                "LauncherTheme" to "#ffefeded",
+                "LauncherTheme.Dark" to "#ff1f2020",
+            )
+            val matched = mutableSetOf<String>()
+            val styles = doc.getElementsByTagName("style")
+            for (i in 0 until styles.length) {
+                val style = styles.item(i) as? Element ?: continue
+                val styleName = style.getAttribute("name")
+                val expectedColor = expectedPopup[styleName] ?: continue
+                val items = style.getElementsByTagName("item")
+                val popupItems = (0 until items.length).mapNotNull { index ->
+                    (items.item(index) as? Element)?.takeIf {
+                        it.getAttribute("name") == "popupColorBackground"
+                    }
+                }
+                check(popupItems.size == 1) {
+                    "Lawnchair: expected one popupColorBackground in $styleName"
+                }
+                val item = popupItems.single()
+                check(item.textContent.trim().lowercase() == expectedColor) {
+                    "Lawnchair: unexpected popupColorBackground in $styleName: ${item.textContent.trim()}"
+                }
+                check(matched.add(styleName)) { "Lawnchair: duplicate style $styleName" }
+                item.textContent = "#FF000000"
+            }
+            check(matched == expectedPopup.keys) {
+                "Lawnchair: missing popup styles: ${expectedPopup.keys - matched}"
+            }
+        }
         val baseExpected = mapOf(
             "popup_shade_first_dark" to "#ff303030",
             "popup_shade_second_dark" to "#ff262626",
