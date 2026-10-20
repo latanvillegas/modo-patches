@@ -140,7 +140,17 @@ val lawnchairPureAmoledPatch = resourcePatch(
                 }
                 // Resource decoders may resolve the audited ID to its symbolic name.
                 val expectedId = expectedAttributes.first
+                // Morphe's XML decoder can expand Android resource IDs to
+                // symbolic references. Only allow exact audited equivalents.
+                val auditedAndroidColors = mapOf(
+                    "@0x01060027" to "@android:color/system_neutral1_800",
+                    "@0x01060020" to "@android:color/system_neutral1_100",
+                    "@0x01060035" to "@android:color/system_neutral2_900",
+                    "@0x01060028" to "@android:color/system_neutral1_900",
+                    "@0x0106001f" to "@android:color/system_neutral1_50",
+                )
                 val validColor = originalColor == expectedId ||
+                    originalColor == auditedAndroidColors[expectedId] ||
                     (expectedId == "@0x7f0604b3" &&
                      originalColor == "@color/system_neutral1_500")
                 check(validColor) {
