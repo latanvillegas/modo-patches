@@ -688,8 +688,10 @@ val lawnchairAmoledSnackbarPatch = bytecodePatch(
                     }
                     val factoryCall = call as? FiveRegisterInstruction
                         ?: error("Lawnchair: unexpected Snackbar factory invocation format")
-                    check(factoryCall.registerCount == 2 && factoryCall.registerC == 7) {
-                        "Lawnchair: unexpected Snackbar factory register"
+                    check(factoryCall.registerCount == 2 &&
+                          factoryCall.registerC == 7 &&
+                          factoryCall.registerD == 3) {
+                        "Lawnchair: unexpected Snackbar factory registers"
                     }
                     val hasFactory = instructions.subList(0, index - 1).any { ins ->
                         val ref = (ins as? ReferenceInstruction)?.reference as? FieldReference
