@@ -1,6 +1,16 @@
 package app.morphe.patches.lawnchair.layout.theme
 
 import app.morphe.patcher.patch.resourcePatch
+import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
+import app.morphe.patcher.extensions.InstructionExtensions.replaceInstruction
+import app.morphe.patcher.patch.bytecodePatch
+import app.morphe.util.findMutableMethodOf
+import com.android.tools.smali.dexlib2.Opcode
+import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.reference.FieldReference
+import com.android.tools.smali.dexlib2.iface.reference.MethodReference
+import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import org.w3c.dom.Element
 
 // Independently selectable diagnostic patches for Lawnchair 15 Beta 3.
@@ -214,12 +224,61 @@ val lawnchairAmoledMaterialDynamicPatch = resourcePatch(
     }
 }
 
+// DEX anchor verified against the original Lawnchair 15 Beta 3 APK.
+// Override the drawer destination only; never mutate the shared t9 palette.
+private val lawnchairAmoledDrawerDexPatch = bytecodePatch {
+    compatibleWith("app.lawnchair"("15.Beta 3"))
+    execute {
+        val targetType = "Lcom/android/launcher3/allapps/ActivityAllAppsContainerView;"
+        val fieldName = "mBottomSheetBackgroundColor"
+        var matched = 0
+        classDefForEach { classDef ->
+            if (classDef.type != targetType) return@classDefForEach
+            val mutableClass = mutableClassDefBy(classDef)
+            classDef.methods.forEach { method ->
+                val instructions = method.implementation?.instructions?.toList() ?: return@forEach
+                for (index in 3 until instructions.size) {
+                    val put = instructions[index]
+                    if (put.opcode != Opcode.IPUT) continue
+                    val field = (put as? ReferenceInstruction)?.reference as? FieldReference ?: continue
+                    if (field.definingClass != targetType || field.name != fieldName || field.type != "I") continue
+                    val move = instructions[index - 1]
+                    val call = instructions[index - 2]
+                    if (move.opcode != Opcode.MOVE_RESULT || call.opcode != Opcode.INVOKE_VIRTUAL) continue
+                    val called = (call as? ReferenceInstruction)?.reference as? MethodReference ?: continue
+                    if (called.definingClass != "Lt9/j;" || called.name != "e" ||
+                        called.returnType != "I" || called.parameterTypes.map { it.toString() } != listOf("Landroid/content/Context;")) continue
+                    val fieldRegister = (put as? TwoRegisterInstruction)?.registerA ?: continue
+                    val resultRegister = (move as? OneRegisterInstruction)?.registerA ?: continue
+                    if (fieldRegister != resultRegister) continue
+                    // Verify this value originates from the audited H0 token.
+                    val hasH0 = instructions.subList(0, index - 2).any { instruction ->
+                        if (instruction.opcode != Opcode.SGET_OBJECT) false else {
+                            val ref = (instruction as? ReferenceInstruction)?.reference as? FieldReference
+                            ref?.definingClass == "Lt9/g;" && ref.name == "H0" && ref.type == "Lt9/j;"
+                        }
+                    }
+                    if (!hasH0) continue
+                    matched++
+                    check(matched == 1) { "Lawnchair: ambiguous drawer background DEX anchor" }
+                    mutableClass.findMutableMethodOf(method).replaceInstruction(
+                        index - 1,
+                        "const v$resultRegister, -0x1000000"
+                    )
+                }
+            }
+        }
+        check(matched == 1) { "Lawnchair: expected one drawer background DEX anchor; found $matched" }
+    }
+}
+
 @Suppress("unused")
 val lawnchairAmoledAppDrawerPatch = resourcePatch(
     name = "Lawnchair - AMOLED App Drawer",
     description = "Audited pure-black backgrounds for this launcher area only.",
     default = false,
 ) {
+    dependsOn(lawnchairAmoledDrawerDexPatch)
     compatibleWith("app.lawnchair"("15.Beta 3"))
     execute {
         val baseExpected = mapOf(
