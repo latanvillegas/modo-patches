@@ -638,7 +638,6 @@ val lawnchairAmoledPopupMenusPatch = resourcePatch(
     }
 }
 
-@Suppress("unused")
 // Original Lawnchair 15 Beta 3: Snackbar.show(ActivityContext, CharSequence, int,
 // Runnable, Runnable) obtains u9.n.j's rounded Drawable and assigns it to its layout.
 // Tint that one Drawable only, preserving its XML corners and foreground colors.
