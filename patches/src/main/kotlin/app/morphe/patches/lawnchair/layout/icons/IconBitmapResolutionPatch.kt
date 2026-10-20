@@ -17,15 +17,18 @@ import com.android.tools.smali.dexlib2.iface.reference.MethodReference
  * iconBitmapSize, whereas IconCache uses max(iconBitmapSize,
  * allAppsIconBitmapSize). Align the factory's bitmap size with the cache.
  *
- * Request xxxhdpi (640 dpi) drawable resources for LauncherIcons, while\n * retaining the original on-screen icon dimensions. This does not upscale\n * the bitmap canvas to 640 dpi or guarantee sharper source artwork.\n * No visual icon dimensions, shapes, filters or colors are changed.
+ * Request xxxhdpi (640 dpi) drawable resources for LauncherIcons, regardless
+ * of the physical device's market tier. This does not spoof device hardware,
+ * upscale the bitmap canvas to 640 dpi, or guarantee sharper source artwork.
+ * On-screen icon dimensions, shapes, filters and colors remain unchanged.
  * v0 temporarily holds iconBitmapSize and is restored to mPool before
  * the constructor invocation. This requires no new registers.
  */
 @Suppress("unused")
 val lawnchairIconBitmapResolutionExperimentalPatch = bytecodePatch(
-    name = "Lawnchair - Icon Bitmap Resolution 640 DPI (Experimental)",
-    description = "Request 640 dpi (xxxhdpi) icon resources and use the larger workspace/all-apps bitmap size; preserve icon dimensions and AMOLED patches.",
-    default = false,
+    name = "Lawnchair - Premium Icon Quality 640 DPI (Experimental)",
+    description = "Enable premium-quality 640 dpi (xxxhdpi) resource requests on any device and use the larger workspace/all-apps bitmap size; preserve icon dimensions and AMOLED patches.",
+    default = true,
 ) {
     compatibleWith("app.lawnchair"("15.Beta 3"))
     execute {
