@@ -13,7 +13,7 @@ import org.w3c.dom.Element
 @Suppress("unused")
 val lawnchairPureAmoledPatch = resourcePatch(
     name = "Lawnchair - Pure AMOLED surfaces",
-    description = "Makes verified Material surfaces black in default, night and Android 12+ dynamic themes.",
+    description = "Blackens verified default Material surfaces and Android 12+ dynamic selectors.",
     default = false,
 ) {
     compatibleWith("app.lawnchair"("15.Beta 3"))
@@ -70,12 +70,29 @@ val lawnchairPureAmoledPatch = resourcePatch(
                     val item = items.item(0) as Element
                     val color = item.getAttributeNS(androidNs, "color")
                     check(color == "@android:color/system_neutral1_100" ||
-                          color == "@0x01060024" ||
-                          color == "@android:color/system_neutral1_10") {
+                          color == "@0x01060024") {
                         "Lawnchair: unexpected dynamic color reference in $path: $color"
                     }
                     check(item.hasAttributeNS(androidNs, "lStar")) {
                         "Lawnchair: missing android:lStar in $path"
+                    }
+                    val lStar = item.getAttributeNS(androidNs, "lStar")
+                    check(item.hasAttributeNS(androidNs, "lStar") &&
+                          lStar.toFloatOrNull()?.let { it in 0f..100f } == true) {
+                        "Lawnchair: missing or invalid lStar in $path: $lStar"
+                    }
+                    val expectedLStar = when (name) {
+                        "material_color_surface" ->
+                            if (directory.endsWith("night-v31")) "6" else "98"
+                        "material_color_surface_container" ->
+                            if (directory.endsWith("night-v31")) "12" else "94"
+                        else -> null
+                    }
+                    check(expectedLStar == null || lStar == expectedLStar) {
+                        "Lawnchair: unexpected lStar in $path: $lStar (expected $expectedLStar)"
+                    }
+                    check(item.attributes.length == 2) {
+                        "Lawnchair: unexpected selector attributes in $path"
                     }
                     item.setAttributeNS(androidNs, "android:color", "#FF000000")
                     item.removeAttributeNS(androidNs, "lStar")
