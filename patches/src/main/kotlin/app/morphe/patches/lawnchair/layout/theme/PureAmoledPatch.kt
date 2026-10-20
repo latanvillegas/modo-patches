@@ -336,3 +336,52 @@ val lawnchairAmoledLauncherPatch = resourcePatch(
         
     }
 }
+
+@Suppress("unused")
+val lawnchairAmoledSettingsHeaderPatch = resourcePatch(
+    name = "Lawnchair - AMOLED Settings header",
+    description = "Blackens verified Android 12+ Home Settings header colors; leaves titles, icons, accents and switches unchanged.",
+    default = false,
+) {
+    compatibleWith("app.lawnchair"("15.Beta 3"))
+    execute {
+        val expected = mapOf(
+            "res/values-v31/colors.xml" to mapOf(
+                "home_settings_header_collapsed" to "@android:color/system_neutral1_100",
+                "home_settings_header_expanded" to "@android:color/system_neutral1_50",
+            ),
+            "res/values-night-v31/colors.xml" to mapOf(
+                "home_settings_header_collapsed" to "@android:color/system_neutral1_700",
+                "home_settings_header_expanded" to "@android:color/system_neutral1_900",
+            ),
+        )
+        val numericEquivalents = mapOf(
+            "@android:color/system_neutral1_100" to "@0x01060020",
+            "@android:color/system_neutral1_50" to "@0x0106001f",
+            "@android:color/system_neutral1_700" to "@0x01060026",
+            "@android:color/system_neutral1_900" to "@0x01060028",
+        )
+        for ((path, colorsExpected) in expected) {
+            document(path).use { doc ->
+                val found = mutableSetOf<String>()
+                val colors = doc.getElementsByTagName("color")
+                for (i in 0 until colors.length) {
+                    val color = colors.item(i) as? Element ?: continue
+                    val name = color.getAttribute("name")
+                    val reference = colorsExpected[name] ?: continue
+                    check(found.add(name)) {
+                        "Lawnchair: duplicate Settings color $name in $path"
+                    }
+                    val actual = color.textContent.trim()
+                    check(actual == reference || actual == numericEquivalents[reference]) {
+                        "Lawnchair: unexpected Settings color $name in $path: $actual"
+                    }
+                    color.textContent = "#FF000000"
+                }
+                check(found == colorsExpected.keys) {
+                    "Lawnchair: missing Settings header colors in $path: ${colorsExpected.keys - found}"
+                }
+            }
+        }
+    }
+}
