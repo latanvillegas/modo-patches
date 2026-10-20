@@ -924,7 +924,7 @@ private val lawnchairAmoledPreferenceGroupDexPatch = bytecodePatch {
                 }
                 val mutableMethod = mutableClass.findMutableMethodOf(method)
                 for (index in replacements) {
-                    mutableMethod.replaceInstruction(index, "const-wide v0, -0x100000000000000")
+                    mutableMethod.replaceInstruction(index, "const-wide/high16 v0, -0x100000000000000L")
                 }
             }
         }
