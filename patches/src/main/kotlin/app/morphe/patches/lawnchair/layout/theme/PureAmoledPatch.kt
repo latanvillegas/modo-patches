@@ -785,6 +785,39 @@ val lawnchairAmoledPopupOverlayPatch = resourcePatch(
     }
 }
 
+// The Material dialog background is an inset drawable with rounded corners.
+// Change only its solid fill; preserve the inset and corner dimensions.
+@Suppress("unused")
+val lawnchairAmoledDialogBackgroundPatch = resourcePatch(
+    name = "Lawnchair - AMOLED Dialog background",
+    description = "Blacken the audited Material dialog background without altering its geometry.",
+    default = false,
+) {
+    compatibleWith("app.lawnchair"("15.Beta 3"))
+    execute {
+        val path = "res/drawable/mtrl_dialog_background.xml"
+        document(path).use { doc ->
+            val root = doc.documentElement
+            check(root.tagName == "inset") { "Lawnchair: unexpected dialog background root" }
+            val shapes = root.getElementsByTagName("shape")
+            check(shapes.length == 1) { "Lawnchair: expected one dialog shape" }
+            val shape = shapes.item(0) as Element
+            val corners = shape.getElementsByTagName("corners")
+            check(corners.length == 1) { "Lawnchair: missing dialog corners" }
+            val solids = shape.getElementsByTagName("solid")
+            check(solids.length == 1) { "Lawnchair: expected one dialog solid" }
+            val solid = solids.item(0) as Element
+            val ns = "http://schemas.android.com/apk/res/android"
+            val actual = solid.getAttributeNS(ns, "color")
+                .ifEmpty { solid.getAttribute("android:color") }
+            check(actual == "?colorSurface") {
+                "Lawnchair: unexpected dialog background color: $actual"
+            }
+            solid.setAttributeNS(ns, "android:color", "#FF000000")
+        }
+    }
+}
+
 // Target only ArrowTip backgrounds. Preserve text and taskbar foregrounds.
 @Suppress("unused")
 val lawnchairAmoledArrowTipsPatch = resourcePatch(
