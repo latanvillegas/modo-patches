@@ -844,7 +844,7 @@ val lawnchairAmoledArrowTipsPatch = resourcePatch(
     execute {
         val expected = mapOf(
             "ArrowTipStyle" to "@color/arrow_tip_view_bg",
-            "ArrowTipTaskbarStyle" to "?materialColorSurfaceContainer",
+            "ArrowTipTaskbarStyle" to "?attr/materialColorSurfaceContainer",
         )
         document("res/values/styles.xml").use { doc ->
             val matched = mutableSetOf<String>()
