@@ -504,7 +504,7 @@ val lawnchairAmoledPopupMenusPatch = resourcePatch(
         // alone cannot override these values.
         document("res/values/styles.xml").use { doc ->
             val expectedPopup = mapOf(
-                "LauncherTheme" to "#ffefeded",
+                "LauncherTheme" to "#efeded",
                 "LauncherTheme.Dark" to "#ff1f2020",
             )
             val matched = mutableSetOf<String>()
