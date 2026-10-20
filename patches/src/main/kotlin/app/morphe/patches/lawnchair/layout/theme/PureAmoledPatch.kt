@@ -9,6 +9,7 @@ import app.morphe.util.findMutableMethodOf
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
@@ -678,6 +679,18 @@ val lawnchairAmoledSnackbarPatch = bytecodePatch(
                     // The original method uses v7 for u9.n.j and v3 for the
                     // resulting Drawable. Reusing v7 needs no extra registers.
                     check(drawableRegister == 3) { "Lawnchair: unexpected Snackbar drawable register" }
+                    val assignRegisters = assign as? FiveRegisterInstruction
+                        ?: error("Lawnchair: unexpected Snackbar setBackground instruction format")
+                    check(assignRegisters.registerCount == 2 &&
+                          assignRegisters.registerC == 1 &&
+                          assignRegisters.registerD == drawableRegister) {
+                        "Lawnchair: unexpected Snackbar setBackground registers"
+                    }
+                    val factoryCall = call as? FiveRegisterInstruction
+                        ?: error("Lawnchair: unexpected Snackbar factory invocation format")
+                    check(factoryCall.registerCount == 2 && factoryCall.registerC == 7) {
+                        "Lawnchair: unexpected Snackbar factory register"
+                    }
                     val hasFactory = instructions.subList(0, index - 1).any { ins ->
                         val ref = (ins as? ReferenceInstruction)?.reference as? FieldReference
                         ins.opcode == Opcode.SGET_OBJECT && ref?.definingClass == "Lu9/n;" &&
