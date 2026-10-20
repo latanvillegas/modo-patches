@@ -730,7 +730,7 @@ val lawnchairAmoledCardsPatch = resourcePatch(
     compatibleWith("app.lawnchair"("15.Beta 3"))
     execute {
         val expected = mapOf(
-            "CardView" to "?android:colorBackgroundFloating",
+            "CardView" to "?android:attr/colorBackgroundFloating",
             "Widget.MaterialComponents.CardView" to "?colorSurface",
         )
         document("res/values/styles.xml").use { doc ->
