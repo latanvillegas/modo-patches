@@ -78,14 +78,35 @@ val lawnchairPureAmoledPatch = resourcePatch(
                           lStar.toFloatOrNull()?.let { it in 0f..100f } == true) {
                         "Lawnchair: missing or invalid lStar in $path: $lStar"
                     }
-                    val expectedLStar = when (name) {
-                        "material_color_surface" ->
-                            if (directory.endsWith("night-v31")) "6" else "98"
-                        "material_color_surface_container" ->
-                            if (directory.endsWith("night-v31")) "12" else "94"
+                    val expectedLStar = when (directory) {
+                        "res/color-v31" -> mapOf(
+                            "material_color_surface" to "98",
+                            "material_color_surface_bright" to "98",
+                            "material_color_surface_container" to "94",
+                            "material_color_surface_container_high" to "92",
+                            "material_color_surface_container_highest" to "90",
+                            "material_color_surface_container_low" to "96",
+                            "material_color_surface_container_lowest" to "100",
+                            "material_color_surface_dim" to "87",
+                            "material_color_surface_variant" to "87",
+                        )[name]
+                        "res/color-night-v31" -> mapOf(
+                            "material_color_surface" to "6",
+                            "material_color_surface_bright" to "24",
+                            "material_color_surface_container" to "12",
+                            "material_color_surface_container_high" to "17",
+                            "material_color_surface_container_highest" to "22",
+                            "material_color_surface_container_low" to "10",
+                            "material_color_surface_container_lowest" to "4",
+                            "material_color_surface_dim" to "6",
+                            "material_color_surface_variant" to "6",
+                        )[name]
                         else -> null
                     }
-                    check(expectedLStar == null || lStar == expectedLStar) {
+                    check(expectedLStar != null) {
+                        "Lawnchair: no audited lStar for $path"
+                    }
+                    check(lStar == expectedLStar) {
                         "Lawnchair: unexpected lStar in $path: $lStar (expected $expectedLStar)"
                     }
                     check(item.attributes.length == 2) {
