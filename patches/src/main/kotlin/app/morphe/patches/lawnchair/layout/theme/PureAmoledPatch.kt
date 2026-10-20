@@ -874,7 +874,7 @@ val lawnchairAmoledArrowTipsPatch = resourcePatch(
                 }
                 check(targets.size == 1) { "Lawnchair: ambiguous arrowTipBackground in $name" }
                 val item = targets.single()
-                check(item.textContent.trim() == original) {
+                check(sameAmoledResourceReference(item.textContent, original)) {
                     "Lawnchair: unexpected arrowTipBackground in $name: ${item.textContent.trim()}"
                 }
                 check(matched.add(name)) { "Lawnchair: duplicate ArrowTip style $name" }
