@@ -17,14 +17,14 @@ import com.android.tools.smali.dexlib2.iface.reference.MethodReference
  * iconBitmapSize, whereas IconCache uses max(iconBitmapSize,
  * allAppsIconBitmapSize). Align the factory's bitmap size with the cache.
  *
- * No visual icon dimensions, shapes, filters or colors are changed.
+ * Request xxxhdpi (640 dpi) drawable resources for LauncherIcons, while\n * retaining the original on-screen icon dimensions. This does not upscale\n * the bitmap canvas to 640 dpi or guarantee sharper source artwork.\n * No visual icon dimensions, shapes, filters or colors are changed.
  * v0 temporarily holds iconBitmapSize and is restored to mPool before
  * the constructor invocation. This requires no new registers.
  */
 @Suppress("unused")
 val lawnchairIconBitmapResolutionExperimentalPatch = bytecodePatch(
-    name = "Lawnchair - Icon Bitmap Resolution (Experimental)",
-    description = "Use the larger workspace/all-apps bitmap size in LauncherIcons pool; icon appearance and AMOLED patches remain unchanged.",
+    name = "Lawnchair - Icon Bitmap Resolution 640 DPI (Experimental)",
+    description = "Request 640 dpi (xxxhdpi) icon resources and use the larger workspace/all-apps bitmap size; preserve icon dimensions and AMOLED patches.",
     default = false,
 ) {
     compatibleWith("app.lawnchair"("15.Beta 3"))
@@ -82,6 +82,11 @@ val lawnchairIconBitmapResolutionExperimentalPatch = bytecodePatch(
                     matchedAnchors++
                     check(matchedAnchors == 1) { "Lawnchair: ambiguous icon pool bitmap anchor" }
                     val mutableMethod = mutableClass.findMutableMethodOf(method)
+
+                    // Request xxxhdpi assets. v4 is the constructor DPI argument;
+                    // the on-screen dimensions and bitmap pixel dimensions remain
+                    // independently controlled by the existing profile fields.
+                    mutableMethod.replaceInstruction(i - 1, "const/16 v4, 0x280")
 
                     // Keep v1 as the profile object until both fields are read.
                     // v0 held mPool; restore it before the original constructor.
