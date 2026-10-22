@@ -1,7 +1,7 @@
 package app.morphe.patches.tv360
 
 import app.morphe.patcher.Fingerprint
-import app.morphe.patcher.extensions.InstructionExtensions.addInstruction
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.bytecodePatch
 import com.android.tools.smali.dexlib2.Opcode
@@ -63,7 +63,7 @@ val tv360StatusBarPatch = bytecodePatch(
         }
 
         // Insert immediately after the existing listener installation.
-        // Reverse insertion preserves the intended instruction order.
+        // Insert as one block to preserve the intended instruction order.
         val injected = listOf(
             "invoke-virtual {p0}, Landroid/app/Activity;->getWindow()Landroid/view/Window;",
             "move-result-object v7",
@@ -75,8 +75,6 @@ val tv360StatusBarPatch = bytecodePatch(
             "move-result v7",
             "invoke-virtual {v8, v7}, Landroidx/core/view/WindowInsetsControllerCompat;->hide(I)V",
         )
-        injected.asReversed().forEach { instruction ->
-            method.addInstruction(anchor + 1, instruction)
-        }
+        method.addInstructions(anchor + 1, injected.joinToString("\n"))
     }
 }
