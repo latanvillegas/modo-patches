@@ -42,6 +42,14 @@ val tv360StatusBarPatch = bytecodePatch(
             throw PatchException("TV360 status bar: expected one insets listener, found ${anchors.size}")
         }
         val anchor = anchors.single().index
+        val nextReference = instructions.drop(anchor + 1).firstOrNull {
+            it is ReferenceInstruction
+        } as? ReferenceInstruction
+        val expectedNext =
+            "Lcom/viettel/tv360/ui/home/HomeBoxActivity;->getDataFields()V"
+        if (nextReference?.reference?.toString() != expectedNext) {
+            throw PatchException("TV360 status bar: unexpected flow after insets listener")
+        }
         val before = instructions.take(anchor)
         val windowRef =
             "Landroid/app/Activity;->getWindow()Landroid/view/Window;"
@@ -50,8 +58,8 @@ val tv360StatusBarPatch = bytecodePatch(
             }) {
             throw PatchException("TV360 status bar: expected window setup before listener")
         }
-        if (implementation.registerCount < 9) {
-            throw PatchException("TV360 status bar: insufficient registers")
+        if (implementation.registerCount < 11) {
+            throw PatchException("TV360 status bar: v7/v8 local registers not available")
         }
 
         // Insert immediately after the existing listener installation.
