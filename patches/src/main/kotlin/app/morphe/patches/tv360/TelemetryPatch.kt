@@ -1,7 +1,7 @@
 package app.morphe.patches.tv360
 
 import app.morphe.patcher.Fingerprint
-import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.extensions.InstructionExtensions.replaceInstruction
 import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.bytecodePatch
 import com.android.tools.smali.dexlib2.Opcode
@@ -43,8 +43,7 @@ val tv360TelemetryPatch = bytecodePatch(
         // Replace only analytics invocations with no-op. Do not change
         // branches, register assignments, click handling, or navigation.
         for (index in target.map { it.index }.sortedDescending()) {
-            method.addInstructions(index, "nop")
-            method.removeInstruction(index + 1)
+            method.replaceInstruction(index, "nop")
         }
     }
 }
