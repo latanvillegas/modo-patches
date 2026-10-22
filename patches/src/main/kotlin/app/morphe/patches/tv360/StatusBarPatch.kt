@@ -1,22 +1,22 @@
 package app.morphe.patches.tv360
 
 import app.morphe.patcher.Fingerprint
-import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.extensions.InstructionExtensions.addInstruction
+import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.bytecodePatch
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 
 /**
- * TV360 Bitel 3.5: hide only the status bar on HomeBoxActivity startup.
+ * Hide the status bar in TV360's home activity without hiding navigation bars.
  *
- * The existing window-insets listener and decor-fitting logic remain untouched.
- * The patch is opt-in while navigation/gesture and top-margin behavior are tested.
+ * The original decor fitting, root insets listener, padding and PiP logic remain
+ * unchanged. The injected calls use v7/v8 after the original listener setup.
  */
 @Suppress("unused")
 val tv360StatusBarPatch = bytecodePatch(
     name = "TV360 Bitel - Hide Status Bar",
-    description = "Hides the status bar on the home screen without explicitly hiding navigation bars.",
+    description = "Hides the home screen status bar while preserving navigation bars and gestures.",
     default = false,
 ) {
     compatibleWith("com.bitel.tv360"("3.5"))
@@ -30,29 +30,45 @@ val tv360StatusBarPatch = bytecodePatch(
         ).method
 
         val implementation = method.implementation
-            ?: throw PatchException("TV360 status bar: onCreate has no implementation")
-
+            ?: throw PatchException("TV360 status bar: missing onCreate implementation")
         val instructions = implementation.instructions.toList()
-        val anchorReference =
+        val listenerRef =
             "Landroidx/core/view/ViewCompat;->setOnApplyWindowInsetsListener(Landroid/view/View;Landroidx/core/view/OnApplyWindowInsetsListener;)V"
         val anchors = instructions.withIndex().filter {
             it.value.opcode == Opcode.INVOKE_STATIC &&
-                (it.value as? ReferenceInstruction)?.reference?.toString() == anchorReference
+                (it.value as? ReferenceInstruction)?.reference?.toString() == listenerRef
         }
         if (anchors.size != 1) {
-            throw PatchException("TV360 status bar: expected one root insets listener, found ${anchors.size}")
+            throw PatchException("TV360 status bar: expected one insets listener, found ${anchors.size}")
         }
         val anchor = anchors.single().index
+        val before = instructions.take(anchor)
+        val windowRef =
+            "Landroid/app/Activity;->getWindow()Landroid/view/Window;"
+        if (before.none {
+                (it as? ReferenceInstruction)?.reference?.toString() == windowRef
+            }) {
+            throw PatchException("TV360 status bar: expected window setup before listener")
+        }
+        if (implementation.registerCount < 9) {
+            throw PatchException("TV360 status bar: insufficient registers")
+        }
 
-        // The activity's listener must already be installed. We inject immediately
-        // after that call; the original register allocation is not changed.
-        // p0 is the HomeBoxActivity instance, v7/v8 are NOT used as scratch.
-        // Android's WindowInsetsController.hide(statusBars) uses platform API 30+.
-        // This first implementation intentionally uses a compatibility-safe helper
-        // only after confirming an available injection mechanism and API behavior.
-        throw PatchException(
-            "TV360 status bar: injection intentionally disabled pending verified " +
-                "controller/helper integration (listener instruction index=$anchor)"
+        // Insert immediately after the existing listener installation.
+        // Reverse insertion preserves the intended instruction order.
+        val injected = listOf(
+            "invoke-virtual {p0}, Landroid/app/Activity;->getWindow()Landroid/view/Window;",
+            "move-result-object v7",
+            "invoke-virtual {v7}, Landroid/view/Window;->getDecorView()Landroid/view/View;",
+            "move-result-object v8",
+            "invoke-static {v7, v8}, Landroidx/core/view/WindowCompat;->getInsetsController(Landroid/view/Window;Landroid/view/View;)Landroidx/core/view/WindowInsetsControllerCompat;",
+            "move-result-object v8",
+            "invoke-static {}, Landroidx/core/view/WindowInsetsCompat\$Type;->statusBars()I",
+            "move-result v7",
+            "invoke-virtual {v8, v7}, Landroidx/core/view/WindowInsetsControllerCompat;->hide(I)V",
         )
+        injected.asReversed().forEach { instruction ->
+            method.addInstruction(anchor + 1, instruction)
+        }
     }
 }
