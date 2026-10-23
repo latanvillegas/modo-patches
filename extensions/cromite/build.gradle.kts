@@ -1,7 +1,11 @@
 import com.android.build.api.dsl.ApplicationExtension
 
-// Cromite runtime extension; bundled into target APK only after a dedicated
-// Morphe extension-injection patch is wired and verified.
+// The Morphe Gradle plugin builds a DEX extension resource consumed by
+// extendWith("extensions/cromite.mpe") in the patcher.
+extension {
+    name = "extensions/cromite.mpe"
+}
+
 configure<ApplicationExtension> {
     namespace = "app.morphe.extension.cromite"
     compileSdk = 36
