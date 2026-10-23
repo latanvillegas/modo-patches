@@ -31,7 +31,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           chmod +x ./gradlew
-          ./gradlew :patches:compileKotlin :patches:generatePatchesList --no-daemon --stacktrace
+          ./gradlew :patches:buildAndroid :patches:generatePatchesList --no-daemon --stacktrace
 
       - name: Require compiled AMOLED Settings patch
         run: |
@@ -50,6 +50,10 @@ jobs:
           MPP="$(find patches/build/libs -maxdepth 1 -type f -name 'patches-*.mpp' ! -name '*-sources.mpp' ! -name '*-javadoc.mpp' -print -quit)"
           test -n "$MPP" || { echo "::error::Main patch bundle missing"; exit 1; }
           unzip -tq "$MPP"
+          unzip -Z1 "$MPP" | grep -Fxq 'classes.dex' || {
+            echo "::error::classes.dex missing from Android patch bundle"
+            exit 1
+          }
           CLASS='app/morphe/patches/cromite/layout/theme/PureAmoledSettingsPatchKt.class'
           unzip -Z1 "$MPP" | grep -Fxq "$CLASS" || {
             echo "::error::AMOLED Settings class missing from patch bundle"
