@@ -50,6 +50,33 @@ jobs:
           elif isinstance(data, list):
               print('Discovered entries:', len(data))
           PY
+      - name: Create Android DEX bundle for comparison
+        if: success()
+        run: |
+          set -euo pipefail
+          ORIGINAL="$(find patches/build/libs -maxdepth 1 -type f -name '*.mpp' ! -name '*-sources.mpp' ! -name '*-javadoc.mpp' | head -n 1)"
+          test -n "$ORIGINAL"
+          D8="$(find "${ANDROID_HOME:-/opt/android-sdk}/build-tools" -mindepth 2 -maxdepth 2 -type f -name d8 | sort -V | tail -n 1)"
+          test -n "$D8"
+          echo "Using D8: $D8"
+          mkdir -p patches/build/android-dex patches/build/android-bundle
+          cp "$ORIGINAL" patches/build/android-bundle/patches-1.51.0-android.mpp
+          cp "$ORIGINAL" patches/build/android-dex/input.jar
+          "$D8" --min-api 26 --output patches/build/android-dex patches/build/android-dex/input.jar
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile, ZIP_DEFLATED
+          dex = Path('patches/build/android-dex/classes.dex')
+          bundle = Path('patches/build/android-bundle/patches-1.51.0-android.mpp')
+          assert dex.is_file() and dex.stat().st_size > 0
+          with ZipFile(bundle, 'a') as z:
+              assert 'classes.dex' not in z.namelist(), 'Bundle already contains classes.dex'
+              z.write(dex, 'classes.dex', compress_type=ZIP_DEFLATED)
+          with ZipFile(bundle) as z:
+              assert z.testzip() is None
+              assert 'classes.dex' in z.namelist()
+              print('Android bundle:', bundle, 'DEX bytes:', z.getinfo('classes.dex').file_size)
+          PY
       - name: Upload build outputs
         if: success()
         uses: actions/upload-artifact@v4
@@ -58,5 +85,6 @@ jobs:
           path: |
             patches/build/libs/**
             patches/build/outputs/**
+            patches/build/android-bundle/**
             patches-list.json
           if-no-files-found: warn
