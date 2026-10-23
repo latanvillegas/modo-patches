@@ -62,7 +62,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          find extensions/cromite patches/build -type f \\( -name '*.mpe' -o -name '*.mpp' -o -name '*.dex' \\) -print
+          find extensions/cromite patches/build -type f -name '*.mpe' -print
           mpe="$(find . -type f -name 'cromite.mpe' -print -quit)"
           if [[ -z "$mpe" ]]; then
             echo "::error::extensions/cromite.mpe was not produced"
