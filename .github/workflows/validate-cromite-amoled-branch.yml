@@ -73,7 +73,7 @@ jobs:
           path=sys.argv[1]
           with open(path,encoding='utf-8') as f: data=json.load(f)
           raw=json.dumps(data,ensure_ascii=False)
-          required=['Pure AMOLED native theme resources','Pure AMOLED web content','AMOLED - Settings']
+          required=['Pure AMOLED / Pure White system theme','Pure AMOLED web content','AMOLED - Settings']
           for name in required:
               if name not in raw:
                   print(f'::error::Patch absent from generated catalog: {name}')
