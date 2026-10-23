@@ -33,12 +33,16 @@ jobs:
           chmod +x ./gradlew
           ./gradlew :patches:compileKotlin :patches:generatePatchesList --no-daemon --stacktrace
 
-      - name: Require compiled native AMOLED patch
+      - name: Require compiled AMOLED Settings patch
         run: |
-          CLASS='app/morphe/patches/cromite/layout/theme/PureAmoledNativeResourcesPatchKt.class'
-          find patches/build -type f -path "*/$CLASS" -print | tee /tmp/amoled-classes.txt
-          test -s /tmp/amoled-classes.txt || { echo "::error::Native AMOLED patch was not compiled"; exit 1; }
-          echo "Native AMOLED patch class found. No Cromite APK was generated."
+          set -euo pipefail
+          CLASS='app/morphe/patches/cromite/layout/theme/PureAmoledSettingsPatchKt.class'
+          find patches/build -type f -path "*/$CLASS" -print | tee /tmp/amoled-settings-classes.txt
+          test -s /tmp/amoled-settings-classes.txt || {
+            echo "::error::AMOLED Settings patch class not found"
+            exit 1
+          }
+          echo "AMOLED Settings patch compiled. No Cromite APK was generated."
 
       - name: Convert patch classes to Android DEX
         run: |
@@ -81,7 +85,7 @@ jobs:
           path=sys.argv[1]
           with open(path,encoding='utf-8') as f: data=json.load(f)
           raw=json.dumps(data,ensure_ascii=False)
-          required=['Pure AMOLED native theme resources','Pure AMOLED web content']
+          required=['Pure AMOLED native theme resources','Pure AMOLED web content','AMOLED - Settings']
           for name in required:
               if name not in raw:
                   print(f'::error::Patch absent from generated catalog: {name}')
