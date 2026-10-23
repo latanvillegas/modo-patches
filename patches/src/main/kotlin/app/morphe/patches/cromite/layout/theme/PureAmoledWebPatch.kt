@@ -1,55 +1,91 @@
 package app.morphe.patches.cromite.layout.theme
 
 import app.morphe.patcher.Fingerprint
-import app.morphe.patcher.extensions.InstructionExtensions.addInstruction
-import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
-import app.morphe.patcher.opcode
+import app.morphe.patcher.extensions.InstructionExtensions.replaceInstruction
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.string
 import com.android.tools.smali.dexlib2.Opcode
-import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 
 private const val CROMITE_WEB_VERSION = "153.0.8010.37"
-private const val DARKEN_WEBSITES_PREF = "darken_websites_enabled"
 
 /**
- * Chromium's web-content dark-mode decision is the conjunction of the global
- * night-mode state and the darken-websites preference.  Anchor on the stable
- * preference key, but capture the first boolean result produced before that
- * key is read: this is the global night-mode provider result.
+ * Cromite 153: the old no-argument darken_websites_enabled method is gone.
+ * R8 mapping and the target classes.dex identify this retained Chromium method.
  *
- * Returning that value immediately makes algorithmic web darkening follow
- * Android/Cromite night mode directly, without depending on the checkbox.
+ * Preserve the existing null/profile/night-mode and per-site opt-out checks.
+ * Only bypass the two feature-flag gates:
+ *  - WebContentsForceDark must not return true before checking night mode.
+ *  - DarkenWebsitesCheckboxInThemesSetting must not block the night-mode path.
+ *
+ * This enables Chromium's existing algorithmic darkening; it does not by
+ * itself guarantee pure #000000 backgrounds on every website.
  */
-private val webContentsDarkModeDecisionFingerprint = Fingerprint(
+private val webContentsForceDarkFingerprint = Fingerprint(
+    definingClass = "Lorg/chromium/chrome/browser/night_mode/WebContentsThemeClient;",
+    name = "isForceDarkWebContentEnabled",
     returnType = "Z",
-    parameters = listOf(),
-    strings = listOf(DARKEN_WEBSITES_PREF),
+    parameters = listOf("Lorg/chromium/content_public/browser/WebContents;"),
     filters = listOf(
-        opcode(Opcode.INVOKE_INTERFACE),
-        opcode(Opcode.MOVE_RESULT),
-        string(DARKEN_WEBSITES_PREF),
+        string("WebContentsForceDark"),
+        string("DarkenWebsitesCheckboxInThemesSetting"),
     ),
 )
 
 @Suppress("unused")
 val pureAmoledWebPatch = bytecodePatch(
     name = "Pure AMOLED web content",
-    description = "Makes Cromite web-content darkening follow the system theme: enabled in dark mode and disabled in light mode.",
+    description = "Enables Cromite web-content darkening in night mode while preserving per-site exclusions; pure-black rendering is not yet implemented.",
 ) {
     compatibleWith("org.cromite.cromite"(CROMITE_WEB_VERSION))
 
     execute {
-        webContentsDarkModeDecisionFingerprint.let { fingerprint ->
-            val nightModeResult = fingerprint.instructionMatches[1]
-            val register = nightModeResult
-                .getInstruction<OneRegisterInstruction>()
-                .registerA
-
-            fingerprint.method.addInstruction(
-                nightModeResult.index + 1,
-                "return v$register",
-            )
+        val fingerprint = webContentsForceDarkFingerprint
+        val method = fingerprint.method
+        val matches = fingerprint.instructionMatches
+        check(matches.size == 2) {
+            "Cromite 153 web dark-mode feature anchors changed"
         }
+
+        val instructions = method.implementation?.instructions?.toList()
+            ?: error("Cromite 153 web dark-mode method has no implementation")
+        val forceDark = matches[0].index
+        val checkbox = matches[1].index
+
+        check(forceDark + 5 < checkbox && checkbox + 4 < instructions.size) {
+            "Cromite 153 web dark-mode instruction layout changed"
+        }
+
+        fun requireOpcodes(start: Int, vararg expected: Opcode) {
+            expected.forEachIndexed { offset, opcode ->
+                check(instructions[start + offset].opcode == opcode) {
+                    "Cromite 153 web dark-mode opcode changed at ${start + offset}: " +
+                        "expected $opcode, found ${instructions[start + offset].opcode}"
+                }
+            }
+        }
+
+        // Exact sequence observed in Cromite 153.0.8010.37 classes.dex.
+        requireOpcodes(
+            forceDark,
+            Opcode.CONST_STRING,
+            Opcode.INVOKE_VIRTUAL,
+            Opcode.MOVE_RESULT,
+            Opcode.CONST_4,
+            Opcode.IF_EQZ,
+            Opcode.RETURN,
+        )
+        requireOpcodes(
+            checkbox,
+            Opcode.CONST_STRING,
+            Opcode.INVOKE_VIRTUAL,
+            Opcode.MOVE_RESULT,
+            Opcode.IF_NEZ,
+            Opcode.GOTO,
+        )
+
+        // Replace with same-size no-ops; preserve all existing labels and
+        // branch targets, and leave the downstream night-mode/site logic intact.
+        method.replaceInstruction(checkbox + 4, "nop")
+        method.replaceInstruction(forceDark + 5, "nop")
     }
 }
