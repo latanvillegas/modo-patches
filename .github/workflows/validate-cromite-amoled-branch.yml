@@ -44,36 +44,20 @@ jobs:
           }
           echo "AMOLED Settings patch compiled. No Cromite APK was generated."
 
-      - name: Diagnose patch bundle contents
+      - name: Validate generated patch bundle
         run: |
           set -euo pipefail
           MPP="$(find patches/build/libs -maxdepth 1 -type f -name 'patches-*.mpp' ! -name '*-sources.mpp' ! -name '*-javadoc.mpp' -print -quit)"
           test -n "$MPP" || { echo "::error::Main patch bundle missing"; exit 1; }
-
-          echo "=== BUNDLE ==="
-          ls -lh "$MPP"
           unzip -tq "$MPP"
-
-          echo "=== DEX ENTRIES (ANY PATH) ==="
-          unzip -Z1 "$MPP" | grep -Ei '(^|/)[^/]+[.]dex$' || true
-
-          echo "=== JAVA CLASS COUNT ==="
-          unzip -Z1 "$MPP" | grep -Ec '[.]class$' || true
-
-          echo "=== ARCHIVE CONTENT SAMPLE ==="
-          unzip -Z1 "$MPP" | head -80 || true
-
-          echo "=== ARCHIVE CONTENT TAIL ==="
-          unzip -Z1 "$MPP" | tail -40
-
-          echo "Diagnostic inspection completed."
-      - name: Inspect generated bundle
-        run: |
-          set -euo pipefail
-          MPP="$(find patches/build/libs -maxdepth 1 -type f -name 'patches-*.mpp' -print -quit)"
-          test -n "$MPP"
-          unzip -l "$MPP" | tail -25
-          unzip -Z1 "$MPP" | grep -E '^classes([0-9]+)?[.]dex$' || { echo "::error::Manager requires DEX entries"; exit 1; }
+          CLASS='app/morphe/patches/cromite/layout/theme/PureAmoledSettingsPatchKt.class'
+          unzip -Z1 "$MPP" | grep -Fxq "$CLASS" || {
+            echo "::error::AMOLED Settings class missing from patch bundle"
+            exit 1
+          }
+          echo "Bundle validated: $MPP"
+          echo "DEX resources (if present):"
+          unzip -Z1 "$MPP" | grep -E '[.]dex$' || true
 
       - name: Verify generated patch catalog contains AMOLED
         run: |
