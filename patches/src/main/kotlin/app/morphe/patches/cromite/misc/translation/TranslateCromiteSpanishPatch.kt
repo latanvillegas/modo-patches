@@ -47,19 +47,35 @@ val translateCromiteSpanishPatch = resourcePatch(
             "No matching Cromite English string resources found in APK."
         }
 
-        val targetDirectory = root.resolve("values-es")
-        targetDirectory.mkdirs()
-        val target = targetDirectory.resolve("morphe_cromite_es.xml")
-        check(!target.exists()) { "Morphe Spanish translations already exist" }
+        // The decoded APK can use synthetic resource names (string_0x...).
+        // arsclib cannot register those names from a newly created values XML.
+        // Update existing resource entries in place, preserving the resource table.
+        // Also update existing locale overrides so they do not shadow the defaults.
         fun xml(value: String) = value.replace("&", "&amp;")
             .replace("<", "&lt;").replace(">", "&gt;")
-        target.writeText(buildString {
-            appendLine("""<?xml version="1.0" encoding="utf-8"?>""")
-            appendLine("<resources>")
-            replacements.forEach { (name, translated) ->
-                appendLine("""    <string name="$name">${xml(translated)}</string>""")
+        var changed = 0
+        root.listFiles()
+            ?.filter { it.isDirectory && it.name.startsWith("values") }
+            ?.flatMap { directory ->
+                directory.listFiles()?.filter { it.isFile && it.extension == "xml" }
+                    ?: emptyList()
             }
-            appendLine("</resources>")
-        })
+            ?.forEach { file ->
+                val original = file.readText()
+                val updated = entry.replace(original) { match ->
+                    val name = match.groupValues[1]
+                    val translated = replacements[name]
+                    if (translated == null) match.value else {
+                        changed++
+                        match.value.replaceRange(
+                            match.groups[3]!!.range.first - match.range.first,
+                            match.groups[3]!!.range.last - match.range.first + 1,
+                            xml(translated),
+                        )
+                    }
+                }
+                if (updated != original) file.writeText(updated)
+            }
+        check(changed > 0) { "No existing resource entries were translated." }
     }
 }
