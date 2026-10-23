@@ -61,7 +61,19 @@ jobs:
           echo "Using D8: $D8"
           mkdir -p patches/build/android-dex patches/build/android-bundle
           cp "$ORIGINAL" patches/build/android-bundle/patches-1.51.0-android.mpp
-          cp "$ORIGINAL" patches/build/android-dex/input.jar
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile, ZIP_DEFLATED
+          source = next(p for p in Path('patches/build/libs').glob('*.mpp')
+                        if not p.name.endswith(('-sources.mpp', '-javadoc.mpp')))
+          target = Path('patches/build/android-dex/input.jar')
+          with ZipFile(source) as src, ZipFile(target, 'w', ZIP_DEFLATED) as dst:
+              classes = [n for n in src.namelist() if n.endswith('.class')]
+              assert classes, 'No JVM classes found for D8'
+              for name in classes:
+                  dst.writestr(name, src.read(name))
+          print('JVM classes for D8:', len(classes))
+          PY
           "$D8" --min-api 26 --output patches/build/android-dex patches/build/android-dex/input.jar
           python3 - <<'PY'
           from pathlib import Path
