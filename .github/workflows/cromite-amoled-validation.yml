@@ -27,7 +27,29 @@ jobs:
       - name: Compile patch bundle
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: bash ./gradlew :patches:build --no-daemon --stacktrace
+        run: bash ./gradlew :patches:build :patches:generatePatchesList --no-daemon --stacktrace
+      - name: Inspect generated patch catalog
+        if: success()
+        run: |
+          if [ ! -f patches-list.json ]; then
+            echo 'patches-list.json was not generated' >&2
+            exit 1
+          fi
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          path = Path('patches-list.json')
+          data = json.loads(path.read_text())
+          print('Catalog:', path, 'bytes:', path.stat().st_size)
+          print('Top-level type:', type(data).__name__)
+          if isinstance(data, dict):
+              print('Top-level keys:', ', '.join(map(str, data.keys())))
+              patches = data.get('patches')
+              if isinstance(patches, (list, dict)):
+                  print('Discovered patches:', len(patches))
+          elif isinstance(data, list):
+              print('Discovered entries:', len(data))
+          PY
       - name: Upload build outputs
         if: success()
         uses: actions/upload-artifact@v4
@@ -36,4 +58,5 @@ jobs:
           path: |
             patches/build/libs/**
             patches/build/outputs/**
+            patches-list.json
           if-no-files-found: warn
