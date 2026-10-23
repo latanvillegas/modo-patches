@@ -94,9 +94,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cromite-amoled-patch-build
-          path: |
-            patches/build/libs/**
-            patches/build/outputs/**
-            patches/build/android-bundle/**
-            patches-list.json
+          path: patches/build/android-bundle/patches-1.51.0-android.mpp
           if-no-files-found: warn
