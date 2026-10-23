@@ -1,0 +1,39 @@
+name: Cromite AMOLED patch validation
+
+on:
+  push:
+    branches:
+      - fix/amoled-web-cromite-153
+  pull_request:
+    paths:
+      - 'patches/src/main/kotlin/app/morphe/patches/cromite/layout/theme/PureAmoledWebPatch.kt'
+      - '.github/workflows/cromite-amoled-validation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compile-patches:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Compile patch bundle
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash ./gradlew :patches:build --no-daemon --stacktrace
+      - name: Upload build outputs
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cromite-amoled-patch-build
+          path: |
+            patches/build/libs/**
+            patches/build/outputs/**
+          if-no-files-found: warn
