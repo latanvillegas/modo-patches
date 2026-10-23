@@ -15,6 +15,9 @@ import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
  */
 private val settingsActivityBackgroundFingerprint = Fingerprint(
     definingClass = "Lorg/chromium/chrome/browser/settings/SettingsActivity;",
+    name = "onCreate",
+    returnType = "V",
+    parameters = listOf("Landroid/os/Bundle;"),
     filters = listOf(
         methodCall("Ldr7;->e(Landroid/content/Context;ILjava/lang/String;)Landroid/util/TypedValue;"),
         methodCall("Lis7;->f(Landroid/content/Context;Landroid/util/TypedValue;)I"),
@@ -104,16 +107,36 @@ val pureAmoledSettingsPatch = bytecodePatch(
 
         val activity = settingsActivityBackgroundFingerprint.method
         val activityIndices = activity.findInstructionIndicesReversedOrThrow(settingsSetBackgroundColorCall)
-        check(activityIndices.size == 2) {
-            "AMOLED Settings: SettingsActivity must contain exactly two background setters; found ${activityIndices.size}"
+        val colorCallIndices = activity.findInstructionIndicesReversedOrThrow(settingsContextColorCall)
+        val candidates = colorCallIndices.mapNotNull { colorCallIndex ->
+            val resultIndex = colorCallIndex + 1
+            val result = activity.getInstruction(resultIndex)
+            if (result.opcode != com.android.tools.smali.dexlib2.Opcode.MOVE_RESULT) {
+                return@mapNotNull null
+            }
+            val colorRegister =
+                (result as com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction).registerA
+            val pair = activityIndices.filter { index ->
+                index > resultIndex && index <= resultIndex + 8 &&
+                    (activity.getInstruction(index) as FiveRegisterInstruction).registerD == colorRegister
+            }
+            pair.takeIf { it.size == 2 }?.let { colorCallIndex to it }
         }
-        activityIndices.forEach { index ->
-            val instruction = activity.getInstruction(index) as FiveRegisterInstruction
-            activity.addInstructions(
-                index + 1,
-                settingsBackgroundSmali(theme, instruction.registerC, instruction.registerD),
-            )
+        check(candidates.size == 1) {
+            "AMOLED Settings: expected one verified background pair; found ${candidates.size}"
         }
+        // Both original setters consume the same color result. Override it once,
+        // before either setter, without adding more setBackgroundColor calls.
+        val selectedColorCall = candidates.single().first
+        val colorResultIndex = selectedColorCall + 1
+        val colorRegister =
+            (activity.getInstruction(colorResultIndex) as
+                com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction).registerA
+        val colorCall = activity.getInstruction(selectedColorCall) as FiveRegisterInstruction
+        activity.addInstructions(
+            colorResultIndex + 1,
+            settingsContextColorSmali(theme, colorCall.registerC, colorRegister),
+        )
 
         fun recoverPreferenceBackground(
             method: app.morphe.patcher.util.proxy.mutableTypes.MutableMethod,
