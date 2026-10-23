@@ -1,0 +1,92 @@
+name: Validate Cromite patch 14
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feat/cromite-amoled-brightness-controls
+    paths:
+      - '.github/workflows/validate-cromite-patch14.yml'
+      - 'extensions/cromite/**'
+      - 'patches/src/main/kotlin/app/morphe/patches/cromite/**'
+      - 'settings.gradle.kts'
+      - 'gradle/**'
+      - 'gradlew'
+      - 'build.gradle.kts'
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout patch branch
+        uses: actions/checkout@v4
+
+      - name: Configure Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Configure GitHub Maven credentials
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          test -n "$GITHUB_ACTOR"
+          test -n "$GITHUB_TOKEN"
+          echo "GITHUB_ACTOR=$GITHUB_ACTOR" >> "$GITHUB_ENV"
+          echo "GITHUB_TOKEN=$GITHUB_TOKEN" >> "$GITHUB_ENV"
+
+      - name: Discover Cromite extension tasks
+        run: |
+          chmod +x ./gradlew
+          ./gradlew :extensions:cromite:tasks --all --no-daemon > cromite-tasks.txt
+          grep -Ei 'assemble|extension|bundle|dex' cromite-tasks.txt || true
+
+      - name: Build patch bundle and Cromite extension
+        run: |
+          ./gradlew :patches:build :extensions:cromite:assemble --no-daemon --stacktrace
+
+      - name: Verify packaged MPE and runtime classes
+        shell: bash
+        run: |
+          set -euo pipefail
+          find extensions/cromite patches/build -type f \\( -name '*.mpe' -o -name '*.mpp' -o -name '*.dex' \\) -print
+          mpe="$(find . -type f -name 'cromite.mpe' -print -quit)"
+          if [[ -z "$mpe" ]]; then
+            echo "::error::extensions/cromite.mpe was not produced"
+            exit 1
+          fi
+          echo "MPE generated: $mpe"
+          file "$mpe"
+          # MPE is a DEX container; inspect the artifact rather than assuming
+          # the Kotlin patch source is packaged into the Android runtime.
+          if ! grep -a -q 'AmoledBrightnessController' "$mpe"; then
+            echo "::error::Brightness controller missing from MPE"
+            exit 1
+          fi
+          if ! grep -a -q 'AmoledPreferenceBridge' "$mpe"; then
+            echo "::error::Preference bridge missing from MPE"
+            exit 1
+          fi
+
+      - name: Upload diagnostics and compiled outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cromite-patch14-build
+          if-no-files-found: warn
+          path: |
+            cromite-tasks.txt
+            extensions/cromite/build/outputs/**
+            patches/build/libs/**
+            patches/build/resources/**
