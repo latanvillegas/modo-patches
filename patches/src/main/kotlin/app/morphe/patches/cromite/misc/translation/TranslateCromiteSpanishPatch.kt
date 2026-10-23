@@ -177,6 +177,11 @@ val translateCromiteSpanishPatch = resourcePatch(
             "Customising the navigation manager" to "Personalización de la navegación",
             "Disable system gestures for web browsing" to "Desactivar gestos del sistema al navegar",
             "Forces activation of the old page navigation mode" to "Fuerza el modo anterior de navegación",
+            "Enable Accessibility Service" to "Activar el servicio de accesibilidad",
+            "Activates or deactivates the communication of all user activities in ui to the Accessibility provider" to "Activa o desactiva la comunicación de las actividades del usuario en la interfaz con el proveedor de accesibilidad",
+            "Always open the context menu in the links" to "Abrir siempre el menú contextual de los enlaces",
+            "Allows the context menu to be opened with a tap and follow the link with long press" to "Permite abrir el menú contextual con un toque y seguir el enlace manteniéndolo pulsado",
+            "Legacy Adblock settings" to "Configuración del bloqueador de anuncios heredado",
         )
 
         val root = get("res")
