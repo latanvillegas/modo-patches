@@ -56,8 +56,7 @@ public final class AmoledPreferenceBridge {
     public static void onClick(Object preference) {
         if (preference == null) return;
         try {
-            Field keyField = findField(preference.getClass(), "D");
-            if (!KEY.equals(keyField.get(preference))) return;
+            if (!hasMorpheKey(preference)) return;
             Field contextField = findField(preference.getClass(), "r");
             Context context = (Context) contextField.get(preference);
             Activity activity = unwrapActivity(context);
@@ -65,6 +64,21 @@ public final class AmoledPreferenceBridge {
         } catch (ReflectiveOperationException | SecurityException error) {
             android.util.Log.e("MorpheCromite", "Could not open AMOLED settings", error);
         }
+    }
+
+    /**
+     * Avoid assuming a particular obfuscated backing-field name for the key.
+     * R8 may rename Preference fields independently of method names.
+     */
+    private static boolean hasMorpheKey(Object preference) throws IllegalAccessException {
+        for (Class<?> type = preference.getClass(); type != null; type = type.getSuperclass()) {
+            for (Field field : type.getDeclaredFields()) {
+                if (field.getType() != String.class) continue;
+                field.setAccessible(true);
+                if (KEY.equals(field.get(preference))) return true;
+            }
+        }
+        return false;
     }
 
     private static Activity unwrapActivity(Context context) {
