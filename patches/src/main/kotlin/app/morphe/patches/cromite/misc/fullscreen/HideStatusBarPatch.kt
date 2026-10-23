@@ -78,7 +78,7 @@ val hideStatusBarPatch = bytecodePatch(
                 AccessFlags.PRIVATE.value or AccessFlags.STATIC.value,
                 null,
                 null,
-                ImmutableMethodImplementation(4, helper, null, null),
+                ImmutableMethodImplementation(5, helper, null, null),
             ).toMutable(),
         )
 
