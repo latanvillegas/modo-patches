@@ -47,7 +47,9 @@ val hideStatusBarPatch = bytecodePatch(
 
         // Separate static helper preserves the existing onResume register
         // allocation and Chromium's TraceEvent try/finally structure.
-        // toInstructions() parses p-register aliases without the helper\n        // method register context; use the absolute parameter register v4.\n        val helper = """
+        // toInstructions() parses p-register aliases without the helper
+        // method register context; use the absolute parameter register v4.
+        val helper = """
             invoke-static {v4}, Landroid/preference/PreferenceManager;->getDefaultSharedPreferences(Landroid/content/Context;)Landroid/content/SharedPreferences;
             move-result-object v0
             const-string v1, "force_tablet_ui_enabled"
