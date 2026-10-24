@@ -1,20 +1,21 @@
 package app.morphe.patches.cromite.layout.theme
 
 import app.morphe.patcher.Fingerprint
+import app.morphe.patcher.extensions.InstructionExtensions.addInstruction
 import app.morphe.patcher.patch.bytecodePatch
+import com.android.tools.smali.dexlib2.Opcode
+import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.NarrowLiteralInstruction
 
 private const val CROMITE_WEB_VERSION = "153.0.8010.37"
+private const val CONTROLLER =
+    "Lapp/morphe/extension/cromite/amoled/AmoledBrightnessController;"
 
 /**
- * Compatibility guard for Cromite's existing per-site web darkening.
- *
- * In this version, WebContentsThemeClient.isForceDarkWebContentEnabled checks
- * WebContentsForceDark, DarkenWebsitesCheckboxInThemesSetting, the current
- * profile, night mode and the native per-site decision. Replacing that logic
- * with an unconditional return would silently discard manual controls.
- *
- * Keep this patch independent of AMOLED window brightness. It validates that
- * the original decision method is present but intentionally does not rewrite it.
+ * Preserve Chromium's existing true branches (forced dark and manual/per-site
+ * darkening). Only replace the final false result with the opt-in AMOLED
+ * automatic decision. The helper returns false unless both AMOLED and
+ * automatic mode are selected.
  */
 private val webContentsDarkModeDecisionFingerprint = Fingerprint(
     definingClass = "Lorg/chromium/chrome/browser/night_mode/WebContentsThemeClient;",
@@ -25,15 +26,32 @@ private val webContentsDarkModeDecisionFingerprint = Fingerprint(
 
 @Suppress("unused")
 val pureAmoledWebPatch = bytecodePatch(
-    name = "Preserve Cromite web darkening",
-    description = "Keeps Cromite's manual and per-site web darkening unchanged; AMOLED brightness is controlled separately.",
+    name = "AMOLED automatic web darkening",
+    description = "Adds automatic AMOLED web darkening while retaining Cromite's manual and per-site darkening.",
     default = false,
 ) {
     compatibleWith("org.cromite.cromite"(CROMITE_WEB_VERSION))
+    dependsOn(cromiteAmoledBrightnessPatch)
 
     execute {
-        // Validate the method against the exact supported APK. No bytecode
-        // modification: preserve all native and user-controlled darkening paths.
-        webContentsDarkModeDecisionFingerprint.method
+        classDefBy(CONTROLLER)
+        val method = webContentsDarkModeDecisionFingerprint.method
+        val instructions = method.implementation!!.instructions.toList()
+        val last = instructions.lastIndex
+        check(last > 0 && instructions[last].opcode == Opcode.RETURN) {
+            "AMOLED web: expected final boolean return in WebContentsThemeClient"
+        }
+        val result = instructions[last] as OneRegisterInstruction
+        val zero = instructions[last - 1]
+        check(zero.opcode == Opcode.CONST_4 &&
+            zero is NarrowLiteralInstruction && zero.narrowLiteral == 0 &&
+            (zero as OneRegisterInstruction).registerA == result.registerA) {
+            "AMOLED web: final return is not a verified constant-false path"
+        }
+
+        // Insert in reverse order to preserve the original return index.
+        // Reuse the return register; no extra locals or register-count changes.
+        method.addInstruction(last, "move-result v${result.registerA}")
+        method.addInstruction(last, "invoke-static {}, $CONTROLLER->shouldAutoDarkenWebContents()Z")
     }
 }
