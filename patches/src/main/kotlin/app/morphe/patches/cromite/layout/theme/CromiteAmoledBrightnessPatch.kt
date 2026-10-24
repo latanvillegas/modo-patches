@@ -1,7 +1,7 @@
 package app.morphe.patches.cromite.layout.theme
 
 import app.morphe.patcher.Fingerprint
-import app.morphe.patcher.extensions.InstructionExtensions.addInstruction
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.bytecodePatch
 
 private const val CROMITE_PATCH14_VERSION = "153.0.8010.37"
@@ -26,7 +26,7 @@ private val cromiteTabbedActivityResumeFingerprint = Fingerprint(
 @Suppress("unused")
 val cromiteAmoledBrightnessPatch = bytecodePatch(
     name = "Cromite AMOLED brightness controls",
-    description = "Injects the Cromite runtime controller and restores the saved window brightness on resume.",
+    description = "Restores window brightness and adds an AMOLED settings shortcut to the browser window.",
     default = false,
 ) {
     compatibleWith("org.cromite.cromite"(CROMITE_PATCH14_VERSION))
@@ -42,10 +42,12 @@ val cromiteAmoledBrightnessPatch = bytecodePatch(
         // p0 is the Activity receiver, valid for invoke-static/range.
         // Insert before the original onResume instructions so every normal
         // resume applies the preference, without consuming scratch registers.
-        cromiteTabbedActivityResumeFingerprint.method.addInstruction(
+        cromiteTabbedActivityResumeFingerprint.method.addInstructions(
             0,
-            "invoke-static/range { p0 .. p0 }, " +
-                "$BRIGHTNESS_CONTROLLER->applyWindowBrightness(Landroid/app/Activity;)V",
+            """
+                invoke-static/range { p0 .. p0 }, $BRIGHTNESS_CONTROLLER->applyWindowBrightness(Landroid/app/Activity;)V
+                invoke-static/range { p0 .. p0 }, $BRIGHTNESS_CONTROLLER->installSettingsShortcut(Landroid/app/Activity;)V
+            """.trimIndent(),
         )
     }
 }
