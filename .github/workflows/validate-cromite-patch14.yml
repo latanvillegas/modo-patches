@@ -33,6 +33,18 @@ jobs:
           java-version: '21'
           cache: gradle
 
+      - name: Cache Gradle build outputs
+        uses: actions/cache@v4
+        with:
+          path: |
+            .gradle
+            patches/build
+            extensions/cromite/build
+          key: cromite-gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle.kts', 'gradle/libs.versions.toml', 'gradle/wrapper/gradle-wrapper.properties') }}-${{ github.sha }}
+          restore-keys: |
+            cromite-gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle.kts', 'gradle/libs.versions.toml', 'gradle/wrapper/gradle-wrapper.properties') }}-
+
+
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
@@ -58,7 +70,7 @@ jobs:
 
       - name: Build patch bundle and Cromite extension
         run: |
-          ./gradlew :patches:build :extensions:cromite:assemble --no-daemon --stacktrace
+          ./gradlew :patches:assemble :extensions:cromite:assemble --build-cache --no-daemon --stacktrace
 
       - name: Verify packaged MPE and runtime classes
         shell: bash
@@ -110,6 +122,14 @@ jobs:
           echo "Android MPP generated: $android_mpp"
           ls -lh "$android_mpp"
 
+      - name: Create Cromite-only lightweight MPP
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/make-cromite-lite-mpp.py patches/build/libs/patches-1.51.0-android.mpp patches/build/libs/cromite-amoled-lite.mpp
+          unzip -tq patches/build/libs/cromite-amoled-lite.mpp
+          ls -lh patches/build/libs/*android.mpp patches/build/libs/cromite-amoled-lite.mpp
+
       - name: Inspect Android manager bundle requirements
         shell: bash
         run: |
@@ -122,6 +142,14 @@ jobs:
             echo '::warning::The compiled MPP has no classes.dex.'
           fi
 
+      - name: Upload lightweight Cromite MPP
+        uses: actions/upload-artifact@v4
+        with:
+          name: cromite-amoled-lite
+          if-no-files-found: error
+          path: patches/build/libs/cromite-amoled-lite.mpp
+          compression-level: 0
+
       - name: Upload diagnostics and compiled outputs
         if: always()
         uses: actions/upload-artifact@v4
@@ -131,6 +159,4 @@ jobs:
           path: |
             cromite-tasks.txt
             patches-tasks.txt
-            extensions/cromite/build/outputs/**
-            patches/build/libs/**
-            patches/build/resources/**
+          retention-days: 3
