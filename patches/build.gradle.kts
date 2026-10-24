@@ -51,3 +51,22 @@ tasks {
         dependsOn("generatePatchesList")
     }
 }
+
+
+/**
+ * Opt-in Cromite-only compilation. The default build is unchanged.
+ *
+ * Kotlin's source set filter is applied before compilation, so unrelated
+ * patches are not compiled at all. Shared utility sources are retained.
+ * Invoke with -PcromiteLite=true.
+ */
+if (providers.gradleProperty("cromiteLite").orNull == "true") {
+    kotlin {
+        sourceSets.named("main") {
+            kotlin.setSrcDirs(listOf("src/main/kotlin"))
+            kotlin.include("app/morphe/patches/cromite/**")
+            kotlin.include("app/morphe/util/**")
+            kotlin.include("app/morphe/patches/util/**")
+        }
+    }
+}
