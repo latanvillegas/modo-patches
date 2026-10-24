@@ -5,6 +5,10 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.view.Window;
+import android.view.Gravity;
+import android.view.View;
+import android.widget.Button;
+import android.widget.FrameLayout;
 import android.view.WindowManager;
 import android.widget.CheckBox;
 import android.widget.LinearLayout;
@@ -54,6 +58,32 @@ public final class AmoledBrightnessController {
         WindowManager.LayoutParams params = window.getAttributes();
         params.screenBrightness = value;
         window.setAttributes(params);
+    }
+
+    /** In-app shortcut while Chromium's Theme settings preference hook is unverified. */
+    public static void installSettingsShortcut(Activity activity) {
+        if (activity == null || activity.isFinishing()) return;
+        Window window = activity.getWindow();
+        if (window == null) return;
+        View decor = window.getDecorView();
+        if (!(decor instanceof FrameLayout)) return;
+        FrameLayout root = (FrameLayout) decor;
+        final String tag = "morphe_amoled_settings_shortcut";
+        if (root.findViewWithTag(tag) != null) return;
+        Button shortcut = new Button(activity);
+        shortcut.setTag(tag);
+        shortcut.setText("AMOLED");
+        shortcut.setContentDescription("Abrir ajustes AMOLED y brillo");
+        shortcut.setTextSize(12);
+        shortcut.setAllCaps(false);
+        int margin = (int) (16 * activity.getResources().getDisplayMetrics().density);
+        FrameLayout.LayoutParams layout = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.END | Gravity.BOTTOM);
+        layout.setMargins(margin, margin, margin, margin);
+        shortcut.setOnClickListener(view -> showSettings(activity));
+        root.addView(shortcut, layout);
     }
 
     public static int webLuminancePercent(Context context) {
