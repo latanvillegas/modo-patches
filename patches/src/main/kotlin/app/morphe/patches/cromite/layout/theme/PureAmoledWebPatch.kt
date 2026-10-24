@@ -42,16 +42,23 @@ val pureAmoledWebPatch = bytecodePatch(
             "AMOLED web: expected final boolean return in WebContentsThemeClient"
         }
         val result = instructions[last] as OneRegisterInstruction
-        val zero = instructions[last - 1]
-        val tail = instructions.mapIndexed { index, instruction ->
-            val register = (instruction as? OneRegisterInstruction)?.registerA
-            val literal = (instruction as? NarrowLiteralInstruction)?.narrowLiteral
-            "$index:${instruction.opcode}(reg=$register,lit=$literal)"
-        }.joinToString(" | ")
-        check(zero.opcode == Opcode.CONST_4 &&
-            zero is NarrowLiteralInstruction && zero.narrowLiteral == 0 &&
-            (zero as OneRegisterInstruction).registerA == result.registerA) {
-            "AMOLED web: final return is not a verified constant-false path; DEX instructions: $tail"
+        // Verified on Cromite 153.0.8010.37: v0 is initialized to false
+        // at method entry, v3 is initialized to true, and the last two
+        // instructions return v3 and v0 respectively.
+        val initialZero = instructions.first()
+        check(initialZero.opcode == Opcode.CONST_4 &&
+            initialZero is NarrowLiteralInstruction &&
+            initialZero.narrowLiteral == 0 &&
+            (initialZero as OneRegisterInstruction).registerA == result.registerA &&
+            instructions[last - 1].opcode == Opcode.RETURN &&
+            (instructions[last - 1] as OneRegisterInstruction).registerA != result.registerA) {
+            "AMOLED web: expected verified Cromite false-return register layout"
+        }
+        check(instructions.drop(1).dropLast(1).none {
+            it is OneRegisterInstruction && it.registerA == result.registerA &&
+                it.opcode.name.startsWith("CONST")
+        }) {
+            "AMOLED web: false-return register is reassigned"
         }
 
         // Insert in reverse order to preserve the original return index.
