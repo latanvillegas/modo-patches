@@ -1,55 +1,39 @@
 package app.morphe.patches.cromite.layout.theme
 
 import app.morphe.patcher.Fingerprint
-import app.morphe.patcher.extensions.InstructionExtensions.addInstruction
-import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
-import app.morphe.patcher.opcode
 import app.morphe.patcher.patch.bytecodePatch
-import app.morphe.patcher.string
-import com.android.tools.smali.dexlib2.Opcode
-import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 
 private const val CROMITE_WEB_VERSION = "153.0.8010.37"
-private const val DARKEN_WEBSITES_PREF = "darken_websites_enabled"
 
 /**
- * Chromium's web-content dark-mode decision is the conjunction of the global
- * night-mode state and the darken-websites preference.  Anchor on the stable
- * preference key, but capture the first boolean result produced before that
- * key is read: this is the global night-mode provider result.
+ * Compatibility guard for Cromite's existing per-site web darkening.
  *
- * Returning that value immediately makes algorithmic web darkening follow
- * Android/Cromite night mode directly, without depending on the checkbox.
+ * In this version, WebContentsThemeClient.isForceDarkWebContentEnabled checks
+ * WebContentsForceDark, DarkenWebsitesCheckboxInThemesSetting, the current
+ * profile, night mode and the native per-site decision. Replacing that logic
+ * with an unconditional return would silently discard manual controls.
+ *
+ * Keep this patch independent of AMOLED window brightness. It validates that
+ * the original decision method is present but intentionally does not rewrite it.
  */
 private val webContentsDarkModeDecisionFingerprint = Fingerprint(
+    definingClass = "Lorg/chromium/chrome/browser/night_mode/WebContentsThemeClient;",
+    name = "isForceDarkWebContentEnabled",
     returnType = "Z",
-    parameters = listOf(),
-    strings = listOf(DARKEN_WEBSITES_PREF),
-    filters = listOf(
-        opcode(Opcode.INVOKE_INTERFACE),
-        opcode(Opcode.MOVE_RESULT),
-        string(DARKEN_WEBSITES_PREF),
-    ),
+    parameters = listOf("Lorg/chromium/content_public/browser/WebContents;"),
 )
 
 @Suppress("unused")
 val pureAmoledWebPatch = bytecodePatch(
-    name = "Pure AMOLED web content",
-    description = "Makes Cromite web-content darkening follow the system theme: enabled in dark mode and disabled in light mode.",
+    name = "Preserve Cromite web darkening",
+    description = "Keeps Cromite's manual and per-site web darkening unchanged; AMOLED brightness is controlled separately.",
+    default = false,
 ) {
     compatibleWith("org.cromite.cromite"(CROMITE_WEB_VERSION))
 
     execute {
-        webContentsDarkModeDecisionFingerprint.let { fingerprint ->
-            val nightModeResult = fingerprint.instructionMatches[1]
-            val register = nightModeResult
-                .getInstruction<OneRegisterInstruction>()
-                .registerA
-
-            fingerprint.method.addInstruction(
-                nightModeResult.index + 1,
-                "return v$register",
-            )
-        }
+        // Validate the method against the exact supported APK. No bytecode
+        // modification: preserve all native and user-controlled darkening paths.
+        webContentsDarkModeDecisionFingerprint.method
     }
 }
