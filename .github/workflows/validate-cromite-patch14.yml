@@ -70,7 +70,19 @@ jobs:
 
       - name: Build patch bundle and Cromite extension
         run: |
-          ./gradlew :patches:assemble :extensions:cromite:assemble --build-cache --no-daemon --stacktrace
+          ./gradlew :patches:assemble :extensions:cromite:assemble -PcromiteLite=true --build-cache --no-daemon --stacktrace
+
+      - name: Verify Kotlin compilation excludes unrelated patches
+        shell: bash
+        run: |
+          set -euo pipefail
+          kotlin_classes="patches/build/classes/kotlin/main"
+          test -d "$kotlin_classes"
+          test -f "$kotlin_classes/app/morphe/patches/cromite/layout/theme/PureAmoledWebPatchKt.class"
+          if find "$kotlin_classes/app/morphe/patches" -type f -name '*.class' ! -path '*/cromite/*' ! -path '*/util/*' | grep -q .; then
+            echo "::error::Unrelated patch classes were compiled in Cromite Lite mode"
+            exit 1
+          fi
 
       - name: Verify packaged MPE and runtime classes
         shell: bash
