@@ -61,9 +61,14 @@ val pureAmoledWebPatch = bytecodePatch(
             "AMOLED web: false-return register is reassigned"
         }
 
-        // Insert in reverse order to preserve the original return index.
-        // Reuse the return register; no extra locals or register-count changes.
-        method.addInstruction(last, "move-result v${result.registerA}")
-        method.addInstruction(last, "invoke-static {}, $CONTROLLER->shouldAutoDarkenWebContents()Z")
+        // Preserve the branch-targeted final return by injecting immediately
+        // after the verified initial false-register initialization.
+        method.addInstructions(
+            1,
+            """
+                invoke-static {}, $CONTROLLER->shouldAutoDarkenWebContents()Z
+                move-result v${result.registerA}
+            """.trimIndent(),
+        )
     }
 }
