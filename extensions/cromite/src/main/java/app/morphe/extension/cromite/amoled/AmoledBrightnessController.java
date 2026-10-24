@@ -4,6 +4,9 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
+import android.view.ContextThemeWrapper;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.CheckBox;
@@ -90,59 +93,71 @@ public final class AmoledBrightnessController {
     public static void showSettings(Activity activity) {
         if (activity == null || activity.isFinishing()) return;
         SharedPreferences p = prefs(activity);
-        final LinearLayout panel = new LinearLayout(activity);
+        // Chromium's activity theme can resolve platform dialog text to near-white
+        // while resolving the platform dialog surface to white. Isolate the dialog
+        // and all of its widgets under the framework's explicit dark theme.
+        Context dialogContext = new ContextThemeWrapper(
+                activity, android.R.style.Theme_Material_Dialog_Alert);
+        final LinearLayout panel = new LinearLayout(dialogContext);
+        panel.setBackgroundColor(Color.BLACK);
         panel.setOrientation(LinearLayout.VERTICAL);
         int pad = (int) (16 * activity.getResources().getDisplayMetrics().density);
         panel.setPadding(pad, pad, pad, pad);
 
-        TextView themeLabel = new TextView(activity);
+        TextView themeLabel = new TextView(dialogContext);
         themeLabel.setText("Tema del navegador");
+        themeLabel.setTextColor(Color.WHITE);
         panel.addView(themeLabel);
 
-        android.widget.Spinner theme = new android.widget.Spinner(activity);
+        android.widget.Spinner theme = new android.widget.Spinner(dialogContext);
         final String[] themes = {"Sistema", "Negro puro", "Blanco puro"};
         android.widget.ArrayAdapter<String> adapter = new android.widget.ArrayAdapter<>(
-                activity, android.R.layout.simple_spinner_dropdown_item, themes);
+                dialogContext, android.R.layout.simple_spinner_item, themes);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         theme.setAdapter(adapter);
         String savedTheme = browserTheme(activity);
         theme.setSelection("black".equals(savedTheme) ? 1 : "white".equals(savedTheme) ? 2 : 0);
         panel.addView(theme);
 
-        CheckBox amoled = new CheckBox(activity);
+        CheckBox amoled = new CheckBox(dialogContext);
         amoled.setText("AMOLED");
         amoled.setChecked(p.getBoolean(KEY_AMOLED, false));
         panel.addView(amoled);
 
-        TextView webModeLabel = new TextView(activity);
+        TextView webModeLabel = new TextView(dialogContext);
         webModeLabel.setText("Oscurecimiento de páginas web");
+        webModeLabel.setTextColor(Color.WHITE);
         panel.addView(webModeLabel);
-        android.widget.Spinner webMode = new android.widget.Spinner(activity);
+        android.widget.Spinner webMode = new android.widget.Spinner(dialogContext);
         final String[] webModes = {"Manual (casilla de Cromite)", "Automático con AMOLED"};
         android.widget.ArrayAdapter<String> webModeAdapter = new android.widget.ArrayAdapter<>(
-                activity, android.R.layout.simple_spinner_dropdown_item, webModes);
+                dialogContext, android.R.layout.simple_spinner_item, webModes);
+        webModeAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         webMode.setAdapter(webModeAdapter);
         webMode.setSelection("automatic".equals(p.getString(KEY_WEB_MODE, "manual")) ? 1 : 0);
         webMode.setEnabled(amoled.isChecked());
         panel.addView(webMode);
 
-        CheckBox manual = new CheckBox(activity);
+        CheckBox manual = new CheckBox(dialogContext);
         manual.setText("Control manual del brillo de ventana");
         manual.setChecked(p.getBoolean(KEY_MANUAL, false));
         panel.addView(manual);
 
-        TextView windowLabel = new TextView(activity);
+        TextView windowLabel = new TextView(dialogContext);
         windowLabel.setText("Brillo de ventana (%)");
+        windowLabel.setTextColor(Color.WHITE);
         panel.addView(windowLabel);
-        SeekBar windowBar = new SeekBar(activity);
+        SeekBar windowBar = new SeekBar(dialogContext);
         windowBar.setMax(100);
         windowBar.setProgress(clamp(p.getInt(KEY_BRIGHTNESS, 50)));
         windowBar.setEnabled(manual.isChecked());
         panel.addView(windowBar);
 
-        TextView webLabel = new TextView(activity);
+        TextView webLabel = new TextView(dialogContext);
         webLabel.setText("Luminancia web (%) — pendiente de integración");
+        webLabel.setTextColor(Color.WHITE);
         panel.addView(webLabel);
-        SeekBar webBar = new SeekBar(activity);
+        SeekBar webBar = new SeekBar(dialogContext);
         webBar.setMax(100);
         webBar.setProgress(webLuminancePercent(activity));
         panel.addView(webBar);
@@ -189,11 +204,17 @@ public final class AmoledBrightnessController {
             @Override public void onNothingSelected(android.widget.AdapterView<?> parent) {}
         });
 
-        new AlertDialog.Builder(activity)
+        AlertDialog dialog = new AlertDialog.Builder(dialogContext)
                 .setTitle("AMOLED y brillo")
                 .setView(panel)
-                .setPositiveButton("Cerrar", (dialog, which) -> dialog.dismiss())
-                .show();
+                .setPositiveButton("Cerrar", (ignored, which) -> {})
+                .create();
+        dialog.setOnShowListener(ignored -> {
+            Window window = dialog.getWindow();
+            if (window != null) window.setBackgroundDrawable(new ColorDrawable(Color.BLACK));
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(Color.WHITE);
+        });
+        dialog.show();
     }
 
     private static int clamp(int percent) {
