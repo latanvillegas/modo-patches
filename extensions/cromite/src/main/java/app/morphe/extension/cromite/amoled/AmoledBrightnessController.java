@@ -24,6 +24,7 @@ public final class AmoledBrightnessController {
     private static final String KEY_WEB = "web_luminance_percent";
     private static final String KEY_AMOLED = "amoled_enabled";
     private static final String KEY_THEME = "browser_theme";
+    private static final String KEY_WEB_MODE = "web_darkening_mode";
 
     private AmoledBrightnessController() {}
 
@@ -61,6 +62,13 @@ public final class AmoledBrightnessController {
         return prefs(context).getBoolean(KEY_AMOLED, false);
     }
 
+    /** Only active when AMOLED is on and automatic web darkening is selected. */
+    public static boolean automaticWebDarkeningEnabled(Context context) {
+        SharedPreferences p = prefs(context);
+        return p.getBoolean(KEY_AMOLED, false)
+                && "automatic".equals(p.getString(KEY_WEB_MODE, "manual"));
+    }
+
     public static String browserTheme(Context context) {
         String value = prefs(context).getString(KEY_THEME, "device");
         if ("black".equals(value) || "white".equals(value)) return value;
@@ -96,6 +104,18 @@ public final class AmoledBrightnessController {
         amoled.setText("AMOLED");
         amoled.setChecked(p.getBoolean(KEY_AMOLED, false));
         panel.addView(amoled);
+
+        TextView webModeLabel = new TextView(activity);
+        webModeLabel.setText("Oscurecimiento de páginas web");
+        panel.addView(webModeLabel);
+        android.widget.Spinner webMode = new android.widget.Spinner(activity);
+        final String[] webModes = {"Manual (casilla de Cromite)", "Automático con AMOLED"};
+        android.widget.ArrayAdapter<String> webModeAdapter = new android.widget.ArrayAdapter<>(
+                activity, android.R.layout.simple_spinner_dropdown_item, webModes);
+        webMode.setAdapter(webModeAdapter);
+        webMode.setSelection("automatic".equals(p.getString(KEY_WEB_MODE, "manual")) ? 1 : 0);
+        webMode.setEnabled(amoled.isChecked());
+        panel.addView(webMode);
 
         CheckBox manual = new CheckBox(activity);
         manual.setText("Control manual del brillo de ventana");
@@ -141,8 +161,17 @@ public final class AmoledBrightnessController {
             @Override public void onStartTrackingTouch(SeekBar bar) {}
             @Override public void onStopTrackingTouch(SeekBar bar) {}
         });
-        amoled.setOnCheckedChangeListener((button, checked) ->
-                p.edit().putBoolean(KEY_AMOLED, checked).apply());
+        amoled.setOnCheckedChangeListener((button, checked) -> {
+            p.edit().putBoolean(KEY_AMOLED, checked).apply();
+            webMode.setEnabled(checked);
+        });
+        webMode.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            @Override public void onItemSelected(android.widget.AdapterView<?> parent,
+                    android.view.View view, int position, long id) {
+                p.edit().putString(KEY_WEB_MODE, position == 1 ? "automatic" : "manual").apply();
+            }
+            @Override public void onNothingSelected(android.widget.AdapterView<?> parent) {}
+        });
         theme.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
             @Override public void onItemSelected(android.widget.AdapterView<?> parent,
                     android.view.View view, int position, long id) {
