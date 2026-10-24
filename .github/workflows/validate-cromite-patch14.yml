@@ -83,11 +83,36 @@ jobs:
             exit 1
           fi
 
+      - name: Package Android-compatible MPP with DEX
+        shell: bash
+        run: |
+          set -euo pipefail
+          source_mpp="$(find patches/build/libs -maxdepth 1 -name 'patches-*.mpp' ! -name '*-sources.mpp' ! -name '*-javadoc.mpp' ! -name '*-android.mpp' -print -quit)"
+          test -n "$source_mpp"
+          test -f "$source_mpp"
+          version="$(basename "$source_mpp" .mpp)"
+          android_mpp="patches/build/libs/${version}-android.mpp"
+          work="$(mktemp -d)"
+          cp "$source_mpp" "$work/patches.jar"
+          mkdir -p "$work/dex"
+          d8="$ANDROID_HOME/build-tools/36.0.0/d8"
+          test -x "$d8"
+          "$d8" --min-api 26 --lib "$ANDROID_HOME/platforms/android-36/android.jar" --output "$work/dex" "$work/patches.jar"
+          test -s "$work/dex/classes.dex"
+          cp "$source_mpp" "$android_mpp"
+          (cd "$work/dex" && zip -q -u "$GITHUB_WORKSPACE/$android_mpp" classes.dex)
+          unzip -tq "$android_mpp"
+          unzip -Z1 "$android_mpp" | grep -qx 'classes.dex'
+          unzip -Z1 "$android_mpp" | grep -q 'CromiteAmoledBrightnessPatchKt.class'
+          unzip -Z1 "$android_mpp" | grep -q 'extensions/cromite.mpe'
+          echo "Android MPP generated: $android_mpp"
+          ls -lh "$android_mpp"
+
       - name: Inspect Android manager bundle requirements
         shell: bash
         run: |
           set -euo pipefail
-          bundle='patches/build/libs/patches-1.51.0.mpp'
+          bundle='patches/build/libs/patches-1.51.0-android.mpp'
           test -f "$bundle"
           echo 'Main bundle entries relevant to Android:'
           unzip -Z1 "$bundle" | grep -E '(^classes[0-9]*\.dex$|AmoledBrightnessPatch|cromite\.mpe)' || true
