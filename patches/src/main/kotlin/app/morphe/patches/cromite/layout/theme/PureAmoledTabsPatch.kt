@@ -3,11 +3,9 @@ package app.morphe.patches.cromite.layout.theme
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.bytecodePatch
-import app.morphe.util.indexOfFirstInstructionOrThrow
-import com.android.tools.smali.dexlib2.Opcode
 
-// Restored against PureAmoledTabsPatchKt.class in patches-1.50.0.mpp.
-// The original 1.50.0 bytecode inserts before RETURN_VOID in both methods.
+// Insert at method entry instead of before RETURN_VOID: the latter can shift
+// branch targets into the middle of instructions in Cromite 153.0.8010.37.
 private val tabGridViewRefreshFingerprint = Fingerprint(
     definingClass = "Lorg/chromium/chrome/browser/tasks/tab_management/TabGridView;",
     name = "s",
@@ -61,10 +59,10 @@ val pureAmoledTabsPatch = bytecodePatch(
     execute {
         val instructions = tabsBackgroundSmali(browserTheme.value ?: "device")
         tabGridViewRefreshFingerprint.method.apply {
-            addInstructions(indexOfFirstInstructionOrThrow(Opcode.RETURN_VOID), instructions)
+            addInstructions(0, instructions)
         }
         tabGridDialogBackgroundFingerprint.method.apply {
-            addInstructions(indexOfFirstInstructionOrThrow(Opcode.RETURN_VOID), instructions)
+            addInstructions(0, instructions)
         }
     }
 }
