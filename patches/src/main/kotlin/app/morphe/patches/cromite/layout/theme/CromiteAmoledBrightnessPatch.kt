@@ -23,10 +23,17 @@ private val cromiteTabbedActivityResumeFingerprint = Fingerprint(
     parameters = listOf(),
 )
 
+private val themeFingerprint = Fingerprint(
+    definingClass = "Lorg/chromium/chrome/browser/night_mode/settings/ThemeSettingsFragment;",
+    name = "a2",
+    returnType = "V",
+    parameters = listOf("Ljava/lang/String;", "Landroid/os/Bundle;"),
+)
+
 @Suppress("unused")
 val cromiteAmoledBrightnessPatch = bytecodePatch(
     name = "Cromite AMOLED brightness controls",
-    description = "Injects the Cromite runtime controller and restores the saved window brightness on resume.",
+    description = "Restores brightness and adds an AMOLED preference in native Theme settings.",
     default = false,
 ) {
     compatibleWith("org.cromite.cromite"(CROMITE_PATCH14_VERSION))
@@ -38,6 +45,12 @@ val cromiteAmoledBrightnessPatch = bytecodePatch(
     execute {
         // Fail closed if the extension wasn't bundled into the target DEX.
         classDefBy(BRIGHTNESS_CONTROLLER)
+        classDefBy("Lapp/morphe/extension/cromite/amoled/ThemeSettingsBridge;")
+        themeFingerprint.method.addInstruction(
+            2,
+            "invoke-static/range { p0 .. p0 }, " +
+                "Lapp/morphe/extension/cromite/amoled/ThemeSettingsBridge;->install(Ljava/lang/Object;)V",
+        )
 
         // p0 is the Activity receiver, valid for invoke-static/range.
         // Insert before the original onResume instructions so every normal
