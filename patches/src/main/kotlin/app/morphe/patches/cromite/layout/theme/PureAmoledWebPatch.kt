@@ -43,8 +43,7 @@ val pureAmoledWebPatch = bytecodePatch(
         }
         val result = instructions[last] as OneRegisterInstruction
         val zero = instructions[last - 1]
-        val tail = instructions.takeLast(16).mapIndexed { offset, instruction ->
-            val index = instructions.size - minOf(16, instructions.size) + offset
+        val tail = instructions.mapIndexed { index, instruction ->
             val register = (instruction as? OneRegisterInstruction)?.registerA
             val literal = (instruction as? NarrowLiteralInstruction)?.narrowLiteral
             "$index:${instruction.opcode}(reg=$register,lit=$literal)"
@@ -52,7 +51,7 @@ val pureAmoledWebPatch = bytecodePatch(
         check(zero.opcode == Opcode.CONST_4 &&
             zero is NarrowLiteralInstruction && zero.narrowLiteral == 0 &&
             (zero as OneRegisterInstruction).registerA == result.registerA) {
-            "AMOLED web: final return is not a verified constant-false path; DEX tail: $tail"
+            "AMOLED web: final return is not a verified constant-false path; DEX instructions: $tail"
         }
 
         // Insert in reverse order to preserve the original return index.
