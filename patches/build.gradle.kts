@@ -66,7 +66,7 @@ if (providers.gradleProperty("cromiteLite").orNull == "true") {
             kotlin.setSrcDirs(listOf("src/main/kotlin"))
             kotlin.include("app/morphe/patches/cromite/**")
             kotlin.include("app/morphe/util/**")
-            kotlin.include("app/morphe/patches/util/**")
+            // Exclude unrelated resource validation tools, which depend on\n            // other application modules not included in Lite mode.
         }
     }
 }
