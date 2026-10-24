@@ -4,15 +4,9 @@ import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.bytecodePatch
 
-// Insert at method entry instead of before RETURN_VOID: the latter can shift
-// branch targets into the middle of instructions in Cromite 153.0.8010.37.
-private val tabGridViewRefreshFingerprint = Fingerprint(
-    definingClass = "Lorg/chromium/chrome/browser/tasks/tab_management/TabGridView;",
-    name = "s",
-    returnType = "V",
-    parameters = emptyList(),
-)
-
+// TabGridView.s() is intentionally not patched: on Cromite 153.0.8010.37,
+// rewriting this method produced an ART VerifyError (invalid branch target).
+// Keep the dialog-only hook until a verified, safe grid implementation exists.
 private val tabGridDialogBackgroundFingerprint = Fingerprint(
     definingClass = "Lorg/chromium/chrome/browser/tasks/tab_management/TabGridDialogView;",
     name = "b",
@@ -50,7 +44,7 @@ private fun tabsBackgroundSmali(theme: String) = when (theme) {
 @Suppress("unused")
 val pureAmoledTabsPatch = bytecodePatch(
     name = "AMOLED - Tabs and tab strip",
-    description = "Applies Device default / Pure Black / Pure White directly to verified Cromite TabGridView and TabGridDialogView backgrounds.",
+    description = "Applies Device default / Pure Black / Pure White to the tab grid dialog background. TabGridView modification is disabled to prevent a verified startup crash.",
 ) {
     compatibleWith("org.cromite.cromite"("153.0.8010.37"))
 
@@ -58,9 +52,6 @@ val pureAmoledTabsPatch = bytecodePatch(
 
     execute {
         val instructions = tabsBackgroundSmali(browserTheme.value ?: "device")
-        tabGridViewRefreshFingerprint.method.apply {
-            addInstructions(0, instructions)
-        }
         tabGridDialogBackgroundFingerprint.method.apply {
             addInstructions(0, instructions)
         }
