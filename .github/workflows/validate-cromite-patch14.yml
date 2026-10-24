@@ -117,8 +117,8 @@ jobs:
           bundle='patches/build/libs/patches-1.51.0-android.mpp'
           test -f "$bundle"
           echo 'Main bundle entries relevant to Android:'
-          unzip -Z1 "$bundle" | grep -E '(^classes[0-9]*\\.dex$|AmoledBrightnessPatch|cromite\\.mpe)' || true
-          if ! unzip -Z1 "$bundle" | grep -Eq '^classes[0-9]*\\.dex$'; then
+          unzip -Z1 "$bundle" | grep -E '(^classes[0-9]*\.dex$|AmoledBrightnessPatch|cromite\.mpe)' || true
+          if ! unzip -Z1 "$bundle" | grep -Eq '^classes[0-9]*\.dex$'; then
             echo '::warning::The compiled MPP has no classes.dex.'
           fi
 
