@@ -93,11 +93,13 @@ jobs:
           version="$(basename "$source_mpp" .mpp)"
           android_mpp="patches/build/libs/${version}-android.mpp"
           work="$(mktemp -d)"
-          cp "$source_mpp" "$work/patches.jar"
+          mkdir -p "$work/classes"
+          (cd "$work/classes" && unzip -q "$GITHUB_WORKSPACE/$source_mpp" '*.class')
+          (cd "$work/classes" && zip -qr "$work/patches-classes.jar" .)
           mkdir -p "$work/dex"
           d8="$ANDROID_HOME/build-tools/36.0.0/d8"
           test -x "$d8"
-          "$d8" --min-api 26 --lib "$ANDROID_HOME/platforms/android-36/android.jar" --output "$work/dex" "$work/patches.jar"
+          "$d8" --min-api 26 --lib "$ANDROID_HOME/platforms/android-36/android.jar" --output "$work/dex" "$work/patches-classes.jar"
           test -s "$work/dex/classes.dex"
           cp "$source_mpp" "$android_mpp"
           (cd "$work/dex" && zip -q -u "$GITHUB_WORKSPACE/$android_mpp" classes.dex)
