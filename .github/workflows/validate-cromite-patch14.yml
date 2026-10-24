@@ -53,6 +53,8 @@ jobs:
           chmod +x ./gradlew
           ./gradlew :extensions:cromite:tasks --all --no-daemon > cromite-tasks.txt
           grep -Ei 'assemble|extension|bundle|dex' cromite-tasks.txt || true
+          ./gradlew :patches:tasks --all --no-daemon > patches-tasks.txt
+          grep -Ei 'android|dex|bundle|mpp|assemble' patches-tasks.txt || true
 
       - name: Build patch bundle and Cromite extension
         run: |
@@ -79,6 +81,30 @@ jobs:
           if ! grep -a -q 'AmoledPreferenceBridge' "$mpe"; then
             echo "::error::Preference bridge missing from MPE"
             exit 1
+          fi
+
+      - name: Inspect Android manager bundle requirements
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle='patches/build/libs/patches-1.51.0.mpp'
+          test -f "$bundle"
+          echo 'Main bundle entries relevant to Android:'
+          unzip -Z1 "$bundle" | grep -E '(^classes[0-9]*\.dex$|AmoledBrightnessPatch|cromite\.mpe)' || true
+          if ! unzip -Z1 "$bundle" | grep -Eq '^classes[0-9]*\.dex
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cromite-patch14-build
+          if-no-files-found: warn
+          path: |
+            cromite-tasks.txt
+            patches-tasks.txt
+            extensions/cromite/build/outputs/**
+            patches/build/libs/**
+            patches/build/resources/**
+; then
+            echo '::warning::The compiled MPP has no classes.dex. It may be rejected by Morphe Manager as a local source (0 patches). An Android-compatible bundle must be generated.'
           fi
 
       - name: Upload diagnostics and compiled outputs
