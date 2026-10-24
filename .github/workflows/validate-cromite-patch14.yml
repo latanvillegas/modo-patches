@@ -103,7 +103,7 @@ jobs:
             echo "::error::Brightness controller missing from MPE"
             exit 1
           fi
-          if ! grep -a -q 'AmoledPreferenceBridge' "$mpe"; then
+          if ! grep -a -q 'ThemeSettingsBridge' "$mpe"; then
             echo "::error::Preference bridge missing from MPE"
             exit 1
           fi
