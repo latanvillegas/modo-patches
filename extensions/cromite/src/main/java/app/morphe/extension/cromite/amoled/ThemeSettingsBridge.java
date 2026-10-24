@@ -60,6 +60,7 @@ public final class ThemeSettingsBridge {
 
             Class<?> groupClass = Class.forName("noa", false, loader);
             groupClass.getMethod("f0", preferenceClass).invoke(screen, preference);
+            Log.i(TAG, "AMOLED preference installed in Theme settings");
         } catch (ReflectiveOperationException | RuntimeException error) {
             // A changed obfuscated API must not crash Chromium settings.
             Log.e(TAG, "Could not install AMOLED preference", error);
