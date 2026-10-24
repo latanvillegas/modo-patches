@@ -1,7 +1,7 @@
 package app.morphe.patches.cromite.layout.theme
 
 import app.morphe.patcher.Fingerprint
-import app.morphe.patcher.extensions.InstructionExtensions.addInstruction
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.bytecodePatch
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
@@ -14,7 +14,7 @@ private const val CONTROLLER =
 /**
  * Preserve Chromium's existing true branches (forced dark and manual/per-site
  * darkening). Only replace the final false result with the opt-in AMOLED
- * automatic decision. The helper returns false unless both AMOLED and
+ * automatic decision. Initialize the false-result register at method entry,\n * avoiding insertion adjacent to a branch-targeted final RETURN.\n * The helper returns false unless both AMOLED and
  * automatic mode are selected.
  */
 private val webContentsDarkModeDecisionFingerprint = Fingerprint(
