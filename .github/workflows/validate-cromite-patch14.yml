@@ -115,21 +115,9 @@ jobs:
           bundle='patches/build/libs/patches-1.51.0-android.mpp'
           test -f "$bundle"
           echo 'Main bundle entries relevant to Android:'
-          unzip -Z1 "$bundle" | grep -E '(^classes[0-9]*\.dex$|AmoledBrightnessPatch|cromite\.mpe)' || true
-          if ! unzip -Z1 "$bundle" | grep -Eq '^classes[0-9]*\.dex
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: cromite-patch14-build
-          if-no-files-found: warn
-          path: |
-            cromite-tasks.txt
-            patches-tasks.txt
-            extensions/cromite/build/outputs/**
-            patches/build/libs/**
-            patches/build/resources/**
-; then
-            echo '::warning::The compiled MPP has no classes.dex. It may be rejected by Morphe Manager as a local source (0 patches). An Android-compatible bundle must be generated.'
+          unzip -Z1 "$bundle" | grep -E '(^classes[0-9]*\\.dex$|AmoledBrightnessPatch|cromite\\.mpe)' || true
+          if ! unzip -Z1 "$bundle" | grep -Eq '^classes[0-9]*\\.dex$'; then
+            echo '::warning::The compiled MPP has no classes.dex.'
           fi
 
       - name: Upload diagnostics and compiled outputs
@@ -140,6 +128,7 @@ jobs:
           if-no-files-found: warn
           path: |
             cromite-tasks.txt
+            patches-tasks.txt
             extensions/cromite/build/outputs/**
             patches/build/libs/**
             patches/build/resources/**
