@@ -25,6 +25,7 @@ public final class AmoledBrightnessController {
     private static final String KEY_AMOLED = "amoled_enabled";
     private static final String KEY_THEME = "browser_theme";
     private static final String KEY_WEB_MODE = "web_darkening_mode";
+    private static volatile Context browserContext;
 
     private AmoledBrightnessController() {}
 
@@ -39,6 +40,7 @@ public final class AmoledBrightnessController {
      */
     public static void applyWindowBrightness(Activity activity) {
         if (activity == null) return;
+        browserContext = activity.getApplicationContext();
         SharedPreferences p = prefs(activity);
         float value = -1.0f; // Android: follow system brightness
         if (p.getBoolean(KEY_MANUAL, false)) {
@@ -63,6 +65,12 @@ public final class AmoledBrightnessController {
     }
 
     /** Only active when AMOLED is on and automatic web darkening is selected. */
+    /** Called by the patched Chromium web-content decision on its false path. */
+    public static boolean shouldAutoDarkenWebContents() {
+        Context context = browserContext;
+        return context != null && automaticWebDarkeningEnabled(context);
+    }
+
     public static boolean automaticWebDarkeningEnabled(Context context) {
         SharedPreferences p = prefs(context);
         return p.getBoolean(KEY_AMOLED, false)
