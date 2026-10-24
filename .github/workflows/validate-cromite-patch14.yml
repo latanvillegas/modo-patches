@@ -10,6 +10,7 @@ on:
       - 'extensions/cromite/**'
       - 'patches/src/main/kotlin/app/morphe/patches/cromite/**'
       - 'settings.gradle.kts'
+      - 'patches/build.gradle.kts'
       - 'gradle/**'
       - 'gradlew'
       - 'build.gradle.kts'
